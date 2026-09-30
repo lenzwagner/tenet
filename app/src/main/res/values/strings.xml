@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Tenet</string>
+    <string name="shortcut_note_short">Neue Notiz</string>
+    <string name="shortcut_note_long">Neue Notiz schreiben</string>
+    <string name="shortcut_meal_short">Mahlzeit</string>
+    <string name="shortcut_meal_long">Mahlzeit loggen</string>
+    <string name="shortcut_dream_short">Traum</string>
+    <string name="shortcut_dream_long">Traum notieren</string>
+</resources>

@@ -1,0 +1,28 @@
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+.kotlin
+build/
+.gradle/
+.idea/
+
+# Secrets and local config
+local.properties
+app/google-services.json
+*.jks
+*.keystore
+.claude/settings.local.json
+
+# Release builds (contain the NIM key from local.properties)
+*.apk
+*.apk.idsig
+*.aab
+
+# Generated
+graphify-out/

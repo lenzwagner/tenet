@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+ splash: show the icon on its pastel-yellow disc. -->
+    <style name="Theme.Tenet" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowSplashScreenIconBackgroundColor">#FEF0B2</item>
+    </style>
+</resources>

@@ -1,0 +1,94 @@
+rules_version = '2';
+
+// Zephron Firestore security rules.
+//
+// Deploy with the Firebase CLI:
+//   firebase deploy --only firestore:rules
+// or paste the contents into Firebase Console → Firestore Database → Rules.
+//
+// Model: every user owns the document tree under users/{their uid}.
+// Friends need to READ each other's recipes / settings / swipes (to show
+// shared recipes and detect "matches"), and need to DROP a message into a
+// friend's inbox (friend requests, accept/decline, match notifications).
+// Writing to your *own* data stays owner-only.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{userId} {
+
+      // The user document itself (rarely used, but readable by signed-in users).
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+
+      // Settings: any signed-in user may read (friends need each other's name,
+      // colors, etc.); only the owner may change them.
+      match /config/{doc} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Recipes: readable by any signed-in user (so friends see shared recipes),
+      // writable only by the owner.
+      match /recipes/{doc} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Swipes: readable by any signed-in user (needed to detect mutual likes
+      // → matches), writable only by the owner.
+      match /swipes/{doc} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Crave swipes scoped per friend-pair (doc id = "pairId__recipe"); the
+      // partner reads yours to detect a match, only you may write your own.
+      match /craveSwipes/{doc} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Inbox: only the owner may read or delete their own messages.
+      // Any signed-in user may CREATE a message (friend request / accept /
+      // decline / match), but only if they stamp it with their own uid as
+      // `fromId` — this prevents spoofing someone else's identity.
+      match /inbox/{doc} {
+        allow read, delete: if request.auth != null && request.auth.uid == userId;
+        allow create: if request.auth != null
+                      && request.resource.data.fromId == request.auth.uid;
+      }
+
+      // Tenet (app.tenet.android, same Firebase project): the user's own
+      // synced database rows and GPS tracks. Owner-only.
+      match /tenetRows/{doc} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      match /tenetTracks/{doc} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // FCM device tokens: only the owner can manage their own tokens. The
+      // Cloud Function reads them via the Admin SDK (which bypasses rules).
+      match /fcmTokens/{token} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // Shared weekly meal plans. The document id is the two members' uids sorted
+    // and joined by "_", so a user may only access plans they're part of.
+    match /mealPlans/{pairId} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid in pairId.split('_');
+      match /entries/{entry} {
+        allow read, write: if request.auth != null
+                           && request.auth.uid in pairId.split('_');
+      }
+    }
+
+    // AI usage logging (write-only for authenticated users)
+    match /aiLog/{logId} {
+      allow create: if request.auth != null;
+    }
+  }
+}

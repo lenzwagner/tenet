@@ -1,0 +1,300 @@
+package app.tenet.android.core.common
+
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
+
+/**
+ * Pure plan-structure math (App_Konzept.md 5.2.3): goal templates, weekly
+ * run-type structure, moderate progression with regular unload weeks and
+ * the generated units per week. Kept free of Room so it is unit testable.
+ */
+object RunPlanMath {
+
+    /** Plan goal (stored as name in RunPlanDetail.goalId). */
+    enum class RunGoal(val label: String) {
+        FIVE_K("5 km"),
+        TEN_K("10 km"),
+        HALF("Halbmarathon"),
+        MARATHON("Marathon"),
+        GENERAL("Fit bleiben"),
+        ;
+
+        companion object {
+            fun fromName(name: String?): RunGoal =
+                entries.firstOrNull { it.name == name } ?: GENERAL
+        }
+    }
+
+    /** Race distance of a goal [m]; null for "Fit bleiben". */
+    fun raceDistanceM(goal: RunGoal): Int? = when (goal) {
+        RunGoal.FIVE_K -> 5_000
+        RunGoal.TEN_K -> 10_000
+        RunGoal.HALF -> 21_097
+        RunGoal.MARATHON -> 42_195
+        RunGoal.GENERAL -> null
+    }
+
+    /** Taper length before the race [weeks]: longer races need more recovery. */
+    fun taperWeeks(goal: RunGoal): Int = when (goal) {
+        RunGoal.MARATHON -> 3
+        RunGoal.HALF -> 2
+        RunGoal.FIVE_K, RunGoal.TEN_K -> 1
+        RunGoal.GENERAL -> 0
+    }
+
+    /**
+     * Volume factor of a taper week relative to the peak, by weeks left to
+     * the race (0 = race week): marathon 80 → 65 → 45 %, half 70 → 50 %,
+     * short races 60 % – intensity stays, volume drops.
+     */
+    fun taperFactor(goal: RunGoal, weeksToRace: Int): Float {
+        val steps = when (taperWeeks(goal)) {
+            3 -> listOf(0.45f, 0.65f, 0.8f)
+            2 -> listOf(0.5f, 0.7f)
+            1 -> listOf(0.6f)
+            else -> emptyList()
+        }
+        return steps.getOrNull(weeksToRace) ?: 1f
+    }
+
+    /** True when [weekIndex] of a [totalWeeks] plan is a taper week. */
+    fun isTaperWeek(goal: RunGoal, weekIndex: Int, totalWeeks: Int, taper: Boolean): Boolean =
+        taper && totalWeeks - 1 - weekIndex in 0 until taperWeeks(goal)
+
+    /** One planned unit of a week (dayIndex: Monday = 0 ... Sunday = 6). */
+    data class PlanUnit(
+        val dayIndex: Int,
+        val zone: RunZone,
+        val targetDurationSec: Int?,
+        val targetDistanceM: Int?,
+        /** Compact interval spec, e.g. `[{"reps":4,"lengthM":800,"restSec":90}]`. */
+        val intervalsJson: String?,
+        val title: String,
+    )
+
+    /**
+     * Weekly template per runs-per-week: quality mid-week, long run on the
+     * weekend. Inputs are clamped to 2..6 runs.
+     */
+    /**
+     * Moves the template's units onto the user's [days] (0 = Mo … 6 = So).
+     * The long run goes to the last chosen weekend day (else the last day);
+     * the other units are spread so that hard sessions (tempo, intervals,
+     * long run) sit on consecutive days as rarely as possible. Units stay
+     * in template order so that callers can index them.
+     */
+    fun assignDays(template: List<Pair<Int, RunZone>>, days: List<Int>?): List<Pair<Int, RunZone>> {
+        val chosen = days?.distinct()?.sorted()?.filter { it in 0..6 }
+        if (chosen == null || chosen.size != template.size) return template
+        val longIndex = template.indexOfFirst { it.second == RunZone.LONG }
+        val longDay = if (longIndex < 0) null else chosen.lastOrNull { it >= 5 } ?: chosen.last()
+        val restDays = chosen.filter { it != longDay }
+        val restUnits = template.indices.filter { it != longIndex }
+        // Try every order of the remaining units (at most 5! = 120) and keep the
+        // one with the fewest back-to-back hard days; ties keep template order.
+        var best: List<Int> = restUnits
+        var bestScore = Int.MAX_VALUE
+        permutations(restUnits).forEach { order ->
+            val dayOf = HashMap<Int, Int>()
+            order.forEachIndexed { i, unit -> dayOf[unit] = restDays[i] }
+            if (longIndex >= 0 && longDay != null) dayOf[longIndex] = longDay
+            val hardDays = template.indices.filter { isHard(template[it].second) }.map { dayOf.getValue(it) }.toSet()
+            val score = hardDays.count { (it + 1) % 7 in hardDays }
+            if (score < bestScore) {
+                bestScore = score
+                best = order
+            }
+        }
+        val dayOf = HashMap<Int, Int>()
+        best.forEachIndexed { i, unit -> dayOf[unit] = restDays[i] }
+        if (longIndex >= 0 && longDay != null) dayOf[longIndex] = longDay
+        return template.mapIndexed { i, (_, zone) -> dayOf.getValue(i) to zone }
+    }
+
+    private fun isHard(zone: RunZone) = zone == RunZone.TEMPO || zone == RunZone.INTERVAL || zone == RunZone.LONG
+
+    private fun permutations(items: List<Int>): Sequence<List<Int>> = sequence {
+        if (items.size <= 1) {
+            yield(items)
+        } else {
+            for (i in items.indices) {
+                val rest = items.take(i) + items.drop(i + 1)
+                for (p in permutations(rest)) yield(listOf(items[i]) + p)
+            }
+        }
+    }
+
+    fun weeklyTemplate(runsPerWeek: Int): List<Pair<Int, RunZone>> =
+        when (runsPerWeek.coerceIn(2, 6)) {
+            2 -> listOf(0 to RunZone.EASY, 5 to RunZone.LONG)
+            3 -> listOf(0 to RunZone.EASY, 2 to RunZone.INTERVAL, 5 to RunZone.LONG)
+            4 -> listOf(
+                0 to RunZone.EASY,
+                1 to RunZone.TEMPO,
+                3 to RunZone.INTERVAL,
+                5 to RunZone.LONG,
+            )
+            5 -> listOf(
+                0 to RunZone.EASY,
+                1 to RunZone.TEMPO,
+                3 to RunZone.INTERVAL,
+                5 to RunZone.LONG,
+                6 to RunZone.RECOVERY,
+            )
+            else -> listOf(
+                0 to RunZone.EASY,
+                1 to RunZone.TEMPO,
+                2 to RunZone.RECOVERY,
+                3 to RunZone.INTERVAL,
+                5 to RunZone.LONG,
+                6 to RunZone.EASY,
+            )
+        }
+
+    /**
+     * Number of plan weeks from [planStart] to [goalDate] inclusive,
+     * clamped to a sane 4..24 week block.
+     */
+    fun weekCount(planStart: LocalDate, goalDate: LocalDate): Int {
+        val weeks = ChronoUnit.WEEKS.between(
+            WeekMath.weekStart(planStart),
+            WeekMath.weekStart(goalDate),
+        ).toInt() + 1
+        return weeks.coerceIn(4, 24)
+    }
+
+    /**
+     * Load factor of a week (0-based): +8 % per four-week build cycle,
+     * every fourth week is an unload week at 70 % of the current level
+     * ("Umfangssteigerung moderat halten, Entlastungswochen einplanen").
+     */
+    fun loadFactor(weekIndex: Int): Float {
+        val week = weekIndex.coerceAtLeast(0)
+        val base = 1f + 0.08f * (week / 4)
+        return if ((week + 1) % 4 == 0) base * 0.7f else base
+    }
+
+    /** Interval length per goal, meters. */
+    private fun intervalLength(goal: RunGoal): Int = when (goal) {
+        RunGoal.FIVE_K, RunGoal.TEN_K, RunGoal.GENERAL -> 800
+        RunGoal.HALF, RunGoal.MARATHON -> 1000
+    }
+
+    /** Interval reps: 3 + one per build cycle, capped at 6 (minus one on unload weeks). */
+    fun intervalReps(weekIndex: Int): Int {
+        val week = weekIndex.coerceAtLeast(0)
+        val reps = (3 + week / 4).coerceAtMost(6)
+        return if ((week + 1) % 4 == 0) (reps - 1).coerceAtLeast(3) else reps
+    }
+
+    /** Base duration [s] per goal and zone (the long run is capped below). */
+    private fun baseDuration(goal: RunGoal, zone: RunZone): Int = when (goal) {
+        RunGoal.FIVE_K -> when (zone) {
+            RunZone.EASY -> 30 * 60
+            RunZone.LONG -> 40 * 60
+            RunZone.TEMPO -> 20 * 60
+            RunZone.RECOVERY -> 25 * 60
+            else -> 0
+        }
+        RunGoal.TEN_K -> when (zone) {
+            RunZone.EASY -> 35 * 60
+            RunZone.LONG -> 50 * 60
+            RunZone.TEMPO -> 25 * 60
+            RunZone.RECOVERY -> 30 * 60
+            else -> 0
+        }
+        RunGoal.GENERAL -> when (zone) {
+            RunZone.EASY -> 35 * 60
+            RunZone.LONG -> 45 * 60
+            RunZone.TEMPO -> 20 * 60
+            RunZone.RECOVERY -> 30 * 60
+            else -> 0
+        }
+        RunGoal.HALF -> when (zone) {
+            RunZone.EASY -> 40 * 60
+            RunZone.LONG -> 75 * 60
+            RunZone.TEMPO -> 30 * 60
+            RunZone.RECOVERY -> 30 * 60
+            else -> 0
+        }
+        RunGoal.MARATHON -> when (zone) {
+            RunZone.EASY -> 45 * 60
+            RunZone.LONG -> 100 * 60
+            RunZone.TEMPO -> 40 * 60
+            RunZone.RECOVERY -> 35 * 60
+            else -> 0
+        }
+    }
+
+    /** Upper bound for the long run per goal [minutes]. */
+    private fun longRunCapSec(goal: RunGoal): Int = when (goal) {
+        RunGoal.FIVE_K, RunGoal.TEN_K, RunGoal.GENERAL -> 90 * 60
+        RunGoal.HALF -> 150 * 60
+        RunGoal.MARATHON -> 180 * 60
+    }
+
+    fun intervalSpecJson(reps: Int, lengthM: Int, restSec: Int): String =
+        """[{"reps":$reps,"lengthM":$lengthM,"restSec":$restSec}]"""
+
+    fun zoneTitle(zone: RunZone, reps: Int = 0, lengthM: Int = 0): String = when (zone) {
+        RunZone.EASY -> "Lockerlauf"
+        RunZone.LONG -> "Langlauf"
+        RunZone.TEMPO -> "Tempolauf"
+        RunZone.INTERVAL -> "$reps × $lengthM m"
+        RunZone.RECOVERY -> "Regeneration"
+    }
+
+    /**
+     * All units of week [weekIndex] (0-based). With [taper] and a known
+     * [totalWeeks], the last weeks before the race keep their structure but
+     * scale volume down from the peak level ([taperFactor]); intervals keep
+     * their pace with fewer reps.
+     */
+    fun planWeek(
+        goal: RunGoal,
+        weekIndex: Int,
+        runsPerWeek: Int,
+        totalWeeks: Int? = null,
+        taper: Boolean = false,
+        /** Chosen weekdays 0 (Mo) … 6 (So); null = default template days. */
+        days: List<Int>? = null,
+        /** Volume scale for the runner's level (0.8 beginner … 1.15 ambitious). */
+        volume: Float = 1f,
+    ): List<PlanUnit> = assignDays(weeklyTemplate(runsPerWeek), days).map { (dayIndex, zone) ->
+        val tapering = totalWeeks != null && isTaperWeek(goal, weekIndex, totalWeeks, taper)
+        val weeksToRace = if (totalWeeks != null) totalWeeks - 1 - weekIndex else Int.MAX_VALUE
+        // Taper weeks scale from the last build week's level.
+        val peakWeek = if (tapering && totalWeeks != null) (totalWeeks - 1 - taperWeeks(goal)).coerceAtLeast(0) else weekIndex
+        if (zone == RunZone.INTERVAL) {
+            val length = intervalLength(goal)
+            val reps = if (tapering) {
+                (intervalReps(peakWeek) - (taperWeeks(goal) - weeksToRace)).coerceAtLeast(2)
+            } else {
+                intervalReps(weekIndex)
+            }
+            PlanUnit(
+                dayIndex = dayIndex,
+                zone = zone,
+                targetDurationSec = null,
+                targetDistanceM = reps * length,
+                intervalsJson = intervalSpecJson(reps, length, 90),
+                title = zoneTitle(zone, reps, length),
+            )
+        } else {
+            val factor = if (tapering) peakLoad(peakWeek) * taperFactor(goal, weeksToRace) else loadFactor(weekIndex)
+            val duration = (baseDuration(goal, zone) * factor * volume).toInt()
+                .let { if (zone == RunZone.LONG) it.coerceAtMost(longRunCapSec(goal)) else it }
+            PlanUnit(
+                dayIndex = dayIndex,
+                zone = zone,
+                targetDurationSec = duration,
+                targetDistanceM = null,
+                intervalsJson = null,
+                title = zoneTitle(zone),
+            )
+        }
+    }
+
+    /** Load of a build week ignoring its own unload dip (taper starts from the true peak). */
+    private fun peakLoad(weekIndex: Int): Float = 1f + 0.08f * (weekIndex.coerceAtLeast(0) / 4)
+}

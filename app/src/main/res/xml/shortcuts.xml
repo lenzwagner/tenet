@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="note"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_note"
+        android:shortcutShortLabel="@string/shortcut_note_short"
+        android:shortcutLongLabel="@string/shortcut_note_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="app.tenet.android"
+            android:targetClass="app.tenet.android.MainActivity">
+            <extra
+                android:name="tenet_open"
+                android:value="note" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="meal"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_meal"
+        android:shortcutShortLabel="@string/shortcut_meal_short"
+        android:shortcutLongLabel="@string/shortcut_meal_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="app.tenet.android"
+            android:targetClass="app.tenet.android.MainActivity">
+            <extra
+                android:name="tenet_open"
+                android:value="meal" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="dream"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_dream"
+        android:shortcutShortLabel="@string/shortcut_dream_short"
+        android:shortcutLongLabel="@string/shortcut_dream_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="app.tenet.android"
+            android:targetClass="app.tenet.android.MainActivity">
+            <extra
+                android:name="tenet_open"
+                android:value="dream" />
+        </intent>
+    </shortcut>
+</shortcuts>
