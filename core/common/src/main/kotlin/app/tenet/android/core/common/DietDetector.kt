@@ -32,8 +32,9 @@ object DietDetector {
             MEAT_WORDS.any { text.contains(it) } -> MEAT
             tags.firstOrNull() == VEGAN && ANIMAL_WORDS.any { text.contains(it) } -> VEGETARIAN
             tags.firstOrNull() in setOf(VEGAN, VEGETARIAN) -> tags.first()
-            // AI said meat, rules found none: trust the AI (it saw more context).
-            tags.firstOrNull() == MEAT -> MEAT
+            // AI said meat, rules found none: trust it only when the ingredients are
+            // unknown or sparse ("full recipe in bio"); a full list without meat wins.
+            tags.firstOrNull() == MEAT && ingredients.size < 3 -> MEAT
             else -> if (ANIMAL_WORDS.any { text.contains(it) }) VEGETARIAN else VEGAN
         }
         return listOf(diet) + tags.filter { it != MEAT && it != VEGETARIAN && it != VEGAN }

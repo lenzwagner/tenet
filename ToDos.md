@@ -1,6 +1,6 @@
 # Tenet – offene ToDos
 
-Stand: 30.09.2026, Version 0.19.4. Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 01.10.2026, Version 0.19.5. Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Google-Anmeldung & Sync (0.15)
 
@@ -72,7 +72,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Datenbank-Verschlüsselung (SQLCipher). Erst sinnvoll zusammen mit einem Backup.
 
-## Zuletzt erledigt (0.5.0 – 0.19.4)
+## Zuletzt erledigt (0.5.0 – 0.19.5)
+
+- 0.19.5: Rezept-Import getestet (Chefkoch, 2× Instagram, 2× TikTok, Freitext) und verbessert: Portionen aus dem Text („für 4 Personen“), vegetarisch bei vollständiger Zutatenliste ohne Fleisch, Tags ohne GROSSBUCHSTABEN und „Küche:“-Präfix, „1 Schritt/1 Zutat“, Hinweis statt „0 Zutaten“ bei Beiträgen mit Rezept nur auf der Website
 
 - 0.19.4: Notiz-Kacheln: Checklisten-Fortschritt als „0/7“ oben neben dem Datum statt abgeschnittenem Balken unten; leere Punkte zählen nicht; kein „…“ mehr zusätzlich zum Ausblenden
 

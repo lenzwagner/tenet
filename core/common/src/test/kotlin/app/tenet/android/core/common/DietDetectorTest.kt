@@ -21,4 +21,12 @@ class DietDetectorTest {
 
     @Test fun eiDoesNotMatchInsideWords() =
         assertEquals("Vegan", DietDetector.correct(listOf("Vegan"), listOf("Weißwein", "Reis", "Zwiebel")).first())
+
+    @Test fun fullMeatlessListBeatsAi() = assertEquals(
+        "Vegetarisch",
+        DietDetector.correct(listOf("Nicht-Vegetarisch", "Warm"), listOf("250g Mehl", "3 Eier", "0,5 Liter Milch", "Prise Salz")).first(),
+    )
+
+    @Test fun sparseListTrustsAi() =
+        assertEquals("Nicht-Vegetarisch", DietDetector.correct(listOf("Nicht-Vegetarisch"), emptyList()).first())
 }

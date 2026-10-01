@@ -25,7 +25,7 @@ object CaptionRecipe {
     )
     private val FOOTER = Regex("""^(#|follow|save this|comment|tag a|like for|folg|speicher)""", RegexOption.IGNORE_CASE)
     private val BULLET = Regex("""^\s*(?:[-–—•*·▪️✔✅]+|\d{1,2}[.)](?=\s)|step\s*\d+\s*[:.)-]?|schritt\s*\d+\s*[:.)-]?)\s*""", RegexOption.IGNORE_CASE)
-    private val SERVES = Regex("""(?:serves|servings?|portionen|für)\s*:?\s*(\d{1,2})|(\d{1,2})\s*(?:servings|portionen|personen)""", RegexOption.IGNORE_CASE)
+    private val SERVES = Regex("""(?:serves|servings?|portionen|personen)\s*:?\s*(\d{1,2})\b|(\d{1,2})\s*(?:servings|portionen|personen|people|persons)\b""", RegexOption.IGNORE_CASE)
     private val TOTAL = Regex("""(?:total time|gesamtzeit|zeit|ready in)\s*:?\s*(\d{1,3})\s*(?:min|minuten|minutes|mins)\b""", RegexOption.IGNORE_CASE)
 
     fun parse(caption: String): Parsed? {
@@ -45,10 +45,21 @@ object CaptionRecipe {
         } else {
             emptyList()
         }
-        val servings = SERVES.find(caption)?.let { m -> (m.groupValues[1].ifEmpty { m.groupValues[2] }).toIntOrNull() }?.takeIf { it in 1..24 }
+        val servings = servings(caption)
         val minutes = TOTAL.find(caption)?.groupValues?.get(1)?.toIntOrNull()?.takeIf { it in 1..1440 }
         val title = cleanTitle(lines.take(ingStart).firstOrNull { it.isNotBlank() && !FOOTER.containsMatchIn(it) }.orEmpty())
         return Parsed(title, ingredients, steps, servings, minutes)
+    }
+
+    /** "für 4 Personen", "serves 2" … anywhere in the text; null if not stated. */
+    fun servings(text: String): Int? =
+        SERVES.find(text)?.let { m -> m.groupValues[1].ifEmpty { m.groupValues[2] }.toIntOrNull() }?.takeIf { it in 1..24 }
+
+    /** "WARM" → "Warm"; mixed case ("BBQ-Sauce", "Low Carb") stays. */
+    fun cleanTag(tag: String): String {
+        // "Küche: Deutsch" (the AI echoing the prompt's category) → "Deutsch".
+        val t = tag.trim().removePrefix("#").substringAfter(':').trim()
+        return if (t.length > 3 && t == t.uppercase() && t.any(Char::isLetter)) t.lowercase().replaceFirstChar { it.uppercase() } else t
     }
 
     /**

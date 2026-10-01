@@ -273,15 +273,27 @@ private fun ImportPreview(r: ImportedRecipe, signedIn: Boolean) {
                 }
             }
         }
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer), modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("${r.ingredients.size} Zutaten", style = MaterialTheme.typography.titleSmall)
-                r.ingredients.forEach { Text("• $it", style = MaterialTheme.typography.bodyMedium) }
+        if (r.ingredients.isEmpty()) {
+            // Captions like "full recipe on my website (link in bio)".
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer), modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    "Im Beitrag stehen keine Zutaten – das ganze Rezept liegt meist auf der Seite des Autors (Link in Bio). " +
+                        "Du kannst es trotzdem speichern und später ergänzen.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
+        } else {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer), modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(if (r.ingredients.size == 1) "1 Zutat" else "${r.ingredients.size} Zutaten", style = MaterialTheme.typography.titleSmall)
+                    r.ingredients.forEach { Text("• $it", style = MaterialTheme.typography.bodyMedium) }
+                }
             }
         }
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer), modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("${r.steps.size} Schritte", style = MaterialTheme.typography.titleSmall)
+                Text(if (r.steps.size == 1) "1 Schritt" else "${r.steps.size} Schritte", style = MaterialTheme.typography.titleSmall)
                 r.steps.forEachIndexed { i, step ->
                     Text("${i + 1}. $step", style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = TextOverflow.Ellipsis)
                 }

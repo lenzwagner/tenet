@@ -191,7 +191,10 @@ class RecipeImporter @Inject constructor(
         val json = AiAssistant.extractJson(answer) ?: error("KI-Antwort war kein Rezept.")
         fun list(key: String) = json.optJSONArray(key)?.let { a -> (0 until a.length()).mapNotNull { a.optString(it).trim().takeIf(String::isNotEmpty) } }.orEmpty()
         val ingredients = list("ingredients")
-        val tags = DietDetector.correct((list("tags") + listOfNotNull(json.optString("course").takeIf { it.isNotBlank() })).distinct(), ingredients)
+        val tags = DietDetector.correct(
+            (list("tags") + listOfNotNull(json.optString("course").takeIf { it.isNotBlank() })).map(CaptionRecipe::cleanTag).distinct(),
+            ingredients,
+        )
         val title = CaptionRecipe.cleanTitle(json.optString("title")).ifBlank { "Rezept" }
         return ImportedRecipe(
             url = null,
@@ -203,7 +206,8 @@ class RecipeImporter @Inject constructor(
             category = normalizeCategory(json.optString("category")),
             tags = tags,
             vegetarian = tags.firstOrNull() in setOf("Vegetarisch", "Vegan"),
-            servings = json.optInt("servings", 0).takeIf { it in 1..24 } ?: 2,
+            // Stated in the text beats the AI (it falls back to 2 when unsure).
+            servings = CaptionRecipe.servings(original) ?: json.optInt("servings", 0).takeIf { it in 1..24 } ?: 2,
             minutes = json.optInt("minutes", 0).coerceIn(0, 1440),
             slideImages = emptyList(),
         )
@@ -410,7 +414,7 @@ class RecipeImporter @Inject constructor(
         val json = ai.chat(prompt, listOf(TEXT_MODEL), maxTokens = 600, timeoutMs = 25_000)?.let { AiAssistant.extractJson(it) }
         val aiTags = json?.optJSONArray("tags")?.let { a -> (0 until a.length()).mapNotNull { a.optString(it).trim().takeIf(String::isNotEmpty) } }.orEmpty()
             .plus(listOfNotNull(json?.optString("course")?.takeIf { it.isNotBlank() })).distinct()
-        val tags = DietDetector.correct(aiTags.filter { it !in PLACEHOLDER_TAGS }, r.ingredients)
+        val tags = DietDetector.correct(aiTags.map(CaptionRecipe::cleanTag).filter { it !in PLACEHOLDER_TAGS }.distinct(), r.ingredients)
         val imported = ImportedRecipe(
             url = null,
             title = r.name.ifBlank { "Rezept" },

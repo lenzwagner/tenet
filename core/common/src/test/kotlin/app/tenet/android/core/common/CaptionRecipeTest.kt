@@ -42,4 +42,17 @@ class CaptionRecipeTest {
     }
 
     @Test fun shoutingTitle() = assertEquals("Best Pasta Ever", CaptionRecipe.cleanTitle("BEST PASTA EVER 🔥"))
+
+    @Test fun servingsInText() {
+        assertEquals(4, CaptionRecipe.servings("Omas Pfannkuchen für 4 Personen. 250g Mehl"))
+        assertEquals(2, CaptionRecipe.servings("Serves 2"))
+        assertNull(CaptionRecipe.servings("Im Ofen für 20 Minuten backen"))
+    }
+
+    @Test fun tagCase() {
+        assertEquals("Warm", CaptionRecipe.cleanTag("WARM"))
+        assertEquals("BBQ", CaptionRecipe.cleanTag("BBQ"))
+        assertEquals("Low Carb", CaptionRecipe.cleanTag("#Low Carb"))
+        assertEquals("Deutsch", CaptionRecipe.cleanTag("Küche: Deutsch"))
+    }
 }
