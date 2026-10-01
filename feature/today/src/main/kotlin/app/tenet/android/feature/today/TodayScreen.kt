@@ -80,6 +80,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import app.tenet.android.core.designsystem.theme.AppArea
+import app.tenet.android.core.designsystem.theme.AreaTheme
+import app.tenet.android.core.designsystem.theme.areaCardColors
+import app.tenet.android.core.designsystem.theme.areaColors
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -249,7 +253,7 @@ fun TodayScreen(
                 items(cards, key = { it.name }) { card ->
                     Box(Modifier.animateItem()) {
                         when (card) {
-                            TodayCard.DREAM -> DreamCard(
+                            TodayCard.DREAM -> AreaTheme(AppArea.JOURNAL) { DreamCard(
                                 dream = state.dream,
                                 prominent = dreamProminent,
                                 isToday = state.isToday,
@@ -257,16 +261,19 @@ fun TodayScreen(
                                 onWrite = { onNewEntry(EntryType.DREAM, iso, false) },
                                 onOpen = onOpenEntry,
                                 locked = journalLocked,
-                            )
-                            TodayCard.NUTRITION -> NutritionCard(state, onAddFood = { onAddFood(iso) }, onEditGoal = { goalSheetOpen = true })
-                            TodayCard.SPORT -> SportCard(state, onOpenSport, onStartRun)
-                            TodayCard.JOURNAL -> JournalCard(
+                            ) }
+                            // Each card in its area's colors (accent buttons included).
+                            TodayCard.NUTRITION -> AreaTheme(AppArea.NUTRITION) {
+                                NutritionCard(state, onAddFood = { onAddFood(iso) }, onEditGoal = { goalSheetOpen = true })
+                            }
+                            TodayCard.SPORT -> AreaTheme(AppArea.SPORT) { SportCard(state, onOpenSport, onStartRun) }
+                            TodayCard.JOURNAL -> AreaTheme(AppArea.JOURNAL) { JournalCard(
                                 state = state,
                                 onWrite = { onNewEntry(EntryType.DIARY, iso, false) },
                                 onOpen = onOpenEntry,
                                 onOpenJournal = onOpenJournal,
                                 locked = journalLocked,
-                            )
+                            ) }
                             TodayCard.STREAKS -> StreakCard(state.streaks)
                         }
                     }
@@ -424,7 +431,7 @@ private fun DreamCard(
 ) {
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = if (prominent) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
+            containerColor = if (prominent) MaterialTheme.colorScheme.tertiaryContainer else areaColors(AppArea.JOURNAL).card,
         ),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -471,9 +478,10 @@ private fun DreamCard(
 
 @Composable
 private fun NutritionCard(state: TodayUiState, onAddFood: () -> Unit, onEditGoal: () -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
+    val area = areaColors(AppArea.NUTRITION)
+    Card(Modifier.fillMaxWidth(), colors = areaCardColors(AppArea.NUTRITION)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            CardTitle(Icons.Outlined.Restaurant, "Ernährung", action = {
+            CardTitle(Icons.Outlined.Restaurant, "Ernährung", containerColor = area.container, contentColor = area.onContainer, action = {
                 TooltipIconButton(icon = Icons.Outlined.Edit, contentDescription = "Tagesziel bearbeiten", onClick = onEditGoal)
             })
             NutritionRings(
@@ -514,9 +522,10 @@ private val Discipline.label: String
 /** Done sessions and what is still planned (any discipline), else the next unit. */
 @Composable
 private fun SportCard(state: TodayUiState, onOpenSport: () -> Unit, onStartRun: (String) -> Unit) {
-    Card(onClick = onOpenSport, modifier = Modifier.fillMaxWidth()) {
+    val area = areaColors(AppArea.SPORT)
+    Card(onClick = onOpenSport, modifier = Modifier.fillMaxWidth(), colors = areaCardColors(AppArea.SPORT)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            CardTitle(Icons.Outlined.FitnessCenter, "Sport")
+            CardTitle(Icons.Outlined.FitnessCenter, "Sport", containerColor = area.container, contentColor = area.onContainer)
             val rows = state.sessions.map { s ->
                 Triple(
                     s.discipline,
@@ -597,7 +606,7 @@ private fun JournalCard(
     onOpenJournal: () -> Unit,
     locked: Boolean = false,
 ) {
-    Card(Modifier.fillMaxWidth()) {
+    Card(Modifier.fillMaxWidth(), colors = areaCardColors(AppArea.JOURNAL)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             CardTitle(
                 Icons.Outlined.AutoStories,
@@ -658,20 +667,21 @@ private fun StreakCard(streaks: Streaks) {
                 contentColor = MaterialTheme.colorScheme.onErrorContainer,
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                StreakStat(streaks.diaryDays, if (streaks.diaryDays == 1) "Tag" else "Tage", "Tagebuch", Icons.Outlined.AutoStories)
-                StreakStat(streaks.trackingDays, if (streaks.trackingDays == 1) "Tag" else "Tage", "Ernährung", Icons.Outlined.RestaurantMenu)
-                StreakStat(streaks.trainingWeeks, if (streaks.trainingWeeks == 1) "Woche" else "Wochen", "Training", Icons.Outlined.FitnessCenter)
+                StreakStat(streaks.diaryDays, if (streaks.diaryDays == 1) "Tag" else "Tage", "Tagebuch", Icons.Outlined.AutoStories, AppArea.JOURNAL)
+                StreakStat(streaks.trackingDays, if (streaks.trackingDays == 1) "Tag" else "Tage", "Ernährung", Icons.Outlined.RestaurantMenu, AppArea.NUTRITION)
+                StreakStat(streaks.trainingWeeks, if (streaks.trainingWeeks == 1) "Woche" else "Wochen", "Training", Icons.Outlined.FitnessCenter, AppArea.SPORT)
             }
         }
     }
 }
 
 @Composable
-private fun StreakStat(value: Int, unit: String, label: String, icon: ImageVector) {
+private fun StreakStat(value: Int, unit: String, label: String, icon: ImageVector, area: AppArea) {
+    val colors = areaColors(area)
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.semantics(mergeDescendants = true) {}) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+        ShapeIcon(icon = icon, containerShape = MaterialShapes.Cookie6Sided.toShape(), containerColor = colors.container, contentColor = colors.onContainer)
         Spacer(Modifier.height(4.dp))
-        Text("$value", style = MaterialTheme.typography.headlineMediumEmphasized)
+        Text("$value", style = MaterialTheme.typography.headlineMediumEmphasized, color = colors.accent)
         Text(unit, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
     }

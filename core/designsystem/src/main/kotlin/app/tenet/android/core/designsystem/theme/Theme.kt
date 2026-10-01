@@ -16,6 +16,7 @@ import com.materialkolor.dynamicColorScheme
 import com.materialkolor.dynamiccolor.ColorSpec
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import app.tenet.android.core.common.ColorStyle
 
 /** Default brand seed; also the primary when only a secondary color is picked. */
 val DefaultSeed = Color(0xFF006A6A)
@@ -111,22 +112,29 @@ fun TenetTheme(
     dynamicColor: Boolean = false,
     primaryColor: Color? = null,
     secondaryColor: Color? = null,
+    colorStyle: ColorStyle = ColorStyle.DEFAULT,
     content: @Composable () -> Unit,
 ) {
+    val context = LocalContext.current
     val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> when (colorStyle) {
+            // "Ruhig" = exactly the system's own wallpaper scheme.
+            ColorStyle.TONAL -> if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            // Other styles: same wallpaper seed (system accent), richer palette.
+            else -> {
+                val seed = Color(context.getColor(android.R.color.system_accent1_500))
+                remember(seed, darkTheme, colorStyle) { schemeFor(seed, null, darkTheme, colorStyle) }
+            }
         }
 
         // User-picked seeds: full M3 tonal scheme via the material color
         // utilities (HCT), so every role (containers, surfaces, …) follows.
-        primaryColor != null || secondaryColor != null -> remember(primaryColor, secondaryColor, darkTheme) {
-            previewColorScheme(primaryColor, secondaryColor, darkTheme)
+        primaryColor != null || secondaryColor != null -> remember(primaryColor, secondaryColor, darkTheme, colorStyle) {
+            schemeFor(primaryColor ?: DefaultSeed, secondaryColor, darkTheme, colorStyle)
         }
 
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+        darkTheme -> remember(colorStyle) { if (colorStyle == ColorStyle.TONAL) DarkColorScheme else schemeFor(DefaultSeed, null, true, colorStyle) }
+        else -> remember(colorStyle) { if (colorStyle == ColorStyle.TONAL) LightColorScheme else schemeFor(DefaultSeed, null, false, colorStyle) }
     }
 
     MaterialExpressiveTheme(
@@ -139,11 +147,19 @@ fun TenetTheme(
 }
 
 /** Scheme the app would use for these seeds; for live previews in the color picker. */
-fun previewColorScheme(primary: Color?, secondary: Color?, darkTheme: Boolean): ColorScheme =
+fun previewColorScheme(primary: Color?, secondary: Color?, darkTheme: Boolean, style: ColorStyle = ColorStyle.DEFAULT): ColorScheme =
+    schemeFor(primary ?: DefaultSeed, secondary, darkTheme, style)
+
+private fun schemeFor(primary: Color, secondary: Color?, darkTheme: Boolean, style: ColorStyle): ColorScheme =
     dynamicColorScheme(
-        primary = primary ?: DefaultSeed,
+        primary = primary,
         secondary = secondary,
         isDark = darkTheme,
-        style = PaletteStyle.TonalSpot,
+        style = when (style) {
+            ColorStyle.TONAL -> PaletteStyle.TonalSpot
+            ColorStyle.VIBRANT -> PaletteStyle.Vibrant
+            ColorStyle.EXPRESSIVE -> PaletteStyle.Expressive
+            ColorStyle.FRUIT_SALAD -> PaletteStyle.FruitSalad
+        },
         specVersion = ColorSpec.SpecVersion.SPEC_2025,
     )

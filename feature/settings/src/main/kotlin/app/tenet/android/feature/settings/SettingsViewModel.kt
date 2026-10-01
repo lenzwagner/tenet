@@ -98,6 +98,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { repository.setThemeMode(mode) }
     }
 
+    fun setColorStyle(style: app.tenet.android.core.common.ColorStyle) {
+        viewModelScope.launch { repository.setColorStyle(style) }
+    }
+
     fun setDynamicColor(enabled: Boolean) {
         viewModelScope.launch { repository.setDynamicColor(enabled) }
     }

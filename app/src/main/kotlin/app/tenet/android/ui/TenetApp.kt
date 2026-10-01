@@ -87,6 +87,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import app.tenet.android.core.designsystem.theme.AppArea
+import app.tenet.android.core.designsystem.theme.AreaTheme
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -308,6 +310,7 @@ fun TenetApp(
                     }
                 }
                 composable<SportRoute> {
+ AreaTheme(AppArea.SPORT) {
                     TabContent(reselect, TopLevelTab.Sport) {
                         SportScreen(
                             onSearch = { navController.navigate(SearchRoute) },
@@ -337,6 +340,7 @@ fun TenetApp(
                         )
                     }
                 }
+}
                 composable<SearchRoute> {
                     SearchScreen(
                         onBack = { navController.popBackStack() },
@@ -353,15 +357,20 @@ fun TenetApp(
                     )
                 }
                 composable<ExerciseLibraryRoute> {
+ AreaTheme(AppArea.SPORT) {
                     ExerciseLibraryScreen(
                         onBack = { navController.popBackStack() },
                         onOpenExercise = { id -> navController.navigate(ExerciseDetailRoute(id)) },
                     )
                 }
+}
                 composable<RoutineEditorRoute> {
+ AreaTheme(AppArea.SPORT) {
                     RoutineEditorScreen(onBack = { navController.popBackStack() })
                 }
+}
                 composable<ActiveSessionRoute> { entry ->
+ AreaTheme(AppArea.SPORT) {
                     val route = entry.toRoute<ActiveSessionRoute>()
                     ActiveSessionScreen(
                         sessionId = route.sessionId,
@@ -375,7 +384,9 @@ fun TenetApp(
                         onOpenExercise = { id -> navController.navigate(ExerciseDetailRoute(id)) },
                     )
                 }
+}
                 composable<WorkoutSummaryRoute> { entry ->
+ AreaTheme(AppArea.SPORT) {
                     val route = entry.toRoute<WorkoutSummaryRoute>()
                     WorkoutSummaryScreen(
                         sessionId = route.sessionId,
@@ -384,26 +395,34 @@ fun TenetApp(
                         onOpenExercise = { id -> navController.navigate(ExerciseDetailRoute(id)) },
                     )
                 }
+}
                 composable<CaliPlanDetailRoute> {
+ AreaTheme(AppArea.SPORT) {
                     CaliPlanScreen(
                         onBack = { navController.popBackStack() },
                         onOpenExercise = { id -> navController.navigate(ExerciseDetailRoute(id)) },
                     )
                 }
+}
                 composable<WorkoutHistoryRoute> {
+ AreaTheme(AppArea.SPORT) {
                     WorkoutHistoryScreen(
                         onBack = { navController.popBackStack() },
                         onOpenSession = { id -> navController.navigate(WorkoutSummaryRoute(id)) },
                     )
                 }
+}
                 composable<ExerciseDetailRoute> { entry ->
+ AreaTheme(AppArea.SPORT) {
                     ExerciseDetailScreen(
                         exerciseId = entry.toRoute<ExerciseDetailRoute>().exerciseId,
                         onBack = { navController.popBackStack() },
                         onOpenSession = { id -> navController.navigate(WorkoutSummaryRoute(id)) },
                     )
                 }
+}
                 composable<SkillSessionRoute> { entry ->
+ AreaTheme(AppArea.SPORT) {
                     val route = entry.toRoute<SkillSessionRoute>()
                     SkillSessionScreen(
                         sessionId = route.sessionId,
@@ -416,10 +435,14 @@ fun TenetApp(
                         },
                     )
                 }
+}
                 composable<WeekCalendarRoute> {
+ AreaTheme(AppArea.SPORT) {
                     WeekCalendarScreen(onBack = { navController.popBackStack() })
                 }
+}
                 composable<ActiveRunRoute> { entry ->
+ AreaTheme(AppArea.SPORT) {
                     val route = entry.toRoute<ActiveRunRoute>()
                     ActiveRunScreen(
                         plannedWorkoutId = route.plannedWorkoutId,
@@ -431,14 +454,18 @@ fun TenetApp(
                         },
                     )
                 }
+}
                 composable<RunPlanDetailRoute> { entry ->
+ AreaTheme(AppArea.SPORT) {
                     RunPlanDetailScreen(
                         planId = entry.toRoute<RunPlanDetailRoute>().planId,
                         onBack = { navController.popBackStack() },
                         onOpenRun = { id -> navController.navigate(RunDetailRoute(id)) },
                     )
                 }
+}
                 composable<RunWorkoutRoute> { entry ->
+ AreaTheme(AppArea.SPORT) {
                     RunWorkoutScreen(
                         plannedId = entry.toRoute<RunWorkoutRoute>().plannedId,
                         onBack = { navController.popBackStack() },
@@ -446,7 +473,9 @@ fun TenetApp(
                         onOpenRun = { id -> navController.navigate(RunDetailRoute(id)) },
                     )
                 }
+}
                 composable<SportSetupRoute> { entry ->
+ AreaTheme(AppArea.SPORT) {
                     val done = { navController.popBackStack(); Unit }
                     when (entry.toRoute<SportSetupRoute>().discipline) {
                         "RUNNING" -> RunSetupScreen(onDone = done)
@@ -454,19 +483,25 @@ fun TenetApp(
                         else -> GymSetupScreen(onDone = done)
                     }
                 }
+}
                 composable<ProgressionRoute> { entry ->
+ AreaTheme(AppArea.SPORT) {
                     ProgressionScreen(
                         initialPage = entry.toRoute<ProgressionRoute>().page,
                         onBack = { navController.popBackStack() },
                     )
                 }
+}
                 composable<GymPlanDetailRoute> { entry ->
+ AreaTheme(AppArea.SPORT) {
                     GymPlanDetailScreen(
                         planId = entry.toRoute<GymPlanDetailRoute>().planId,
                         onBack = { navController.popBackStack() },
                     )
                 }
+}
                 composable<RunDetailRoute> { entry ->
+ AreaTheme(AppArea.SPORT) {
                     val route = entry.toRoute<RunDetailRoute>()
                     RunDetailScreen(
                         sessionId = route.sessionId,
@@ -474,7 +509,9 @@ fun TenetApp(
                         onOpenPlanned = { id -> navController.navigate(RunWorkoutRoute(id)) },
                     )
                 }
+}
                 composable<CsWorkoutRoute> { entry ->
+ AreaTheme(AppArea.SPORT) {
                     val route = entry.toRoute<CsWorkoutRoute>()
                     CsWorkoutScreen(
                         sessionId = route.sessionId,
@@ -486,7 +523,9 @@ fun TenetApp(
                         },
                     )
                 }
+}
                 composable<JournalRoute> {
+ AreaTheme(AppArea.JOURNAL) {
                     TabContent(reselect, TopLevelTab.Journal) {
                       JournalLockGate(enabled = settings.journalLock) {
                         JournalScreen(
@@ -504,7 +543,9 @@ fun TenetApp(
                       }
                     }
                 }
+}
                 composable<NutritionRoute> {
+ AreaTheme(AppArea.NUTRITION) {
                     TabContent(reselect, TopLevelTab.Nutrition) {
                         NutritionScreen(
                             onSearch = { navController.navigate(SearchRoute) },
@@ -515,6 +556,7 @@ fun TenetApp(
                         )
                     }
                 }
+}
                 composable<SettingsRoute> {
                     TabContent(reselect, TopLevelTab.Settings) {
                         val context = LocalContext.current
@@ -526,6 +568,7 @@ fun TenetApp(
                     }
                 }
                 composable<EntryEditorRoute> { entry ->
+ AreaTheme(AppArea.JOURNAL) {
                     val route = entry.toRoute<EntryEditorRoute>()
                     JournalLockGate(enabled = settings.journalLock) {
                     EntryEditorScreen(
@@ -544,10 +587,12 @@ fun TenetApp(
                     )
                     }
                 }
+}
                 // New entries float as a sheet over the page they came from.
                 dialog<NewEntryRoute>(
                     dialogProperties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
                 ) { entry ->
+ AreaTheme(AppArea.JOURNAL) {
                     val route = entry.toRoute<NewEntryRoute>()
                     // The sheet is its own window: the app-wide snackbar would sit behind it.
                     val sheetSnackbar = rememberAppSnackbar()
@@ -580,7 +625,9 @@ fun TenetApp(
                     )
                     }
                 }
+}
                 composable<AddFoodRoute> { entry ->
+ AreaTheme(AppArea.NUTRITION) {
                     val route = entry.toRoute<AddFoodRoute>()
                     AddFoodScreen(
                         onBack = { navController.popBackStack() },
@@ -594,7 +641,9 @@ fun TenetApp(
                         date = route.date,
                     )
                 }
+}
                 composable<RecipeDetailRoute> { entry ->
+ AreaTheme(AppArea.NUTRITION) {
                     val route = entry.toRoute<RecipeDetailRoute>()
                     val message by entry.savedStateHandle.getStateFlow<String?>(RECIPE_MESSAGE, null).collectAsStateWithLifecycle()
                     RecipeDetailScreen(
@@ -608,7 +657,9 @@ fun TenetApp(
                         onCook = { servings -> navController.navigate(CookingRoute(route.recipeId, servings)) },
                     )
                 }
+}
                 composable<RecipeImportRoute> { entry ->
+ AreaTheme(AppArea.NUTRITION) {
                     RecipeImportScreen(
                         initialUrl = entry.toRoute<RecipeImportRoute>().url,
                         onBack = { navController.popBackStack() },
@@ -617,7 +668,9 @@ fun TenetApp(
                         },
                     )
                 }
+}
                 composable<RecipeEditorRoute> { entry ->
+ AreaTheme(AppArea.NUTRITION) {
                     val route = entry.toRoute<RecipeEditorRoute>()
                     RecipeEditorScreen(
                         recipeId = route.recipeId.ifEmpty { null },
@@ -629,7 +682,9 @@ fun TenetApp(
                         },
                     )
                 }
+}
                 composable<RecipeTextEditRoute> { entry ->
+ AreaTheme(AppArea.NUTRITION) {
                     RecipeTextEditorScreen(
                         recipeId = entry.toRoute<RecipeTextEditRoute>().recipeId,
                         onBack = { navController.popBackStack() },
@@ -639,7 +694,9 @@ fun TenetApp(
                         },
                     )
                 }
+}
                 composable<CookingRoute> { entry ->
+ AreaTheme(AppArea.NUTRITION) {
                     val route = entry.toRoute<CookingRoute>()
                     CookingModeScreen(
                         recipeId = route.recipeId,
@@ -647,6 +704,7 @@ fun TenetApp(
                         onClose = { navController.popBackStack() },
                     )
                 }
+}
             }
 
             val liveRun by app.tenet.android.feature.sport.run.RunTrackingService.state.collectAsState()

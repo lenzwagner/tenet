@@ -82,6 +82,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
@@ -251,6 +252,24 @@ fun SettingsScreen(
                 }
 
                 item { SectionHeader("Farben", Modifier.padding(top = 16.dp)) }
+                item {
+                    Column(Modifier.padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        ColorStylePicker(
+                            selected = settings.colorStyle,
+                            dynamicColor = settings.dynamicColor,
+                            primary = settings.primaryColor,
+                            secondary = settings.secondaryColor,
+                            darkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f,
+                            onSelect = viewModel::setColorStyle,
+                        )
+                        Text(
+                            "Farbstil: ${settings.colorStyle.description}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 4.dp),
+                        )
+                    }
+                }
                 item {
                     val note = if (settings.dynamicColor) " · schaltet Dynamic Color aus" else ""
                     SettingsGroup { shapes ->

@@ -37,6 +37,7 @@ class UserSettingsRepository @Inject constructor(
                 ?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() }
                 ?: ThemeMode.SYSTEM,
             dynamicColor = prefs[KEY_DYNAMIC_COLOR] ?: true,
+            colorStyle = app.tenet.android.core.common.ColorStyle.fromName(prefs[KEY_COLOR_STYLE]),
             glassBar = prefs[KEY_GLASS_BAR] ?: true,
             enabledModules = prefs[KEY_MODULES]
                 ?.mapNotNull { runCatching { AppModule.valueOf(it) }.getOrNull() }
@@ -93,6 +94,10 @@ class UserSettingsRepository @Inject constructor(
 
     suspend fun setThemeMode(mode: ThemeMode) {
         context.tenetDataStore.edit { it[KEY_THEME_MODE] = mode.name }
+    }
+
+    suspend fun setColorStyle(style: app.tenet.android.core.common.ColorStyle) {
+        context.tenetDataStore.edit { it[KEY_COLOR_STYLE] = style.name }
     }
 
     suspend fun setDynamicColor(enabled: Boolean) {
@@ -177,6 +182,7 @@ class UserSettingsRepository @Inject constructor(
     private companion object {
         val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
         val KEY_DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
+        val KEY_COLOR_STYLE = stringPreferencesKey("color_style")
         val KEY_GLASS_BAR = booleanPreferencesKey("glass_bar")
         val KEY_MODULES = stringSetPreferencesKey("enabled_modules")
         val KEY_ONE_REP_MAX_FORMULA = stringPreferencesKey("one_rep_max_formula")

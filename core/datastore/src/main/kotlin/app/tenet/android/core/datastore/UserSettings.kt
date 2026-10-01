@@ -16,6 +16,8 @@ data class UserSettings(
     val onboardingDone: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = true,
+    /** Palette style for the scheme built from wallpaper or picked seed. */
+    val colorStyle: app.tenet.android.core.common.ColorStyle = app.tenet.android.core.common.ColorStyle.DEFAULT,
     /** Glassmorphism tab bar; false = opaque bar (fallback / accessibility). */
     val glassBar: Boolean = true,
     val enabledModules: Set<AppModule> = AppModule.entries.toSet(),
