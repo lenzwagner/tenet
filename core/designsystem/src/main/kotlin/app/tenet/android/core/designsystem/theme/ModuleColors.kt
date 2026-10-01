@@ -11,14 +11,16 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.material3.ColorScheme
 import app.tenet.android.core.common.ColorStyle
-import com.materialkolor.ktx.harmonize
+import com.materialkolor.hct.Hct
+import androidx.compose.runtime.staticCompositionLocalOf
 
 /**
- * Each area of the app owns one M3 accent role, so its color travels with
- * it (card on "Heute", cards in its tab): Sport = primary, Ernährung =
- * secondary, Journal = tertiary. All roles come from the (dynamic) scheme.
+ * Each area of the app has its own accent, all derived from the one theme
+ * color so they match: analogous hues (Sport = the theme hue, Journal +50°,
+ * Ernährung −50°) at the same chroma and tones, built with the same palette
+ * style as the app. Neighbouring hues never clash like complementary ones.
  */
-enum class AppArea { SPORT, NUTRITION, JOURNAL }
+enum class AppArea(val hueShift: Double) { SPORT(0.0), NUTRITION(-50.0), JOURNAL(50.0) }
 
 data class AreaColors(
     /** Full accent (icons on surface, progress, emphasis). */
@@ -31,35 +33,38 @@ data class AreaColors(
     val card: Color,
 )
 
-/** Food = green, as an M3 custom color: harmonized to the theme and expanded into a tonal palette. */
-private val NutritionSeed = Color(0xFF3FA34D)
-private val customCache = HashMap<Pair<Int, Boolean>, ColorScheme>()
+/** Palette style of the app, so the area schemes are built like the main one. */
+val LocalColorStyle = staticCompositionLocalOf { ColorStyle.DEFAULT }
 
-private fun nutritionScheme(primary: Color, dark: Boolean): ColorScheme =
-    customCache.getOrPut(primary.toArgb() to dark) {
-        previewColorScheme(NutritionSeed.harmonize(primary, matchSaturation = false), null, dark, ColorStyle.TONAL)
+private val areaCache = HashMap<Triple<Int, Boolean, String>, ColorScheme>()
+
+private fun areaScheme(primary: Color, area: AppArea, dark: Boolean, style: ColorStyle): ColorScheme =
+    areaCache.getOrPut(Triple(primary.toArgb(), dark, "${area.name}/${style.name}")) {
+        val hct = Hct.fromInt(primary.toArgb())
+        val hue = ((hct.hue + area.hueShift) % 360.0 + 360.0) % 360.0
+        // Same colorfulness for every area, a little above the seed's so containers read as color.
+        val seed = Color(Hct.from(hue, hct.chroma.coerceAtLeast(36.0), 50.0).toInt())
+        previewColorScheme(seed, null, dark, style)
     }
 
 @Composable
 @ReadOnlyComposable
 fun areaColors(area: AppArea): AreaColors {
     val c = MaterialTheme.colorScheme
-    val (accent, onAccent, container, onContainer) = when (area) {
-        AppArea.SPORT -> listOf(c.primary, c.onPrimary, c.primaryContainer, c.onPrimaryContainer)
-        AppArea.NUTRITION -> nutritionScheme(c.primary, c.surface.luminance() < 0.5f).let {
-            listOf(it.primary, it.onPrimary, it.primaryContainer, it.onPrimaryContainer)
-        }
-        AppArea.JOURNAL -> listOf(c.tertiary, c.onTertiary, c.tertiaryContainer, c.onTertiaryContainer)
-    }
+    val dark = c.surface.luminance() < 0.5f
+    val scheme = areaScheme(LocalAreaSeed.current ?: c.primary, area, dark, LocalColorStyle.current)
     return AreaColors(
-        accent = accent,
-        onAccent = onAccent,
-        container = container,
-        onContainer = onContainer,
-        // Dark containers are deep and saturated: a smaller share keeps cards calm.
-        card = lerp(c.surfaceContainerLow, container, if (c.surface.luminance() < 0.5f) 0.30f else 0.42f),
+        accent = scheme.primary,
+        onAccent = scheme.onPrimary,
+        container = scheme.primaryContainer,
+        onContainer = scheme.onPrimaryContainer,
+        // Pastel: only a share of the container, less in dark mode (deep, saturated containers).
+        card = lerp(c.surfaceContainerLow, scheme.primaryContainer, if (dark) 0.22f else 0.30f),
     )
 }
+
+/** The app-wide primary, kept when an area theme replaces primary (so areas derive from the same seed). */
+private val LocalAreaSeed = staticCompositionLocalOf<Color?> { null }
 
 /** Card colors tinted in the area's color (text stays on-surface for contrast). */
 @Composable
@@ -77,8 +82,10 @@ fun AreaTheme(area: AppArea, content: @Composable () -> Unit) {
     val base = MaterialTheme.colorScheme
     val colors = areaColors(area)
     val tint = colors.container
-    val scheme = androidx.compose.runtime.remember(base, area) {
-        fun mix(c: Color, k: Float) = lerp(c, tint, k)
+    val seed = LocalAreaSeed.current ?: base.primary
+    val own = areaScheme(seed, area, base.surface.luminance() < 0.5f, LocalColorStyle.current)
+    val scheme = androidx.compose.runtime.remember(base, area, colors, own) {
+        fun mix(c: Color, k: Float) = lerp(c, tint, k * 0.7f)
         base.copy(
             // The area's accent leads here (buttons, segments, switches, FABs).
             primary = colors.accent,
@@ -87,8 +94,15 @@ fun AreaTheme(area: AppArea, content: @Composable () -> Unit) {
             onPrimaryContainer = colors.onContainer,
             surfaceTint = colors.accent,
             // Tonal chips and filled-tonal buttons follow the area too (Sport keeps its secondary).
-            secondaryContainer = if (area == AppArea.SPORT) base.secondaryContainer else lerp(colors.container, base.surfaceContainerHigh, 0.35f),
-            onSecondaryContainer = if (area == AppArea.SPORT) base.onSecondaryContainer else colors.onContainer,
+            // Secondary and tertiary from the area's own scheme: every accent there shares its hue family.
+            secondary = own.secondary,
+            onSecondary = own.onSecondary,
+            secondaryContainer = lerp(colors.container, base.surfaceContainerHigh, 0.45f),
+            onSecondaryContainer = colors.onContainer,
+            tertiary = own.tertiary,
+            onTertiary = own.onTertiary,
+            tertiaryContainer = own.tertiaryContainer,
+            onTertiaryContainer = own.onTertiaryContainer,
             surfaceContainerLowest = mix(base.surfaceContainerLowest, 0.10f),
             surfaceContainerLow = mix(base.surfaceContainerLow, 0.22f),
             surfaceContainer = mix(base.surfaceContainer, 0.30f),
@@ -97,11 +111,13 @@ fun AreaTheme(area: AppArea, content: @Composable () -> Unit) {
             surfaceVariant = mix(base.surfaceVariant, 0.30f),
         )
     }
-    androidx.compose.material3.MaterialExpressiveTheme(
-        colorScheme = scheme,
-        motionScheme = MaterialTheme.motionScheme,
-        shapes = MaterialTheme.shapes,
-        typography = MaterialTheme.typography,
-        content = content,
-    )
+    androidx.compose.runtime.CompositionLocalProvider(LocalAreaSeed provides seed) {
+        androidx.compose.material3.MaterialExpressiveTheme(
+            colorScheme = scheme,
+            motionScheme = MaterialTheme.motionScheme,
+            shapes = MaterialTheme.shapes,
+            typography = MaterialTheme.typography,
+            content = content,
+        )
+    }
 }

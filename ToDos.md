@@ -1,6 +1,6 @@
 # Tenet – offene ToDos
 
-Stand: 01.10.2026, Version 0.20.0. Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 01.10.2026, Version 0.20.1. Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Google-Anmeldung & Sync (0.15)
 
@@ -72,7 +72,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Datenbank-Verschlüsselung (SQLCipher). Erst sinnvoll zusammen mit einem Backup.
 
-## Zuletzt erledigt (0.5.0 – 0.20.0)
+## Zuletzt erledigt (0.5.0 – 0.20.1)
+
+- 0.20.1: Bereichsfarben harmonisch: analoge Töne aus derselben Theme-Farbe (Sport = Theme-Ton, Journal +50°, Ernährung −50°, gleiche Buntheit/Helligkeit, gleicher Farbstil) statt Grün/Rosa-Kontrast; Bereichs-Theme übernimmt auch Sekundär-/Tertiärrollen; dezentere Flächentönung; Serien-Symbol ohne Fehler-Rot
 
 - 0.20: Mehr Farbe mit MD3 Dynamic Color: Farbstil wählbar (Ruhig/Kräftig/Expressiv/Bunt, Standard Kräftig) aus Wallpaper- oder eigener Farbe; jeder Bereich hat seine Farbe – Sport = Primärfarbe, Journal = Tertiärfarbe, Ernährung = harmonisiertes Grün (M3-Custom-Color) – inkl. getönter Karten, Knöpfe und Chips im Tab, in den Unterseiten und auf den Heute-Karten; Serien mit Bereichsfarben
 

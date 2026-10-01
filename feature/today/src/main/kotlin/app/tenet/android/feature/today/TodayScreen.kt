@@ -663,8 +663,9 @@ private fun StreakCard(streaks: Streaks) {
                 Icons.Outlined.LocalFireDepartment,
                 "Serien",
                 iconShape = MaterialShapes.Burst.toShape(),
-                containerColor = MaterialTheme.colorScheme.errorContainer,
-                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                // Not the error red: it would clash with the area colors around it.
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 StreakStat(streaks.diaryDays, if (streaks.diaryDays == 1) "Tag" else "Tage", "Tagebuch", Icons.Outlined.AutoStories, AppArea.JOURNAL)

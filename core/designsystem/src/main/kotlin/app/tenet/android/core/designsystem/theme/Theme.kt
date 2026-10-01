@@ -137,13 +137,15 @@ fun TenetTheme(
         else -> remember(colorStyle) { if (colorStyle == ColorStyle.TONAL) LightColorScheme else schemeFor(DefaultSeed, null, false, colorStyle) }
     }
 
-    MaterialExpressiveTheme(
-        colorScheme = colorScheme,
-        motionScheme = MotionScheme.expressive(),
-        shapes = TenetShapes,
-        typography = TenetTypography,
-        content = content,
-    )
+    androidx.compose.runtime.CompositionLocalProvider(LocalColorStyle provides colorStyle) {
+        MaterialExpressiveTheme(
+            colorScheme = colorScheme,
+            motionScheme = MotionScheme.expressive(),
+            shapes = TenetShapes,
+            typography = TenetTypography,
+            content = content,
+        )
+    }
 }
 
 /** Scheme the app would use for these seeds; for live previews in the color picker. */
