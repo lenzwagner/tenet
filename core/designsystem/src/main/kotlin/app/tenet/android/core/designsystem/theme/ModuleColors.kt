@@ -33,6 +33,9 @@ data class AreaColors(
     val card: Color,
 )
 
+/** "Nur zwei Farben": areas use the app's primary (accents) and secondary (surfaces) only. */
+val LocalTwoTone = staticCompositionLocalOf { false }
+
 /** Palette style of the app, so the area schemes are built like the main one. */
 val LocalColorStyle = staticCompositionLocalOf { ColorStyle.DEFAULT }
 
@@ -52,6 +55,15 @@ private fun areaScheme(primary: Color, area: AppArea, dark: Boolean, style: Colo
 fun areaColors(area: AppArea): AreaColors {
     val c = MaterialTheme.colorScheme
     val dark = c.surface.luminance() < 0.5f
+    if (LocalTwoTone.current) {
+        return AreaColors(
+            accent = c.primary,
+            onAccent = c.onPrimary,
+            container = c.secondaryContainer,
+            onContainer = c.onSecondaryContainer,
+            card = lerp(c.surfaceContainerLow, c.secondaryContainer, if (dark) 0.22f else 0.30f),
+        )
+    }
     val scheme = areaScheme(LocalAreaSeed.current ?: c.primary, area, dark, LocalColorStyle.current)
     return AreaColors(
         accent = scheme.primary,
@@ -79,6 +91,8 @@ fun areaCardColors(area: AppArea): CardColors =
  */
 @Composable
 fun AreaTheme(area: AppArea, content: @Composable () -> Unit) {
+    // Two-tone: the app scheme already is primary + secondary everywhere.
+    if (LocalTwoTone.current) return content()
     val base = MaterialTheme.colorScheme
     val colors = areaColors(area)
     val tint = colors.container

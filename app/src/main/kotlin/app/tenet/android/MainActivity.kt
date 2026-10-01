@@ -141,6 +141,7 @@ class MainActivity : FragmentActivity() {
                 primaryColor = settings.primaryColor?.let { Color(it) },
                 secondaryColor = settings.secondaryColor?.let { Color(it) },
                 colorStyle = settings.colorStyle,
+                twoTone = settings.twoTone,
             ) {
                 when {
                     // Stored settings not read yet: plain surface instead of a wrong screen.

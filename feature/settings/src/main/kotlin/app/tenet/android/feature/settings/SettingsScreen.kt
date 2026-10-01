@@ -56,6 +56,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.Contrast
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.Speed
@@ -273,8 +274,17 @@ fun SettingsScreen(
                 item {
                     val note = if (settings.dynamicColor) " · schaltet Dynamic Color aus" else ""
                     SettingsGroup { shapes ->
+                        SwitchItem(
+                            shapes = shapes(0, 3),
+                            icon = Icons.Outlined.Contrast,
+                            title = "Nur zwei Farben",
+                            supporting = if (settings.twoTone) "Primär- und Sekundärfarbe, überall gleich"
+                            else "Aus: jeder Bereich hat eine eigene, passende Farbe",
+                            checked = settings.twoTone,
+                            onCheckedChange = viewModel::setTwoTone,
+                        )
                         ColorItem(
-                            shapes = shapes(0, 2),
+                            shapes = shapes(1, 3),
                             title = "Primärfarbe",
                             argb = settings.primaryColor,
                             fallback = MaterialTheme.colorScheme.primary,
@@ -282,7 +292,7 @@ fun SettingsScreen(
                             onClick = { colorSheet = ColorSlot.PRIMARY },
                         )
                         ColorItem(
-                            shapes = shapes(1, 2),
+                            shapes = shapes(2, 3),
                             title = "Sekundärfarbe",
                             argb = settings.secondaryColor,
                             fallback = MaterialTheme.colorScheme.secondary,

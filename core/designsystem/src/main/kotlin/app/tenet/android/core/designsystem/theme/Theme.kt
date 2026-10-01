@@ -113,6 +113,8 @@ fun TenetTheme(
     primaryColor: Color? = null,
     secondaryColor: Color? = null,
     colorStyle: ColorStyle = ColorStyle.DEFAULT,
+    /** Only primary and secondary: tertiary roles take the secondary ones, no area colors. */
+    twoTone: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -137,9 +139,17 @@ fun TenetTheme(
         else -> remember(colorStyle) { if (colorStyle == ColorStyle.TONAL) LightColorScheme else schemeFor(DefaultSeed, null, false, colorStyle) }
     }
 
-    androidx.compose.runtime.CompositionLocalProvider(LocalColorStyle provides colorStyle) {
+    val finalScheme = if (!twoTone) colorScheme else remember(colorScheme) {
+        colorScheme.copy(
+            tertiary = colorScheme.secondary,
+            onTertiary = colorScheme.onSecondary,
+            tertiaryContainer = colorScheme.secondaryContainer,
+            onTertiaryContainer = colorScheme.onSecondaryContainer,
+        )
+    }
+    androidx.compose.runtime.CompositionLocalProvider(LocalColorStyle provides colorStyle, LocalTwoTone provides twoTone) {
         MaterialExpressiveTheme(
-            colorScheme = colorScheme,
+            colorScheme = finalScheme,
             motionScheme = MotionScheme.expressive(),
             shapes = TenetShapes,
             typography = TenetTypography,

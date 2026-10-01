@@ -98,6 +98,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { repository.setThemeMode(mode) }
     }
 
+    fun setTwoTone(enabled: Boolean) {
+        viewModelScope.launch { repository.setTwoTone(enabled) }
+    }
+
     fun setColorStyle(style: app.tenet.android.core.common.ColorStyle) {
         viewModelScope.launch { repository.setColorStyle(style) }
     }
