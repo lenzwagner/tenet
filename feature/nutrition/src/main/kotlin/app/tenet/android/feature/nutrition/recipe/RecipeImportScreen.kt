@@ -266,11 +266,7 @@ private fun ImportPreview(r: ImportedRecipe, signedIn: Boolean) {
         )
         if (r.tags.isNotEmpty()) {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                r.tags.forEach { tag ->
-                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
-                        Text("#$tag", style = MaterialTheme.typography.labelLarge, maxLines = 1, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp))
-                    }
-                }
+                r.tags.forEach { tag -> RecipeTagChip(tag) }
             }
         }
         if (r.ingredients.isEmpty()) {

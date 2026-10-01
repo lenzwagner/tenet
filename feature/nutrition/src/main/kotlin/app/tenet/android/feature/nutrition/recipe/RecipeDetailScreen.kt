@@ -392,11 +392,7 @@ fun RecipeDetailScreen(
             if (d.tagList.isNotEmpty()) {
                 // One scrollable row instead of a wall of chips.
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    d.tagList.forEach { tag ->
-                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
-                            Text("#$tag", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
-                        }
-                    }
+                    d.tagList.distinctBy { app.tenet.android.core.common.CaptionRecipe.cleanTag(it).lowercase() }.forEach { RecipeTagChip(it) }
                 }
             }
 
