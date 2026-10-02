@@ -246,6 +246,7 @@ private fun RoutineRow(
                     label = "Pause (s)",
                     value = target.restSec,
                     modifier = Modifier.weight(1.2f),
+                    placeholder = "auto",
                     onValue = { onField(RoutineEditorViewModel.TargetField.REST, it) },
                 )
             }
@@ -359,18 +360,21 @@ private fun TargetField(
     label: String,
     value: Int,
     modifier: Modifier = Modifier,
+    /** Shown for 0 (e.g. rest "auto" = advised per exercise). */
+    placeholder: String? = null,
     onValue: (Int) -> Unit,
 ) {
-    var text by remember(value) { mutableStateOf(value.toString()) }
+    var text by remember(value) { mutableStateOf(if (value == 0 && placeholder != null) "" else value.toString()) }
     Column(modifier) {
         Text(label, style = MaterialTheme.typography.labelSmall)
         OutlinedTextField(
             value = text,
             onValueChange = { input ->
                 text = input
-                input.filter { it.isDigit() }.toIntOrNull()?.let(onValue)
+                (input.filter { it.isDigit() }.toIntOrNull() ?: if (placeholder != null && input.isBlank()) 0 else null)?.let(onValue)
             },
             singleLine = true,
+            placeholder = placeholder?.let { { Text(it, style = MaterialTheme.typography.bodyMedium) } },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             textStyle = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.fillMaxWidth(),

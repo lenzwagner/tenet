@@ -14,6 +14,11 @@ import app.tenet.android.core.database.entity.WorkoutSession
 import app.tenet.android.core.data.SessionBlock
 import app.tenet.android.core.data.SportRepository
 import app.tenet.android.feature.sport.RestTimerService
+import app.tenet.android.core.common.WorkoutGuide
+import app.tenet.android.core.data.guideBlock
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.channels.Channel
@@ -112,6 +117,21 @@ class ActiveSessionViewModel @Inject constructor(
 
     /** Countdown state, sourced from the foreground timer service. */
     val rest: StateFlow<RestUiState?> = RestTimerService.state
+
+    /** Next open set with planned values and rest (training mode, notification). */
+    val next: StateFlow<WorkoutGuide.Next?> = uiState
+        .map { state -> WorkoutGuide.next(state.blocks.map { it.toGuide() }) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** Sets still open in this workout. */
+    val remaining: StateFlow<Int> = uiState
+        .map { state -> WorkoutGuide.remaining(state.blocks.map { it.toGuide() }) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+
+    init {
+        // Sets logged from the notification: reload the table.
+        viewModelScope.launch { RestTimerService.changes.collect { if (it == sessionId) refresh() } }
+    }
 
     private val _finished = Channel<Unit>(Channel.BUFFERED)
     val finished = _finished.receiveAsFlow()
@@ -284,7 +304,7 @@ class ActiveSessionViewModel @Inject constructor(
         viewModelScope.launch { repository.upsertSet(updated) }
 
         if (completed) {
-            startRest(block.target?.restSec ?: DEFAULT_REST_SEC)
+            startRest(restAfter(block, updated))
         }
     }
 
@@ -324,10 +344,25 @@ class ActiveSessionViewModel @Inject constructor(
         }
     }
 
-    // ---- Rest timer (runs in the foreground service) --------------------
+    // ---- Rest timer + live notification (foreground service) ------------
+
+    /** Ideal rest after [set]: the routine's own value, else advised per exercise and reps. */
+    private fun restAfter(block: BlockUi, set: SetEntry): Int {
+        val g = block.toGuide()
+        val warmup = set.type == SetType.WARMUP
+        g.routineRestSec?.takeIf { it > 0 && !warmup }?.let { return it }
+        val reps = if (g.timed) 0 else set.reps.takeIf { it > 0 } ?: g.targetReps ?: 8
+        return app.tenet.android.core.common.RestAdvisor.advise(g.pattern, g.primaryMuscles, reps, warmup, set.rpe).seconds
+    }
 
     private fun startRest(totalSec: Int) {
-        RestTimerService.start(application, totalSec)
+        val id = sessionId ?: return
+        // Last set of the workout: no rest, the notification says "geschafft".
+        if (_uiState.value.blocks.all { b -> b.rows.all { it.set.completed } }) {
+            RestTimerService.guide(application, id)
+        } else {
+            RestTimerService.start(application, totalSec, id)
+        }
     }
 
     fun addRestSeconds(seconds: Int) {
@@ -335,9 +370,32 @@ class ActiveSessionViewModel @Inject constructor(
         RestTimerService.add(application, seconds)
     }
 
+    /** Ends the rest early; the notification switches to the next set. */
     fun cancelRest() {
-        RestTimerService.cancel(application)
+        RestTimerService.skip(application)
     }
+
+    /** Training mode opened: live notification with the next set. */
+    fun startGuide() {
+        val id = sessionId ?: return
+        if (rest.value == null) RestTimerService.guide(application, id)
+    }
+
+    /** Training mode: logs the next set with the entered values and starts its rest. */
+    fun logNext(weightKg: Float?, reps: Int?, seconds: Int?) {
+        val n = next.value ?: return
+        val block = _uiState.value.blocks.getOrNull(n.blockIndex) ?: return
+        val row = block.rows.firstOrNull { it.set.id == n.set.id } ?: return
+        viewModelScope.launch {
+            val done = repository.completeSet(row.set, weightKg, reps, seconds)
+            applyRow(block.sessionExerciseId, row.set.id) {
+                it.copy(set = done, kgText = formatNumber(done.weight), repsText = if (done.reps > 0) done.reps.toString() else "")
+            }
+            startRest(restAfter(block, done))
+        }
+    }
+
+    private fun BlockUi.toGuide() = guideBlock(exercise, target, suggestion, rows.map { it.set })
 
     private fun applyRow(
         sessionExerciseId: String,

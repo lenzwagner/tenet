@@ -112,11 +112,11 @@ class SportRepository @Inject constructor(
     private fun seedExercises(): List<Exercise> = ExerciseCatalog.gym
 
     private fun defaultRoutine(): List<RoutineExercise> = listOf(
-        routine("ex-bankdruecken", 0, targetSets = 3, targetReps = 8, restSec = 120),
-        routine("ex-kniebeugen", 1, targetSets = 3, targetReps = 8, restSec = 180),
-        routine("ex-rudern", 2, targetSets = 3, targetReps = 10, restSec = 120),
-        routine("ex-schulterdruecken", 3, targetSets = 3, targetReps = 8, restSec = 120),
-        routine("ex-bizepscurl", 4, targetSets = 2, targetReps = 12, restSec = 60),
+        routine("ex-bankdruecken", 0, targetSets = 3, targetReps = 8, restSec = 0),
+        routine("ex-kniebeugen", 1, targetSets = 3, targetReps = 8, restSec = 0),
+        routine("ex-rudern", 2, targetSets = 3, targetReps = 10, restSec = 0),
+        routine("ex-schulterdruecken", 3, targetSets = 3, targetReps = 8, restSec = 0),
+        routine("ex-bizepscurl", 4, targetSets = 2, targetReps = 12, restSec = 0),
     )
 
     private fun routine(
@@ -280,7 +280,8 @@ class SportRepository @Inject constructor(
                         sortOrder = order,
                         targetSets = ex.sets,
                         targetReps = ex.reps,
-                        restSec = ex.restSec,
+                        // 0 = automatic: rest advised per exercise and reps (RestAdvisor).
+                        restSec = 0,
                         startWeightKg = ex.startWeightKg,
                     )
                 },
@@ -518,6 +519,22 @@ class SportRepository @Inject constructor(
 
     suspend fun upsertSet(set: SetEntry) = dao.upsertSet(set)
 
+    /** Session as seen by the guided mode and the live notification. */
+    suspend fun guide(sessionId: String): List<Pair<SessionBlock, app.tenet.android.core.common.WorkoutGuide.GuideBlock>> =
+        loadBlocks(sessionId).map { it to it.toGuide() }
+
+    /** Marks a set done with the entered values (null = keep planned). */
+    suspend fun completeSet(set: SetEntry, weightKg: Float?, reps: Int?, seconds: Int?): SetEntry {
+        val done = set.copy(
+            weight = weightKg ?: set.weight,
+            reps = reps ?: set.reps,
+            durationSec = seconds ?: set.durationSec,
+            completed = true,
+        )
+        dao.upsertSet(done)
+        return done
+    }
+
     suspend fun addSet(sessionExerciseId: String): SetEntry {
         val existing = dao.setsOnce(sessionExerciseId)
         val last = existing.maxByOrNull { it.sortOrder }
@@ -724,7 +741,7 @@ class SportRepository @Inject constructor(
                     sortOrder = existing.size,
                     targetSets = 3,
                     targetReps = 8,
-                    restSec = 120,
+                    restSec = 0,
                 ),
             ),
         )
@@ -793,4 +810,34 @@ data class GymOverview(
     val sessions: List<WorkoutSession> = emptyList(),
     val volumesBySession: Map<String, Float> = emptyMap(),
     val bestLifts: List<BestLift> = emptyList(),
+)
+
+/** Guide view of a block (pure data for [app.tenet.android.core.common.WorkoutGuide]). */
+fun SessionBlock.toGuide(): app.tenet.android.core.common.WorkoutGuide.GuideBlock = guideBlock(exercise, target, suggestion, sets)
+
+fun guideBlock(
+    exercise: Exercise,
+    target: RoutineExercise?,
+    suggestion: OverloadMath.Suggestion?,
+    sets: List<SetEntry>,
+): app.tenet.android.core.common.WorkoutGuide.GuideBlock = app.tenet.android.core.common.WorkoutGuide.GuideBlock(
+    name = exercise.name,
+    timed = exercise.measureType == MeasureType.HOLD || exercise.measureType == MeasureType.DURATION,
+    pattern = app.tenet.android.core.common.MovementPattern.fromName(exercise.pattern),
+    primaryMuscles = exercise.primaryMuscles,
+    targetReps = target?.targetReps,
+    suggestedKg = suggestion?.weightKg?.takeIf { it > 0f },
+    routineRestSec = target?.restSec,
+    bodyweight = exercise.discipline == Discipline.CALISTHENICS || exercise.equipment.contains("körpergewicht", ignoreCase = true),
+    sets = sets.map {
+        app.tenet.android.core.common.WorkoutGuide.GuideSet(
+            id = it.id,
+            sortOrder = it.sortOrder,
+            warmup = it.type == SetType.WARMUP,
+            weightKg = it.weight,
+            reps = it.reps,
+            durationSec = it.durationSec,
+            completed = it.completed,
+        )
+    },
 )

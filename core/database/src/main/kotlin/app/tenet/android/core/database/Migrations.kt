@@ -6,6 +6,16 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 /** v8 -> v9: training weekdays on plans (Ruhetage on "Heute"). */
 /** v11: goal time and taper flag of running plans. */
 /** v14: planned units can be skipped (running plan, Runna-style). */
+/**
+ * v18: gym rest times become automatic (0 = RestAdvisor: per exercise and
+ * reps, e.g. 3–5 min squat, 60–90 s curls) instead of one value per plan goal.
+ */
+val MIGRATION_17_18 = object : Migration(17, 18) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("UPDATE `RoutineExercise` SET `restSec` = 0 WHERE `exerciseId` IN (SELECT `id` FROM `Exercise` WHERE `discipline` = 'GYM')")
+    }
+}
+
 /** v17: weather of the day on diary entries. */
 val MIGRATION_16_17 = object : Migration(16, 17) {
     override fun migrate(db: SupportSQLiteDatabase) {

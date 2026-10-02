@@ -1,6 +1,6 @@
 # Tenet – offene ToDos
 
-Stand: 01.10.2026, Version 0.20.2. Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 02.10.2026, Version 0.21.0. Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Google-Anmeldung & Sync (0.15)
 
@@ -17,6 +17,7 @@ Im Emulator nicht möglich.
 - [ ] Neues Diktat-Sheet am Handy: längere Pausen, Signaltöne beim Neustart der Erkennung?
 - [ ] Echter GPS-Lauf: Sprachansagen, geführte Intervalle, Auto-Pause, Live-Benachrichtigung
 - [x] Health-Connect-Import mit Uhr oder Strava, inkl. Duplikat-Erkennung bei parallelem GPS-Lauf
+- [ ] Live-Mitteilung im Training am echten Handy (Android 16: Chip in der Statusleiste, Eingabe vom Sperrbildschirm)
 - [ ] Hold-Timer und AMRAP per Lautstärketaste
 - [ ] Haptik (Vibration) an allen Stellen
 - [ ] „Lauf starten“ auf der Heute-Seite an einem Tag mit geplantem Lauf
@@ -72,7 +73,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Datenbank-Verschlüsselung (SQLCipher). Erst sinnvoll zusammen mit einem Backup.
 
-## Zuletzt erledigt (0.5.0 – 0.20.2)
+## Zuletzt erledigt (0.5.0 – 0.21.0)
+
+- 0.21: Satzpausen je Übung nach Studienlage (schwere Grundübungen 3–5 min, Grundübungen 2–3 min, Isolation 60–90 s, Aufwärmsätze ~45 s; eigene Planwerte gehen vor, 0 = automatisch) und in jeder Übungskarte angezeigt; Trainingsmodus (Satz für Satz: Werte vorausgefüllt, „Satz fertig“, Pause mit Countdown, nächster Satz); Training als Live-Mitteilung (Android 16 Live Update mit Countdown-Chip in der Statusleiste und Fortschritt je Übung) mit „+30 s“, „Überspringen“, „Wie geplant“ und „Eintragen“ (Schnellwahl oder Text wie „80x8“) direkt in der Mitteilung
 
 - 0.20.2: Option „Nur zwei Farben“ (Einstellungen → Farben): ganze App nur in Primär- und Sekundärfarbe, ohne eigene Bereichsfarben und ohne Tertiärfarbe
 

@@ -89,6 +89,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material.icons.outlined.PlayCircle
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -138,6 +142,9 @@ fun ActiveSessionScreen(
     }
     val rest by viewModel.rest.collectAsStateWithLifecycle()
     val endRequested by viewModel.endRequested.collectAsStateWithLifecycle()
+    val next by viewModel.next.collectAsStateWithLifecycle()
+    val remaining by viewModel.remaining.collectAsStateWithLifecycle()
+    var trainingMode by rememberSaveable { mutableStateOf(false) }
 
     val context = LocalContext.current
     // The rest-timer notification needs the POST_NOTIFICATIONS permission (API 33+).
@@ -193,6 +200,10 @@ fun ActiveSessionScreen(
                             }
                         }
                         TooltipIconButton(icon = Icons.Outlined.Calculate, contentDescription = "Plattenrechner", onClick = { plateSheetVisible = true })
+                        TooltipIconButton(icon = Icons.Outlined.PlayCircle, contentDescription = "Trainingsmodus", onClick = {
+                            trainingMode = true
+                            viewModel.startGuide()
+                        })
                         FilledIconButton(onClick = { viewModel.requestEnd() }, shapes = IconButtonDefaults.shapes()) {
                         Icon(Icons.Outlined.Check, contentDescription = "Workout beenden")
                     }
@@ -214,6 +225,23 @@ fun ActiveSessionScreen(
                 ),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                if (remaining > 0) {
+                    item(key = "training-mode") {
+                        // Guided: one set at a time with timed rest (also in the notification).
+                        FilledTonalButton(
+                            onClick = {
+                                trainingMode = true
+                                viewModel.startGuide()
+                            },
+                            shapes = ButtonDefaults.shapes(),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Icon(Icons.Outlined.PlayCircle, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Trainingsmodus · Satz für Satz mit Pausen")
+                        }
+                    }
+                }
                 if (state.blocks.isEmpty()) {
                     item {
                         Text(
@@ -298,7 +326,24 @@ fun ActiveSessionScreen(
             )
         }
 
-        rest?.let { restState ->
+        if (trainingMode) {
+            TrainingMode(
+                next = next,
+                exerciseId = next?.let { state.blocks.getOrNull(it.blockIndex)?.exercise?.id },
+                rest = rest,
+                remaining = remaining,
+                onLog = viewModel::logNext,
+                onAddRest = { viewModel.addRestSeconds(30) },
+                onSkipRest = viewModel::cancelRest,
+                onFinish = {
+                    trainingMode = false
+                    viewModel.requestEnd()
+                },
+                onClose = { trainingMode = false },
+            )
+        }
+
+        if (!trainingMode) rest?.let { restState ->
             RestBar(
                 rest = restState,
                 onAddTime = { viewModel.addRestSeconds(30) },
@@ -502,6 +547,21 @@ private fun PlateCalculatorSheet(
     }
 }
 
+/** "Pause 2:30" (advised, with range) or the plan's own value. */
+private fun restHint(block: BlockUi): String {
+    val own = block.target?.restSec?.takeIf { it > 0 }
+    if (own != null) return "Pause ${formatSeconds(own)}"
+    val reps = block.target?.targetReps ?: block.rows.firstOrNull { it.set.reps > 0 }?.set?.reps ?: 8
+    val timed = block.exercise.measureType == app.tenet.android.core.database.entity.MeasureType.HOLD ||
+        block.exercise.measureType == app.tenet.android.core.database.entity.MeasureType.DURATION
+    val advice = app.tenet.android.core.common.RestAdvisor.advise(
+        app.tenet.android.core.common.MovementPattern.fromName(block.exercise.pattern),
+        block.exercise.primaryMuscles,
+        if (timed) 0 else reps,
+    )
+    return "Pause ${formatSeconds(advice.seconds)} (${advice.range})"
+}
+
 private fun formatKg(value: Float): String =
     if (value % 1f == 0f) value.toInt().toString()
     else value.toString().trimEnd('0').trimEnd('.').replace('.', ',')
@@ -526,17 +586,27 @@ private fun ExerciseCard(
                 // Photo → records & history (like Hevy).
                 app.tenet.android.feature.sport.ExerciseThumb(block.exercise.id, Modifier.clickable(onClick = onHistory), size = 44.dp)
                 Spacer(Modifier.width(12.dp))
-                Text(
-                    text = block.exercise.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f),
-                )
-                block.target?.let {
-                    Text(
-                        text = "${it.targetSets} × ${it.targetReps}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                Column(Modifier.weight(1f)) {
+                    Text(text = block.exercise.name, style = MaterialTheme.typography.titleMedium)
+                    // Target and the ideal rest for this exercise (own value from the plan wins).
+                    val rest = remember(block.exercise.id, block.target) { restHint(block) }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        block.target?.let {
+                            Text(
+                                text = "${it.targetSets} × ${it.targetReps} · ",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Icon(Icons.Outlined.Timer, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(3.dp))
+                        Text(
+                            text = rest,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.semantics { contentDescription = "Pause $rest" },
+                        )
+                    }
                 }
                 var menu by remember { mutableStateOf(false) }
                 Box {

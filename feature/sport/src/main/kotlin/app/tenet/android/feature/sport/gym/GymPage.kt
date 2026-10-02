@@ -104,10 +104,13 @@ fun GymPage(
                 )
             },
             confirmButton = {
+                val context = androidx.compose.ui.platform.LocalContext.current
                 TextButton(
                     shapes = ButtonDefaults.shapes(),
                     onClick = {
                         showDiscardDialog = false
+                        // The live workout notification goes with the session.
+                        app.tenet.android.feature.sport.RestTimerService.cancel(context)
                         viewModel.discardActiveSession()
                     },
                 ) { Text("Verwerfen") }

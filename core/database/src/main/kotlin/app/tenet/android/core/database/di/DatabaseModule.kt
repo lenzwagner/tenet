@@ -6,6 +6,7 @@ import app.tenet.android.core.database.MIGRATION_12_13
 import app.tenet.android.core.database.MIGRATION_13_14
 import app.tenet.android.core.database.MIGRATION_14_15
 import app.tenet.android.core.database.MIGRATION_15_16
+import app.tenet.android.core.database.MIGRATION_17_18
 import app.tenet.android.core.database.MIGRATION_16_17
 import app.tenet.android.core.database.MIGRATION_9_10
 import android.content.Context
@@ -56,6 +57,7 @@ object DatabaseModule {
                 MIGRATION_14_15,
                 MIGRATION_15_16,
                 MIGRATION_16_17,
+                MIGRATION_17_18,
             )
             // Change log for the Google/Firebase sync (see SyncTriggers).
             .addCallback(object : androidx.room.RoomDatabase.Callback() {
