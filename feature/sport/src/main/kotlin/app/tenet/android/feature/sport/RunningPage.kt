@@ -214,6 +214,7 @@ fun RunningPage(
             item(key = "plan-week") { PlanWeekCard(state.planWeeks, state.currentWeek, onOpenWorkout) }
         }
         item { VolumeCard(state) }
+        state.form?.let { form -> item(key = "form") { app.tenet.android.feature.sport.run.FormCard(form) } }
         if (state.records.isNotEmpty()) item { RecordsCard(state, onOpenRun) }
         item { RecentRunsCard(state, onOpenRun) }
     }

@@ -42,10 +42,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
@@ -181,13 +193,25 @@ private fun SetPhase(next: WorkoutGuide.Next, exerciseId: String?, onLog: (Float
         )
         Spacer(Modifier.height(28.dp))
         if (next.timed) {
-            Stepper("Sekunden", sec.toString(), onMinus = { sec = (sec - 5).coerceAtLeast(5) }, onPlus = { sec += 5 })
+            Stepper(
+                "Sekunden", sec.toString(), decimal = false,
+                onText = { t -> t.toIntOrNull()?.let { sec = it } },
+                onMinus = { sec = (sec - 5).coerceAtLeast(5) }, onPlus = { sec += 5 },
+            )
         } else {
             if (!next.bodyweight || kg > 0f) {
-                Stepper("kg", WorkoutGuide.fmt(kg), onMinus = { kg = (kg - 2.5f).coerceAtLeast(0f) }, onPlus = { kg += 2.5f })
+                Stepper(
+                    "kg", WorkoutGuide.fmt(kg), decimal = true,
+                    onText = { t -> (if (t.isBlank()) 0f else t.replace(',', '.').toFloatOrNull())?.let { kg = it } },
+                    onMinus = { kg = (kg - 2.5f).coerceAtLeast(0f) }, onPlus = { kg += 2.5f },
+                )
                 Spacer(Modifier.height(16.dp))
             }
-            Stepper("Wiederholungen", reps.toString(), onMinus = { reps = (reps - 1).coerceAtLeast(0) }, onPlus = { reps += 1 })
+            Stepper(
+                "Wiederholungen", reps.toString(), decimal = false,
+                onText = { t -> reps = t.toIntOrNull() ?: 0 },
+                onMinus = { reps = (reps - 1).coerceAtLeast(0) }, onPlus = { reps += 1 },
+            )
         }
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -220,20 +244,67 @@ private fun SetPhase(next: WorkoutGuide.Next, exerciseId: String?, onLog: (Float
     }
 }
 
+/**
+ * Value with − / + and direct input: tap the number and type it
+ * (decimal comma for kg). The field selects all on focus, so typing
+ * replaces the value.
+ */
 @Composable
-private fun Stepper(label: String, value: String, onMinus: () -> Unit, onPlus: () -> Unit) {
+private fun Stepper(
+    label: String,
+    value: String,
+    decimal: Boolean,
+    onText: (String) -> Unit,
+    onMinus: () -> Unit,
+    onPlus: () -> Unit,
+) {
+    val focus = LocalFocusManager.current
+    var focused by remember { mutableStateOf(false) }
+    var field by remember { mutableStateOf(TextFieldValue(value)) }
+    // Steps from − / + (or a new set) show up unless the user is typing.
+    LaunchedEffect(value) { if (!focused) field = TextFieldValue(value) }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(verticalAlignment = Alignment.CenterVertically) {
             FilledTonalIconButton(onClick = onMinus, shapes = IconButtonDefaults.shapes(), modifier = Modifier.size(56.dp)) {
                 Icon(Icons.Outlined.Remove, contentDescription = "$label weniger")
             }
-            Text(
-                value,
-                style = MaterialTheme.typography.displayMediumEmphasized,
-                textAlign = TextAlign.Center,
+            Spacer(Modifier.width(8.dp))
+            Surface(
+                shape = MaterialTheme.shapes.large,
+                color = if (focused) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
                 modifier = Modifier.width(150.dp),
-            )
+            ) {
+                BasicTextField(
+                    value = field,
+                    onValueChange = { v ->
+                        val clean = v.text.filter { it.isDigit() || (decimal && (it == ',' || it == '.')) }.take(6)
+                        field = v.copy(text = clean)
+                        onText(clean)
+                    },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.displayMediumEmphasized.copy(
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    ),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = if (decimal) KeyboardType.Decimal else KeyboardType.Number,
+                        imeAction = ImeAction.Done,
+                    ),
+                    keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }),
+                    modifier = Modifier
+                        .padding(vertical = 4.dp)
+                        .semantics { contentDescription = "$label eingeben" }
+                        .onFocusChanged { state ->
+                            focused = state.isFocused
+                            // Select all on focus: typing replaces the number.
+                            if (state.isFocused) field = field.copy(selection = TextRange(0, field.text.length))
+                            else field = TextFieldValue(value)
+                        },
+                )
+            }
+            Spacer(Modifier.width(8.dp))
             FilledTonalIconButton(onClick = onPlus, shapes = IconButtonDefaults.shapes(), modifier = Modifier.size(56.dp)) {
                 Icon(Icons.Outlined.Add, contentDescription = "$label mehr")
             }

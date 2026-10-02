@@ -41,6 +41,8 @@ data class PlannedRunUi(
 
 data class RunningUiState(
     val overview: RunningOverview = RunningOverview(),
+    /** Current form (race times) from all recent runs, heart rate included. */
+    val form: app.tenet.android.core.common.FormEstimator.Form? = null,
     val paceMethod: PaceMethod = PaceMethod.VDOT,
     /** Anchor Monday of the active plan. */
     val planStart: LocalDate? = null,
@@ -103,10 +105,10 @@ class RunningViewModel @Inject constructor(
         viewModelScope.launch { onDone(runCatching { repository.importGpx(xml) }.getOrNull()) }
     }
 
-    private val paceMethodFlow = settingsRepository.settings.map { it.paceMethod }
+    private val paceMethodFlow = settingsRepository.settings.map { it.paceMethod to it.profile?.age }
 
     val uiState: StateFlow<RunningUiState> = paceMethodFlow
-        .flatMapLatest { method ->
+        .flatMapLatest { (method, age) ->
             combine(repository.observeOverview(), repository.observeVolumeRuns(), repository.observeRecords()) { overview, runs, records ->
                 val today = LocalDate.now()
                 val weekly = RunVolumeMath.weekly(runs, today)
@@ -115,6 +117,11 @@ class RunningViewModel @Inject constructor(
                     monthlyVolume = RunVolumeMath.monthly(runs, today),
                     jumpWarning = RunVolumeMath.jumpWarning(weekly),
                     records = records,
+                    form = app.tenet.android.core.common.FormEstimator.estimate(
+                        overview.runs.map { it.toFormRun() },
+                        today,
+                        age,
+                    ),
                 )
             }
         }
@@ -228,3 +235,11 @@ class RunningViewModel @Inject constructor(
         }
     }
 }
+
+/** Run as input for the form estimate. */
+internal fun app.tenet.android.core.database.dao.RunDao.RunSessionRow.toFormRun() = app.tenet.android.core.common.FormEstimator.Run(
+    date = java.time.Instant.ofEpochMilli(session.startedAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate(),
+    distanceM = run.distanceM,
+    durationSec = run.durationSec,
+    avgHr = run.avgHr,
+)

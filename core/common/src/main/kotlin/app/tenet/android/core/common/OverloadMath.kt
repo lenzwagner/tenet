@@ -63,7 +63,9 @@ object OverloadMath {
         val topSets = last.filter { it.weightKg == lastWeight }
         val goal = rule.repMax?.takeIf { it >= targetReps } ?: targetReps
         val hit = topSets.all { it.reps >= goal }
-        if (hit) return Suggestion(round(lastWeight + step, step), Decision.INCREASE, lastWeight, step)
+        // Round on the plate grid, not on the step: 62.5 + 5 must stay 67.5 (not jump to 70).
+        val grid = minOf(step, 2.5f)
+        if (hit) return Suggestion(round(lastWeight + step, grid), Decision.INCREASE, lastWeight, step)
 
         // Missed twice in a row at the same weight → deload.
         val previous = history.drop(history.indexOf(last) + 1).firstOrNull { it.isNotEmpty() }
@@ -71,7 +73,7 @@ object OverloadMath {
             previous.maxOf { it.weightKg } == lastWeight &&
             previous.filter { it.weightKg == lastWeight }.any { it.reps < targetReps }
         val deload = 1f - (rule.deloadPercent ?: 10).coerceIn(0, 50) / 100f
-        if (missedBefore) return Suggestion(round(lastWeight * deload, step), Decision.DELOAD, lastWeight, step)
+        if (missedBefore) return Suggestion(round(lastWeight * deload, grid), Decision.DELOAD, lastWeight, step)
         return Suggestion(lastWeight, Decision.KEEP, lastWeight, step)
     }
 

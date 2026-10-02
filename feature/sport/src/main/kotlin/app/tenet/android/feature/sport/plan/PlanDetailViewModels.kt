@@ -45,6 +45,8 @@ data class RunPlanUi(
     val raceDistanceM: Int?,
     val targetTimeSec: Int?,
     val prediction: RacePrediction.Prediction?,
+    /** How the prognosis was made ("aus 7 Läufen …"); null = best single effort. */
+    val predictionNote: String? = null,
     val predictionHistory: List<Pair<LocalDate, Int>>,
     val taper: Boolean,
     val done: List<DoneUnit>,
@@ -60,12 +62,28 @@ data class RunPlanUi(
 @HiltViewModel
 class RunPlanDetailViewModel @Inject constructor(
     private val repository: RunningRepository,
+    settings: app.tenet.android.core.datastore.UserSettingsRepository,
 ) : ViewModel() {
     private val planId = MutableStateFlow<String?>(null)
 
     val state: StateFlow<RunPlanUi?> = planId.filterNotNull()
-        .flatMapLatest { repository.observeRunPlan(it) }
-        .map { it?.let(::build) }
+        .flatMapLatest { id ->
+            kotlinx.coroutines.flow.combine(
+                repository.observeRunPlan(id),
+                repository.observeOverview(),
+                settings.settings,
+            ) { d, overview, s ->
+                d?.let {
+                    // Form from all recent runs (also before the plan, incl. Health Connect), heart rate included.
+                    val form = app.tenet.android.core.common.FormEstimator.estimate(
+                        overview.runs.map { r -> r.toFormRunForPlan() },
+                        LocalDate.now(),
+                        s.profile?.age,
+                    )
+                    build(it, form)
+                }
+            }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun load(id: String) {
@@ -86,7 +104,7 @@ class RunPlanDetailViewModel @Inject constructor(
         }
     }
 
-    private fun build(d: RunPlanData): RunPlanUi {
+    private fun build(d: RunPlanData, form: app.tenet.android.core.common.FormEstimator.Form?): RunPlanUi {
         val today = LocalDate.now()
         val zone = ZoneId.systemDefault()
         val goal = RunPlanMath.RunGoal.fromName(d.detail?.goalId ?: d.plan.goal)
@@ -104,14 +122,18 @@ class RunPlanDetailViewModel @Inject constructor(
         // Prognosis from best efforts (+ the 5 km form given at plan creation).
         val efforts = d.efforts.map { RacePrediction.Effort(dateOf(it.achievedAt), it.distanceM, it.durationSec) } +
             listOfNotNull(d.detail?.current5kSec?.let { RacePrediction.Effort(start, 5_000, it) })
-        val prediction = raceDistance?.let { RacePrediction.predict(efforts, it, today, windowDays = 84) }
+        // Prognosis: the form estimate (all runs, heart rate); fallback best effort (Riegel).
+        val prediction = raceDistance?.let { dist ->
+            form?.time(dist)?.let { RacePrediction.Prediction(it, RacePrediction.Effort(today, dist, it)) }
+                ?: RacePrediction.predict(efforts, dist, today, windowDays = 84)
+        }
         // Current form only from real runs (not the anchor given at creation).
         val runEfforts = d.efforts.map { RacePrediction.Effort(dateOf(it.achievedAt), it.distanceM, it.durationSec) }
-        val form5k = RacePrediction.predict(runEfforts, 5_000, today, windowDays = 42)?.timeSec
+        val form5k = form?.time(5_000) ?: RacePrediction.predict(runEfforts, 5_000, today, windowDays = 42)?.timeSec
         val racePassed = goalDate != null && goalDate.isBefore(today)
         val fit = if (racePassed) null else PlanFit.assess(
             targetSec = d.detail?.targetTimeSec,
-            predictedSec = raceDistance?.let { RacePrediction.predict(runEfforts, it, today, windowDays = 84)?.timeSec },
+            predictedSec = raceDistance?.let { dist -> form?.time(dist) ?: RacePrediction.predict(runEfforts, dist, today, windowDays = 84)?.timeSec },
             anchor5kSec = d.detail?.current5kSec,
             form5kSec = form5k,
         )
@@ -153,6 +175,9 @@ class RunPlanDetailViewModel @Inject constructor(
             raceDistanceM = raceDistance,
             targetTimeSec = d.detail?.targetTimeSec,
             prediction = prediction,
+            predictionNote = form?.let { f ->
+                "aus ${f.runs} ${if (f.runs == 1) "Lauf" else "Läufen"} der letzten 8 Wochen" + if (f.withHr > 0) ", Puls berücksichtigt" else ""
+            },
             predictionHistory = history,
             taper = d.detail?.taper == true,
             done = done.sortedByDescending { it.run.session.startedAt },
@@ -215,3 +240,10 @@ class GymPlanDetailViewModel @Inject constructor(
         planId.value = id
     }
 }
+
+private fun app.tenet.android.core.database.dao.RunDao.RunSessionRow.toFormRunForPlan() = app.tenet.android.core.common.FormEstimator.Run(
+    date = Instant.ofEpochMilli(session.startedAt).atZone(ZoneId.systemDefault()).toLocalDate(),
+    distanceM = run.distanceM,
+    durationSec = run.durationSec,
+    avgHr = run.avgHr,
+)

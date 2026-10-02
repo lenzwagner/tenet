@@ -164,3 +164,10 @@ class PlanMathTest {
         assertEquals(80f, s.weightKg)
     }
 }
+
+class OverloadGridTest {
+    @org.junit.Test fun increaseKeepsOffGridWeights() {
+        val s = OverloadMath.suggest(listOf(listOf(OverloadMath.WorkSet(62.5f, 8), OverloadMath.WorkSet(62.5f, 8))), 8, "Quadrizeps")
+        org.junit.Assert.assertEquals(67.5f, s.weightKg)
+    }
+}

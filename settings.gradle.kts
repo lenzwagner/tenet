@@ -34,4 +34,6 @@ include(
     ":feature:journal",
     ":feature:nutrition",
     ":feature:settings",
+    // Emulator-only test tool (Health Connect sample runs), not shipped.
+    ":tools:hcseed",
 )

@@ -211,7 +211,8 @@ private fun PrognosisCard(s: RunPlanUi) {
                     modifier = Modifier.semantics { contentDescription = "Prognostizierte Zeit ${p?.let { hms(it.timeSec) } ?: "unbekannt"}" },
                 )
                 Text(
-                    p?.let { "aus ${distanceName(it.basis.distanceM)} in ${hms(it.basis.durationSec)} am ${it.basis.date.format(DATE)} (Riegel)" }
+                    s.predictionNote?.takeIf { p != null }
+                        ?: p?.let { "aus ${distanceName(it.basis.distanceM)} in ${hms(it.basis.durationSec)} am ${it.basis.date.format(DATE)} (Riegel)" }
                         ?: "Noch keine Prognose – lauf 5 km oder mehr (GPS, nachgetragen oder Health Connect).",
                     style = MaterialTheme.typography.bodySmall,
                 )
