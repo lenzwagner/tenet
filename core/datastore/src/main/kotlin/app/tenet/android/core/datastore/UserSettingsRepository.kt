@@ -38,7 +38,8 @@ class UserSettingsRepository @Inject constructor(
                 ?: ThemeMode.SYSTEM,
             dynamicColor = prefs[KEY_DYNAMIC_COLOR] ?: true,
             colorStyle = app.tenet.android.core.common.ColorStyle.fromName(prefs[KEY_COLOR_STYLE]),
-            twoTone = prefs[KEY_TWO_TONE] ?: false,
+            // Default: the whole app in primary + secondary only.
+            twoTone = prefs[KEY_TWO_TONE] ?: true,
             glassBar = prefs[KEY_GLASS_BAR] ?: true,
             enabledModules = prefs[KEY_MODULES]
                 ?.mapNotNull { runCatching { AppModule.valueOf(it) }.getOrNull() }

@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Tenet mark: a "T" from the app's three area colors – crossbar from
-  teal (Ernährung) to violet (Journal), stem in blue (Sport) – plus a
-  small dot. Kept inside the 66dp safe zone of the 108dp canvas.
+  Tenet mark in two colors: lavender crossbar, blue stem and dot. Kept inside the 66dp safe zone of the 108dp canvas.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
@@ -10,25 +8,7 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:pathData="M54,38 h0 a7,7 0 0 1 7,7 v25 a7,7 0 0 1 -7,7 h0 a7,7 0 0 1 -7,-7 v-25 a7,7 0 0 1 7,-7 z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:type="linear"
-                android:startX="54" android:startY="38"
-                android:endX="54" android:endY="77"
-                android:startColor="#FF7E9BFF"
-                android:endColor="#FF5B6CF0" />
-        </aapt:attr>
-    </path>
-    <path android:pathData="M38,33 h32 a7,7 0 0 1 7,7 v0 a7,7 0 0 1 -7,7 h-32 a7,7 0 0 1 -7,-7 v0 a7,7 0 0 1 7,-7 z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:type="linear"
-                android:startX="31" android:startY="40"
-                android:endX="77" android:endY="40"
-                android:startColor="#FF5EE3CB"
-                android:endColor="#FFB590FF" />
-        </aapt:attr>
-    </path>
-    <path android:pathData="M72,71 m-4.5,0 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0" android:fillColor="#FF5EE3CB" />
+    <path android:pathData="M54,38 h0 a7,7 0 0 1 7,7 v25 a7,7 0 0 1 -7,7 h0 a7,7 0 0 1 -7,-7 v-25 a7,7 0 0 1 7,-7 z" android:fillColor="#FF6F8BFF" />
+    <path android:pathData="M38,33 h32 a7,7 0 0 1 7,7 v0 a7,7 0 0 1 -7,7 h-32 a7,7 0 0 1 -7,-7 v0 a7,7 0 0 1 7,-7 z" android:fillColor="#FFB39CFF" />
+    <path android:pathData="M72,71 m-4.5,0 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0" android:fillColor="#FF6F8BFF" />
 </vector>

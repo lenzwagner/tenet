@@ -42,10 +42,9 @@ import kotlinx.coroutines.launch
 // Same colors as the launcher icon (res/drawable/ic_launcher_*).
 private val BgTop = Color(0xFF2A2F6B)
 private val BgBottom = Color(0xFF11143A)
-private val Teal = Color(0xFF5EE3CB)
-private val Violet = Color(0xFFB590FF)
-private val BlueTop = Color(0xFF7E9BFF)
-private val BlueBottom = Color(0xFF5B6CF0)
+// Two colors only: lavender crossbar, blue stem and dot.
+private val Lavender = Color(0xFFB39CFF)
+private val Blue = Color(0xFF6F8BFF)
 
 /**
  * Intro on a cold start from the launcher: the icon builds itself – the
@@ -119,7 +118,7 @@ fun IntroAnimation(onDone: () -> Unit) {
             val r = size.minDimension * 0.55f
             drawCircle(
                 Brush.radialGradient(
-                    listOf(BlueTop.copy(alpha = 0.32f * glow.value), Color.Transparent),
+                    listOf(Blue.copy(alpha = 0.32f * glow.value), Color.Transparent),
                     center = center,
                     radius = r,
                 ),
@@ -148,7 +147,7 @@ fun IntroAnimation(onDone: () -> Unit) {
                 val stemH = 39f * stem.value.coerceAtLeast(0f)
                 if (stemH > 0.5f) {
                     drawRoundRect(
-                        Brush.verticalGradient(listOf(BlueTop, BlueBottom), startY = y(38f), endY = y(77f)),
+                        Blue,
                         topLeft = Offset(x(47f), y(77f - stemH)),
                         size = Size(14f * unit, stemH * unit),
                         cornerRadius = radius,
@@ -158,7 +157,7 @@ fun IntroAnimation(onDone: () -> Unit) {
                 val barW = (14f + 32f * bar.value).coerceAtLeast(0f)
                 if (bar.value > 0.01f) {
                     drawRoundRect(
-                        Brush.horizontalGradient(listOf(Teal, Violet), startX = x(31f), endX = x(77f)),
+                        Lavender,
                         topLeft = Offset(x(54f - barW / 2f), y(33f)),
                         size = Size(barW * unit, 14f * unit),
                         cornerRadius = radius,
@@ -181,7 +180,7 @@ fun IntroAnimation(onDone: () -> Unit) {
                 }
                 // Dot pops.
                 if (dot.value > 0.01f) {
-                    drawCircle(Teal, radius = 4.5f * unit * dot.value, center = Offset(x(72f), y(71f)))
+                    drawCircle(Blue, radius = 4.5f * unit * dot.value, center = Offset(x(72f), y(71f)))
                 }
             }
             Spacer(Modifier.height(20.dp))

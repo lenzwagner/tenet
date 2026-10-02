@@ -19,7 +19,7 @@ data class UserSettings(
     /** Palette style for the scheme built from wallpaper or picked seed. */
     val colorStyle: app.tenet.android.core.common.ColorStyle = app.tenet.android.core.common.ColorStyle.DEFAULT,
     /** Only primary + secondary: no own color per area, no tertiary accents. */
-    val twoTone: Boolean = false,
+    val twoTone: Boolean = true,
     /** Glassmorphism tab bar; false = opaque bar (fallback / accessibility). */
     val glassBar: Boolean = true,
     val enabledModules: Set<AppModule> = AppModule.entries.toSet(),
