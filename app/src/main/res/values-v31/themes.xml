@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Android 12+ splash: show the icon on its pastel-yellow disc. -->
+    <!--
+      Android 12+ splash: plain indigo without icon, so the intro animation
+      (ui/IntroAnimation.kt) continues seamlessly and builds the logo itself.
+    -->
     <style name="Theme.Tenet" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowSplashScreenIconBackgroundColor">#FEF0B2</item>
+        <item name="android:windowSplashScreenBackground">#FF1E2252</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_blank</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
     </style>
 </resources>

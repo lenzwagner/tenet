@@ -3,6 +3,8 @@ package app.tenet.android
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import app.tenet.android.core.data.EntryRepository
 import app.tenet.android.feature.sport.run.RunTrackingService
@@ -115,7 +117,22 @@ class MainActivity : FragmentActivity() {
         // Entries left hidden by an undo snackbar that never finished.
         if (savedInstanceState == null) lifecycleScope.launch { entryRepository.purgeHidden() }
 
+        // Intro animation only on a fresh start from the launcher (not on rotation,
+        // shared links, shortcuts or notifications).
+        val launchedFromHome = savedInstanceState == null &&
+            intent?.action == Intent.ACTION_MAIN && intent?.hasCategory(Intent.CATEGORY_LAUNCHER) == true
         setContent {
+            var showIntro by rememberSaveable { mutableStateOf(launchedFromHome) }
+            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+                AppContent()
+                if (showIntro) app.tenet.android.ui.IntroAnimation(onDone = { showIntro = false })
+            }
+        }
+    }
+
+    @Composable
+    private fun AppContent() {
+        run {
             val settingsViewModel: SettingsViewModel = hiltViewModel()
             val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
 

@@ -1,6 +1,6 @@
 # Tenet – offene ToDos
 
-Stand: 02.10.2026, Version 0.21.1. Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 02.10.2026, Version 0.22.0. Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Google-Anmeldung & Sync (0.15)
 
@@ -73,7 +73,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Datenbank-Verschlüsselung (SQLCipher). Erst sinnvoll zusammen mit einem Backup.
 
-## Zuletzt erledigt (0.5.0 – 0.21.1)
+## Zuletzt erledigt (0.5.0 – 0.22.0)
+
+- 0.22: Intro-Animation bei jedem Start vom Homescreen: Logo baut sich auf (Stamm federt hoch, Querbalken öffnet mit Lichtreflex, Punkt ploppt mit Puls, „Tenet“ blendet ein), dann sanfter Übergang in die App; antippen überspringt, aus bei deaktivierten Systemanimationen; System-Splash nahtlos in Indigo
 
 - 0.21.1: Neues App-Icon: „T“ aus den drei Bereichsfarben (Querbalken Petrol→Violett, Stamm Blau) auf Indigo mit weichem Schimmer; Themed-Icon-Ebene für Android 13+
 
