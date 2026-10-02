@@ -1,24 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Tenet "T" with accent dot (branding/tenet-icon.svg); the 512 artboard is
-     scaled around the mark's centre (268,286) into the 66dp safe zone. -->
+<!-- Themed icon (Android 13+): the system tints this layer with the wallpaper colors. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <group
-        android:scaleX="0.2"
-        android:scaleY="0.2"
-        android:translateX="0.4"
-        android:translateY="-3.2">
-        <path
-            android:fillColor="#FFFFFFFF"
-            android:pathData="M140,180 H372 V228 H140 Z" />
-        <path
-            android:fillColor="#FFFFFFFF"
-            android:pathData="M232,204 H280 V356 C280,376 264,392 244,392 C224,392 208,376 208,356 V204 Z" />
-        <path
-            android:fillColor="#FFFFFFFF"
-            android:pathData="M348,356 A24,24 0 1,0 396,356 A24,24 0 1,0 348,356 Z" />
-    </group>
+    <path android:pathData="M54,38 h0 a7,7 0 0 1 7,7 v25 a7,7 0 0 1 -7,7 h0 a7,7 0 0 1 -7,-7 v-25 a7,7 0 0 1 7,-7 z" android:fillColor="#FFFFFFFF" />
+    <path android:pathData="M38,33 h32 a7,7 0 0 1 7,7 v0 a7,7 0 0 1 -7,7 h-32 a7,7 0 0 1 -7,-7 v0 a7,7 0 0 1 7,-7 z" android:fillColor="#FFFFFFFF" />
+    <path android:pathData="M72,71 m-4.5,0 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0" android:fillColor="#FFFFFFFF" />
 </vector>

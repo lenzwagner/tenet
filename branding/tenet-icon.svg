@@ -1,11 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
-  <!-- App-Icon Hintergrund (Hell / Pastellgelb) -->
-  <rect width="512" height="512" rx="112" fill="#FEF0B2" />
-  <!-- Hauptsymbol: Buchstabe "T" in dunklem Olivgrün -->
-  <g>
-    <path d="M140 180 H372 V228 H140 Z" fill="#3E5442" />
-    <path d="M232 204 H280 V356 C280 376 264 392 244 392 C224 392 208 376 208 356 V204 Z" fill="#3E5442" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2A2F6B"/><stop offset="1" stop-color="#11143A"/></linearGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5EE3CB"/><stop offset="1" stop-color="#B590FF"/></linearGradient>
+    <linearGradient id="stem" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7E9BFF"/><stop offset="1" stop-color="#5B6CF0"/></linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.46" r="0.43"><stop offset="0" stop-color="#7E9BFF" stop-opacity="0.2"/><stop offset="1" stop-color="#7E9BFF" stop-opacity="0"/></radialGradient>
+    <clipPath id="c"><rect x="0" y="0" width="108" height="108" rx="30"/></clipPath>
+  </defs>
+  <g clip-path="url(#c)">
+    <rect width="108" height="108" fill="url(#bg)"/>
+    <rect width="108" height="108" fill="url(#glow)"/>
+    <path d="M54,38 h0 a7,7 0 0 1 7,7 v25 a7,7 0 0 1 -7,7 h0 a7,7 0 0 1 -7,-7 v-25 a7,7 0 0 1 7,-7 z" fill="url(#stem)"/>
+    <path d="M38,33 h32 a7,7 0 0 1 7,7 v0 a7,7 0 0 1 -7,7 h-32 a7,7 0 0 1 -7,-7 v0 a7,7 0 0 1 7,-7 z" fill="url(#bar)"/>
+    <path d="M72,71 m-4.5,0 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0" fill="#5EE3CB"/>
   </g>
-  <!-- Akzent-Punkt in leuchtendem Hellgrün -->
-  <circle cx="372" cy="356" r="24" fill="#7CF000" />
 </svg>

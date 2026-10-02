@@ -1,24 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Tenet "T" with accent dot (branding/tenet-icon.svg); the 512 artboard is
-     scaled around the mark's centre (268,286) into the 66dp safe zone. -->
+<!--
+  Tenet mark: a "T" from the app's three area colors – crossbar from
+  teal (Ernährung) to violet (Journal), stem in blue (Sport) – plus a
+  small dot. Kept inside the 66dp safe zone of the 108dp canvas.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <group
-        android:scaleX="0.2"
-        android:scaleY="0.2"
-        android:translateX="0.4"
-        android:translateY="-3.2">
-        <path
-            android:fillColor="#FF3E5442"
-            android:pathData="M140,180 H372 V228 H140 Z" />
-        <path
-            android:fillColor="#FF3E5442"
-            android:pathData="M232,204 H280 V356 C280,376 264,392 244,392 C224,392 208,376 208,356 V204 Z" />
-        <path
-            android:fillColor="#FF7CF000"
-            android:pathData="M348,356 A24,24 0 1,0 396,356 A24,24 0 1,0 348,356 Z" />
-    </group>
+    <path android:pathData="M54,38 h0 a7,7 0 0 1 7,7 v25 a7,7 0 0 1 -7,7 h0 a7,7 0 0 1 -7,-7 v-25 a7,7 0 0 1 7,-7 z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="54" android:startY="38"
+                android:endX="54" android:endY="77"
+                android:startColor="#FF7E9BFF"
+                android:endColor="#FF5B6CF0" />
+        </aapt:attr>
+    </path>
+    <path android:pathData="M38,33 h32 a7,7 0 0 1 7,7 v0 a7,7 0 0 1 -7,7 h-32 a7,7 0 0 1 -7,-7 v0 a7,7 0 0 1 7,-7 z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="31" android:startY="40"
+                android:endX="77" android:endY="40"
+                android:startColor="#FF5EE3CB"
+                android:endColor="#FFB590FF" />
+        </aapt:attr>
+    </path>
+    <path android:pathData="M72,71 m-4.5,0 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0" android:fillColor="#FF5EE3CB" />
 </vector>
