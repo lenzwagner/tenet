@@ -88,8 +88,9 @@ class MainActivity : FragmentActivity() {
         // "Teilen → Tenet" from TikTok, Instagram, the browser …: recipe import.
         if (intent?.action == Intent.ACTION_SEND && intent.type?.startsWith("text/") == true) {
             val shared = intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
-            val link = Regex("https?://\\S+").find(shared)?.value
-            if (link != null) openShortcut = app.tenet.android.ui.SHARED_RECIPE + link
+            // Several links in one share (e.g. a list from a chat) → batch import.
+            val links = Regex("https?://\\S+").findAll(shared).map { it.value }.distinct().toList()
+            if (links.isNotEmpty()) openShortcut = app.tenet.android.ui.SHARED_RECIPE + links.joinToString(" ")
             intent.action = null
         }
         when (intent?.getStringExtra(ReminderScheduler.EXTRA_OPEN)) {

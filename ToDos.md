@@ -1,6 +1,6 @@
 # Tenet – offene ToDos
 
-Stand: 02.10.2026, Version 0.24.1. Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 02.10.2026, Version 0.25.0. Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Google-Anmeldung & Sync (0.15)
 
@@ -73,7 +73,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Datenbank-Verschlüsselung (SQLCipher). Erst sinnvoll zusammen mit einem Backup.
 
-## Zuletzt erledigt (0.5.0 – 0.24.1)
+## Zuletzt erledigt (0.5.0 – 0.25.0)
+
+- 0.25: Mehrere Rezepte auf einmal: Import-Modus „Mehrere“ (Links oder Text mit Links einfügen), nacheinander importiert und direkt gespeichert, Status je Link mit „Erneut“, Tippen öffnet das Rezept; Teilen eines Textes mit mehreren Links startet den Mehrfach-Import
 
 - 0.24.1: Rezept-Import: Vorschau direkt bearbeitbar (Titel, Kategorie, Portionen, Minuten, Zutaten, Schritte inkl. Reihenfolge), Vegetarisch-Erkennung aus den bearbeiteten Zutaten; KI erkennt Anweisungen im Fließtext als Schritte
 

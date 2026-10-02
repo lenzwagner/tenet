@@ -666,6 +666,7 @@ fun TenetApp(
                         onSaved = { id ->
                             navController.navigate(RecipeDetailRoute(id)) { popUpTo<RecipeImportRoute> { inclusive = true } }
                         },
+                        onOpenRecipe = { id -> navController.navigate(RecipeDetailRoute(id)) },
                     )
                 }
 }

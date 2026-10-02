@@ -93,8 +93,22 @@ data class ImportEdit(
     val focusKey: Long? = null,
 )
 
+/** One link of a batch import. */
+data class BatchItem(
+    val url: String,
+    val status: Status = Status.WAITING,
+    val title: String? = null,
+    val error: String? = null,
+    val recipeId: String? = null,
+) {
+    enum class Status { WAITING, RUNNING, DONE, FAILED }
+}
+
 data class RecipeImportState(
     val fromText: Boolean = false,
+    /** "Mehrere": several links, imported and saved one after another. */
+    val batch: Boolean = false,
+    val batchItems: List<BatchItem> = emptyList(),
     val edit: ImportEdit? = null,
     val input: String = "",
     /** Progress text while working; null = idle. */
@@ -118,15 +132,73 @@ class RecipeImportViewModel @Inject constructor(
 
     private var started = false
 
-    /** Link shared from TikTok, Instagram, the browser …: start right away. */
+    /** Link(s) shared from TikTok, Instagram, the browser …: start right away. */
     fun start(url: String) {
         if (started || url.isBlank()) return
         started = true
-        _state.update { it.copy(input = url, fromText = false) }
-        run()
+        val links = linksIn(url)
+        if (links.size > 1) {
+            _state.update { it.copy(input = links.joinToString("\n"), fromText = false, batch = true) }
+            runBatch()
+        } else {
+            _state.update { it.copy(input = url, fromText = false, batch = false) }
+            run()
+        }
     }
 
-    fun setMode(text: Boolean) = _state.update { it.copy(fromText = text, error = null) }
+    fun setMode(text: Boolean) = _state.update { it.copy(fromText = text, batch = false, error = null) }
+
+    /** 0 = Link, 1 = Mehrere, 2 = Text. */
+    fun setModeIndex(index: Int) = _state.update { it.copy(fromText = index == 2, batch = index == 1, error = null) }
+
+    // ---- Batch: several links in a row --------------------------------------------
+
+    fun linksIn(text: String): List<String> =
+        Regex("https?://\\S+").findAll(text).map { it.value.trimEnd(',', '.', ')', ']') }.distinct().toList()
+
+    private var batchJob: kotlinx.coroutines.Job? = null
+
+    /** Imports every link one after another and saves each recipe right away. */
+    fun runBatch() {
+        if (batchJob?.isActive == true) return
+        val links = linksIn(_state.value.input)
+        if (links.isEmpty()) {
+            _state.update { it.copy(error = "Keine Links gefunden.") }
+            return
+        }
+        _state.update { s ->
+            // Keep finished ones when started again (e.g. after adding links).
+            val done = s.batchItems.filter { it.status == BatchItem.Status.DONE }.associateBy { it.url }
+            s.copy(error = null, batchItems = links.map { done[it] ?: BatchItem(it) })
+        }
+        batchJob = viewModelScope.launch { processBatch() }
+    }
+
+    fun retry(url: String) {
+        _state.update { s -> s.copy(batchItems = s.batchItems.map { if (it.url == url) BatchItem(url) else it }) }
+        if (batchJob?.isActive != true) batchJob = viewModelScope.launch { processBatch() }
+    }
+
+    private suspend fun processBatch() {
+        while (true) {
+            val item = _state.value.batchItems.firstOrNull { it.status == BatchItem.Status.WAITING } ?: break
+            setItem(item.url) { it.copy(status = BatchItem.Status.RUNNING) }
+            val imported = importer.fromUrl(item.url)
+            val recipe = imported.getOrNull()
+            if (recipe == null) {
+                setItem(item.url) { it.copy(status = BatchItem.Status.FAILED, error = imported.exceptionOrNull()?.message ?: "Import fehlgeschlagen") }
+                continue
+            }
+            importer.save(recipe)
+                .onSuccess { id -> setItem(item.url) { it.copy(status = BatchItem.Status.DONE, title = recipe.title, recipeId = id) } }
+                .onFailure { e -> setItem(item.url) { it.copy(status = BatchItem.Status.FAILED, title = recipe.title, error = e.message ?: "Speichern fehlgeschlagen") } }
+        }
+    }
+
+    private fun setItem(url: String, change: (BatchItem) -> BatchItem) =
+        _state.update { s -> s.copy(batchItems = s.batchItems.map { if (it.url == url) change(it) else it }) }
+
+    val batchRunning: Boolean get() = batchJob?.isActive == true
     fun setInput(value: String) = _state.update { it.copy(input = value, error = null) }
 
     fun run() {
@@ -217,6 +289,8 @@ fun RecipeImportScreen(
     initialUrl: String,
     onBack: () -> Unit,
     onSaved: (recipeId: String) -> Unit,
+    /** Batch: open a saved recipe (stays on the list when coming back). */
+    onOpenRecipe: (recipeId: String) -> Unit = {},
     viewModel: RecipeImportViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(initialUrl) { viewModel.start(initialUrl) }
@@ -246,6 +320,25 @@ fun RecipeImportScreen(
                         Button(onClick = viewModel::save, enabled = !s.saving, shapes = ButtonDefaults.shapes(), modifier = Modifier.weight(1f)) {
                             if (s.saving) LoadingIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary) else Text("Speichern")
                         }
+                    } else if (s.batch) {
+                        val running = s.batchItems.any { it.status == BatchItem.Status.RUNNING || it.status == BatchItem.Status.WAITING }
+                        val finished = s.batchItems.isNotEmpty() && !running
+                        if (finished) {
+                            Button(onClick = onBack, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth()) {
+                                Text("Fertig · ${s.batchItems.count { it.status == BatchItem.Status.DONE }} gespeichert")
+                            }
+                        } else {
+                            val count = viewModel.linksIn(s.input).size
+                            Button(
+                                onClick = viewModel::runBatch,
+                                enabled = !running && count > 0,
+                                shapes = ButtonDefaults.shapes(),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                if (running) LoadingIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
+                                else Text(if (count == 1) "1 Rezept importieren" else "$count Rezepte importieren")
+                            }
+                        }
                     } else {
                         Button(
                             onClick = viewModel::run,
@@ -265,6 +358,7 @@ fun RecipeImportScreen(
             val r = s.result
             AnimatedContent(targetState = Triple(r != null, s.step != null, s.fromText), label = "import") { (hasResult, busy, _) ->
                 when {
+                    s.batch -> BatchImport(s, viewModel, clipboard.getText()?.text, onOpenRecipe)
                     hasResult && r != null -> s.edit?.let { e -> ImportPreview(r, e, viewModel, viewModel.signedIn) }
                     busy -> Column(
                         Modifier.fillMaxWidth().padding(vertical = 64.dp),
@@ -276,11 +370,7 @@ fun RecipeImportScreen(
                         Text("Das dauert meist 5–20 Sekunden.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     else -> Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        SegmentedSelector(
-                            segments = listOf(Segment("Link"), Segment("Text")),
-                            selectedIndex = if (s.fromText) 1 else 0,
-                            onSelect = { viewModel.setMode(it == 1) },
-                        )
+                        ImportModes(s, viewModel)
                         if (s.fromText) {
                             OutlinedTextField(
                                 value = s.input,
@@ -472,5 +562,93 @@ private fun ImportMeta(e: ImportEdit, vm: RecipeImportViewModel) {
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
             modifier = Modifier.width(130.dp),
         )
+    }
+}
+
+@Composable
+private fun ImportModes(s: RecipeImportState, vm: RecipeImportViewModel) {
+    SegmentedSelector(
+        segments = listOf(Segment("Link"), Segment("Mehrere"), Segment("Text")),
+        selectedIndex = when {
+            s.batch -> 1
+            s.fromText -> 2
+            else -> 0
+        },
+        onSelect = vm::setModeIndex,
+    )
+}
+
+/** Several links: paste them, then each is imported and saved; status per link. */
+@Composable
+private fun BatchImport(s: RecipeImportState, vm: RecipeImportViewModel, clip: String?, onOpen: (String) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        val started = s.batchItems.isNotEmpty()
+        if (!started) {
+            ImportModes(s, vm)
+            OutlinedTextField(
+                value = s.input,
+                onValueChange = vm::setInput,
+                label = { Text("Links") },
+                placeholder = { Text("Einen Link pro Zeile – oder einfach einen Text mit Links einfügen") },
+                leadingIcon = { Icon(Icons.Outlined.Link, contentDescription = null) },
+                trailingIcon = {
+                    TooltipIconButton(Icons.Outlined.ContentPaste, "Einfügen", {
+                        clip?.let { vm.setInput((s.input.trimEnd() + "\n" + it).trim()) }
+                    })
+                },
+                minLines = 6,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            val n = vm.linksIn(s.input).size
+            Text(
+                if (n == 0) "Jeder Link wird importiert und direkt gespeichert – danach kannst du jedes Rezept noch bearbeiten."
+                else "$n ${if (n == 1) "Link" else "Links"} erkannt",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            val done = s.batchItems.count { it.status == BatchItem.Status.DONE || it.status == BatchItem.Status.FAILED }
+            Text("$done von ${s.batchItems.size} verarbeitet", style = MaterialTheme.typography.titleMedium)
+            androidx.compose.material3.LinearWavyProgressIndicator(
+                progress = { done.toFloat() / s.batchItems.size },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(androidx.compose.material3.ListItemDefaults.SegmentedGap)) {
+                s.batchItems.forEachIndexed { i, item ->
+                    androidx.compose.material3.SegmentedListItem(
+                        onClick = { item.recipeId?.let(onOpen) },
+                        shapes = androidx.compose.material3.ListItemDefaults.segmentedShapes(i, s.batchItems.size),
+                        colors = androidx.compose.material3.ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                        leadingContent = {
+                            when (item.status) {
+                                BatchItem.Status.RUNNING -> LoadingIndicator(Modifier.size(28.dp))
+                                BatchItem.Status.DONE -> Icon(Icons.Outlined.CloudDone, contentDescription = "Gespeichert", tint = MaterialTheme.colorScheme.primary)
+                                BatchItem.Status.FAILED -> Icon(Icons.Outlined.Close, contentDescription = "Fehler", tint = MaterialTheme.colorScheme.error)
+                                BatchItem.Status.WAITING -> Icon(Icons.Outlined.Link, contentDescription = "Wartet", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        },
+                        supportingContent = {
+                            Text(
+                                when (item.status) {
+                                    BatchItem.Status.WAITING -> "Wartet"
+                                    BatchItem.Status.RUNNING -> "KI liest das Rezept …"
+                                    BatchItem.Status.DONE -> item.url.substringAfter("://").take(48)
+                                    BatchItem.Status.FAILED -> item.error.orEmpty()
+                                },
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                        trailingContent = {
+                            if (item.status == BatchItem.Status.FAILED) {
+                                androidx.compose.material3.TextButton(onClick = { vm.retry(item.url) }, shapes = ButtonDefaults.shapes()) { Text("Erneut") }
+                            }
+                        },
+                    ) {
+                        Text(item.title ?: item.url.substringAfter("://").substringBefore("?").take(40), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
+        }
     }
 }
