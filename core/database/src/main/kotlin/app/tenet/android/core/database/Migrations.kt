@@ -6,6 +6,13 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 /** v8 -> v9: training weekdays on plans (Ruhetage on "Heute"). */
 /** v11: goal time and taper flag of running plans. */
 /** v14: planned units can be skipped (running plan, Runna-style). */
+/** v19: supersets for a single session. */
+val MIGRATION_18_19 = object : Migration(18, 19) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `SessionExercise` ADD COLUMN `supersetGroup` INTEGER")
+    }
+}
+
 /**
  * v18: gym rest times become automatic (0 = RestAdvisor: per exercise and
  * reps, e.g. 3–5 min squat, 60–90 s curls) instead of one value per plan goal.

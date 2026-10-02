@@ -535,6 +535,56 @@ class SportRepository @Inject constructor(
         return done
     }
 
+    /**
+     * Pairs an exercise with the next one as a superset (or undoes it with
+     * [link] = false), for this session and, with [permanent], in the plan.
+     */
+    suspend fun setSuperset(sessionExerciseId: String, link: Boolean, permanent: Boolean) {
+        val se = dao.sessionExerciseOnce(sessionExerciseId) ?: return
+        val all = dao.sessionExercisesOnce(se.sessionId).sortedBy { it.sortOrder }
+        val index = all.indexOfFirst { it.id == sessionExerciseId }
+        val workoutId = dao.sessionOnce(se.sessionId)?.plannedWorkoutId
+        val routine = workoutId?.let { dao.routineOnce(it) }.orEmpty()
+        fun group(e: app.tenet.android.core.database.entity.SessionExercise): Int? =
+            e.supersetGroup?.takeIf { it > 0 } ?: if (e.supersetGroup == 0) null else routine.firstOrNull { it.exerciseId == e.exerciseId }?.supersetGroup
+        if (link) {
+            val next = all.getOrNull(index + 1) ?: return
+            // Join an existing group of either side, else a new one.
+            val g = group(se) ?: group(next) ?: ((all.mapNotNull { group(it) } + routine.mapNotNull { it.supersetGroup }).maxOrNull() ?: 0) + 1
+            dao.setSessionSuperset(listOf(se.id, next.id), g)
+            if (permanent && workoutId != null) dao.setRoutineSuperset(workoutId, listOf(se.exerciseId, next.exerciseId), g)
+        } else {
+            val g = group(se) ?: return
+            val members = all.filter { group(it) == g }
+            // 0 = "no superset today", also when the plan says otherwise.
+            dao.setSessionSuperset(members.map { it.id }, 0)
+            if (permanent && workoutId != null) dao.setRoutineSuperset(workoutId, members.map { it.exerciseId }, null)
+        }
+    }
+
+    /**
+     * Drop set after [afterSetId] (default: the last working set): about
+     * 75 % of its weight on 2.5 kg steps, done without rest.
+     */
+    suspend fun addDropSet(sessionExerciseId: String, afterSetId: String? = null): SetEntry? {
+        val sets = dao.setsOnce(sessionExerciseId).sortedBy { it.sortOrder }
+        val base = afterSetId?.let { id -> sets.firstOrNull { it.id == id } }
+            ?: sets.lastOrNull { it.type != SetType.WARMUP } ?: return null
+        val kg = (Math.round(base.weight * 0.75f / 2.5f) * 2.5f).coerceAtLeast(0f)
+        val drop = SetEntry(
+            id = newUuid(),
+            sessionExerciseId = sessionExerciseId,
+            sortOrder = base.sortOrder + 1,
+            type = SetType.DROP,
+            weight = kg,
+            reps = 0,
+        )
+        // Make room: later sets move one down.
+        val shifted = sets.filter { it.sortOrder > base.sortOrder }.map { it.copy(sortOrder = it.sortOrder + 1) }
+        (shifted.sortedByDescending { it.sortOrder } + drop).forEach { dao.upsertSet(it) }
+        return drop
+    }
+
     suspend fun addSet(sessionExerciseId: String): SetEntry {
         val existing = dao.setsOnce(sessionExerciseId)
         val last = existing.maxByOrNull { it.sortOrder }
@@ -813,13 +863,22 @@ data class GymOverview(
 )
 
 /** Guide view of a block (pure data for [app.tenet.android.core.common.WorkoutGuide]). */
-fun SessionBlock.toGuide(): app.tenet.android.core.common.WorkoutGuide.GuideBlock = guideBlock(exercise, target, suggestion, sets)
+fun SessionBlock.toGuide(): app.tenet.android.core.common.WorkoutGuide.GuideBlock =
+    guideBlock(exercise, target, suggestion, sets, effectiveSuperset(sessionExercise.supersetGroup, target))
+
+/** Session value wins (0 = none today), else the plan's group. */
+fun effectiveSuperset(sessionGroup: Int?, target: RoutineExercise?): Int? = when {
+    sessionGroup == null -> target?.supersetGroup
+    sessionGroup <= 0 -> null
+    else -> sessionGroup
+}
 
 fun guideBlock(
     exercise: Exercise,
     target: RoutineExercise?,
     suggestion: OverloadMath.Suggestion?,
     sets: List<SetEntry>,
+    supersetGroup: Int? = target?.supersetGroup,
 ): app.tenet.android.core.common.WorkoutGuide.GuideBlock = app.tenet.android.core.common.WorkoutGuide.GuideBlock(
     name = exercise.name,
     timed = exercise.measureType == MeasureType.HOLD || exercise.measureType == MeasureType.DURATION,
@@ -828,13 +887,14 @@ fun guideBlock(
     targetReps = target?.targetReps,
     suggestedKg = suggestion?.weightKg?.takeIf { it > 0f },
     routineRestSec = target?.restSec,
-    superset = target?.supersetGroup,
+    superset = supersetGroup,
     bodyweight = exercise.discipline == Discipline.CALISTHENICS || exercise.equipment.contains("körpergewicht", ignoreCase = true),
     sets = sets.map {
         app.tenet.android.core.common.WorkoutGuide.GuideSet(
             id = it.id,
             sortOrder = it.sortOrder,
             warmup = it.type == SetType.WARMUP,
+            drop = it.type == SetType.DROP,
             weightKg = it.weight,
             reps = it.reps,
             durationSec = it.durationSec,

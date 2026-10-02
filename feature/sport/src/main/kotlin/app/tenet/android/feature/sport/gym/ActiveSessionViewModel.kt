@@ -49,6 +49,8 @@ data class BlockUi(
     val bestE1rm: Float? = null,
     val notes: String = "",
     val previousNote: String? = null,
+    /** Effective superset group (session value, else plan). */
+    val supersetGroup: Int? = null,
 )
 
 data class SessionUiState(
@@ -219,6 +221,7 @@ class ActiveSessionViewModel @Inject constructor(
         bestE1rm = bestE1rm,
         notes = sessionExercise.notes,
         previousNote = previousNote,
+        supersetGroup = app.tenet.android.core.data.effectiveSuperset(sessionExercise.supersetGroup, target),
         rows = sets.map { set ->
             SetRowUi(
                 set = set,
@@ -394,7 +397,31 @@ class ActiveSessionViewModel @Inject constructor(
         }
     }
 
-    private fun BlockUi.toGuide() = guideBlock(exercise, target, suggestion, rows.map { it.set })
+    private fun BlockUi.toGuide() = guideBlock(exercise, target, suggestion, rows.map { it.set }, supersetGroup)
+
+    /** Pairs with the next exercise as a superset or undoes it (today or also in the plan). */
+    fun setSuperset(sessionExerciseId: String, link: Boolean, permanent: Boolean) {
+        viewModelScope.launch {
+            repository.setSuperset(sessionExerciseId, link, permanent)
+            refresh()
+            _messages.send(
+                when {
+                    link && permanent -> "Supersatz im Plan gespeichert"
+                    link -> "Supersatz für heute"
+                    else -> "Supersatz gelöst"
+                },
+            )
+        }
+    }
+
+    /** Drop set after a set (default: the last working set), ~75 % weight, no rest before it. */
+    fun addDropSet(sessionExerciseId: String, afterSetId: String?) {
+        viewModelScope.launch {
+            val drop = repository.addDropSet(sessionExerciseId, afterSetId)
+            refresh()
+            _messages.send(drop?.let { "Dropsatz mit ${formatNumber(it.weight)} kg angehängt – direkt ohne Pause" } ?: "Erst einen Satz anlegen")
+        }
+    }
 
     private fun applyRow(
         sessionExerciseId: String,

@@ -73,7 +73,7 @@ import app.tenet.android.core.database.entity.RunTrackPoint
         // Note folders + full-text search (v10)
         app.tenet.android.core.database.entity.EntryFts::class,
     ],
-    version = 18,
+    version = 19,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

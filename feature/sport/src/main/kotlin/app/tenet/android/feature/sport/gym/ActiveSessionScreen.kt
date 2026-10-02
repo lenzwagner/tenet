@@ -89,6 +89,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.outlined.TrendingDown
+import androidx.compose.material.icons.outlined.LinkOff
+import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.ui.semantics.contentDescription
@@ -139,6 +143,7 @@ fun ActiveSessionScreen(
         is PendingChange.Swap -> viewModel.swapExercise(change.block.sessionExerciseId, change.exercise, permanent)
         is PendingChange.Add -> viewModel.addExercise(change.exercise, permanent)
         is PendingChange.Remove -> viewModel.removeExercise(change.block.sessionExerciseId, change.block.exercise.name, permanent)
+        is PendingChange.Superset -> viewModel.setSuperset(change.block.sessionExerciseId, change.link, permanent)
     }
     val rest by viewModel.rest.collectAsStateWithLifecycle()
     val endRequested by viewModel.endRequested.collectAsStateWithLifecycle()
@@ -251,9 +256,25 @@ fun ActiveSessionScreen(
                         )
                     }
                 }
-                items(state.blocks, key = { it.sessionExerciseId }) { block ->
+                itemsIndexed(state.blocks, key = { _, b -> b.sessionExerciseId }) { index, block ->
+                    val nextBlock = state.blocks.getOrNull(index + 1)
                     ExerciseCard(
                         block = block,
+                        supersetLabel = block.supersetGroup?.let { g ->
+                            // A, B, C … in order of appearance in this session.
+                            val order = state.blocks.mapNotNull { it.supersetGroup }.distinct()
+                            "Supersatz " + ('A' + order.indexOf(g).coerceAtLeast(0))
+                        },
+                        canLinkNext = nextBlock != null && (block.supersetGroup == null || block.supersetGroup != nextBlock.supersetGroup),
+                        onLinkNext = {
+                            val change = PendingChange.Superset(block, true, nextBlock?.exercise?.name)
+                            if (hasPlan) pending = change else apply(change, false)
+                        },
+                        onUnlink = {
+                            val change = PendingChange.Superset(block, false, null)
+                            if (hasPlan) pending = change else apply(change, false)
+                        },
+                        onDropAfter = { setId -> viewModel.addDropSet(block.sessionExerciseId, setId) },
                         onText = viewModel::onSetText,
                         onToggle = { exerciseId, setId ->
                             haptics.performHapticFeedback(HapticFeedbackType.Confirm)
@@ -310,11 +331,16 @@ fun ActiveSessionScreen(
                     is PendingChange.Swap -> "${change.block.exercise.name} → ${change.exercise.name}"
                     is PendingChange.Add -> "${change.exercise.name} hinzufügen"
                     is PendingChange.Remove -> "${change.block.exercise.name} entfernen"
+                    is PendingChange.Superset ->
+                        if (change.link) "Supersatz: ${change.block.exercise.name} + ${change.partner}" else "Supersatz lösen"
                 },
                 text = when (change) {
                     is PendingChange.Remove ->
                         if (hasPlan) "Nur aus dem heutigen Training oder auch dauerhaft aus deinem Plan?"
                         else "Die Übung und ihre Sätze werden aus diesem Training entfernt."
+                    is PendingChange.Superset ->
+                        if (change.link) "Die beiden Übungen laufen abwechselnd, Pause erst nach jeder Runde. Nur heute oder dauerhaft im Plan?"
+                        else "Wieder Übung für Übung mit eigener Pause. Nur heute oder dauerhaft im Plan?"
                     else -> "Nur für dieses Training oder dauerhaft in deinem Plan? Bereits abgehakte Sätze bleiben erhalten."
                 },
                 showPermanent = hasPlan,
@@ -569,6 +595,11 @@ private fun formatKg(value: Float): String =
 @Composable
 private fun ExerciseCard(
     block: BlockUi,
+    supersetLabel: String?,
+    canLinkNext: Boolean,
+    onLinkNext: () -> Unit,
+    onUnlink: () -> Unit,
+    onDropAfter: (setId: String?) -> Unit,
     onText: (String, String, ActiveSessionViewModel.Field, String) -> Unit,
     onToggle: (String, String) -> Unit,
     onAddSet: (String) -> Unit,
@@ -588,6 +619,9 @@ private fun ExerciseCard(
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(text = block.exercise.name, style = MaterialTheme.typography.titleMedium)
+                    supersetLabel?.let {
+                        Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
+                    }
                     // Target and the ideal rest for this exercise (own value from the plan wins).
                     val rest = remember(block.exercise.id, block.target) { restHint(block) }
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -642,6 +676,34 @@ private fun ExerciseCard(
                             onClick = {
                                 menu = false
                                 onWarmup()
+                            },
+                        )
+                        if (canLinkNext) {
+                            DropdownMenuItem(
+                                text = { Text("Supersatz mit nächster Übung") },
+                                leadingIcon = { Icon(Icons.Outlined.Link, contentDescription = null) },
+                                onClick = {
+                                    menu = false
+                                    onLinkNext()
+                                },
+                            )
+                        }
+                        if (supersetLabel != null) {
+                            DropdownMenuItem(
+                                text = { Text("Supersatz lösen") },
+                                leadingIcon = { Icon(Icons.Outlined.LinkOff, contentDescription = null) },
+                                onClick = {
+                                    menu = false
+                                    onUnlink()
+                                },
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text("Dropsatz anhängen") },
+                            leadingIcon = { Icon(Icons.Outlined.TrendingDown, contentDescription = null) },
+                            onClick = {
+                                menu = false
+                                onDropAfter(null)
                             },
                         )
                         DropdownMenuItem(
@@ -736,6 +798,7 @@ private fun ExerciseCard(
                     onText = onText,
                     onToggle = onToggle,
                     onType = onSetType,
+                    onDropAfter = { onDropAfter(it) },
                 )
             }
 
@@ -771,6 +834,7 @@ private fun SetRow(
     onText: (String, String, ActiveSessionViewModel.Field, String) -> Unit,
     onToggle: (String, String) -> Unit,
     onType: (String, String, SetType) -> Unit,
+    onDropAfter: (setId: String) -> Unit = {},
 ) {
     val setId = row.set.id
     Row(
@@ -806,6 +870,17 @@ private fun SetRow(
                             if (type == row.set.type) {
                                 Icon(Icons.Outlined.Check, contentDescription = "Aktiv")
                             }
+                        },
+                    )
+                }
+                if (row.set.type != SetType.WARMUP) {
+                    androidx.compose.material3.HorizontalDivider()
+                    DropdownMenuItem(
+                        text = { Text("Dropsatz danach") },
+                        leadingIcon = { Icon(Icons.Outlined.TrendingDown, contentDescription = null) },
+                        onClick = {
+                            typeMenuOpen = false
+                            onDropAfter(setId)
                         },
                     )
                 }
@@ -939,4 +1014,5 @@ private sealed interface PendingChange {
     data class Swap(val block: BlockUi, val exercise: Exercise) : PendingChange
     data class Add(val exercise: Exercise) : PendingChange
     data class Remove(val block: BlockUi) : PendingChange
+    data class Superset(val block: BlockUi, val link: Boolean, val partner: String?) : PendingChange
 }

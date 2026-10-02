@@ -132,6 +132,11 @@ data class SessionExercise(
     /** Note for this exercise in this session, like Hevy (v15). */
     @androidx.room.ColumnInfo(defaultValue = "")
     val notes: String = "",
+    /**
+     * Superset for this session only (v19): null = as in the plan, 0 = none
+     * (plan superset undone today), > 0 = group with neighbours of the same value.
+     */
+    val supersetGroup: Int? = null,
 )
 
 @Entity(

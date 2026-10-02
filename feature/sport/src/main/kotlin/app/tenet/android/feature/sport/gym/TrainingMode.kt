@@ -171,7 +171,11 @@ private fun SetPhase(next: WorkoutGuide.Next, exerciseId: String?, onLog: (Float
         Spacer(Modifier.height(16.dp))
         Text(next.name, style = MaterialTheme.typography.headlineMediumEmphasized, textAlign = TextAlign.Center)
         Text(
-            (if (next.set.warmup) "Aufwärmsatz · " else "") + "Satz ${next.number} von ${next.count}",
+            when {
+                next.isDrop -> "Dropsatz · sofort, bis kurz vor Muskelversagen"
+                next.set.warmup -> "Aufwärmsatz · Satz ${next.number} von ${next.count}"
+                else -> "Satz ${next.number} von ${next.count}"
+            },
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary,
         )
@@ -190,8 +194,11 @@ private fun SetPhase(next: WorkoutGuide.Next, exerciseId: String?, onLog: (Float
             Icon(Icons.Outlined.Timer, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(4.dp))
             Text(
-                if (next.supersetSwitch) "Supersatz: danach direkt zur nächsten Übung"
-                else "Danach ${clock(next.restSec)} Pause (${next.advice.range} empfohlen)",
+                when {
+                    next.dropNext -> "Danach sofort Dropsatz – Gewicht runter, weiter"
+                    next.supersetSwitch -> "Supersatz: danach direkt zur nächsten Übung"
+                    else -> "Danach ${clock(next.restSec)} Pause (${next.advice.range} empfohlen)"
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

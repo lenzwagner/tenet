@@ -1,6 +1,6 @@
 # Tenet – offene ToDos
 
-Stand: 02.10.2026, Version 0.22.1. Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 02.10.2026, Version 0.23.0. Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Google-Anmeldung & Sync (0.15)
 
@@ -73,7 +73,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Datenbank-Verschlüsselung (SQLCipher). Erst sinnvoll zusammen mit einem Backup.
 
-## Zuletzt erledigt (0.5.0 – 0.22.1)
+## Zuletzt erledigt (0.5.0 – 0.23.0)
+
+- 0.23: Supersätze auch für ein einzelnes Training (Übungsmenü „Supersatz mit nächster Übung“ / „lösen“, nur heute oder dauerhaft, Anzeige „Supersatz A“); Dropsätze: „Dropsatz anhängen“ (Übungsmenü) oder „Dropsatz danach“ (Satzmenü) mit ~75 % Gewicht, ohne Pause davor, Trainingsmodus/Mitteilung „sofort weiter … × max“
 
 - 0.22.1: Supersätze im Trainingsmodus/Mitteilung abwechselnd (A1, B1, A2 …, 20 s Wechsel, Pause nach der Runde); erstes Training ohne Gewicht: „? kg × 8“, Eingabe statt „Wie geplant“; Farbstil-Vorschau zeigt bei „Nur zwei Farben“ nur zwei Farben; Notiz-Kacheln: Tags bleiben unten sichtbar; Rezept-Import übernimmt Zutaten, die nur in den Schritten stehen
 

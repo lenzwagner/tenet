@@ -85,4 +85,18 @@ class WorkoutGuideTest {
         org.junit.Assert.assertTrue(second.restSec > WorkoutGuide.SUPERSET_SWITCH_SEC)
         org.junit.Assert.assertEquals(WorkoutGuide.SUPERSET_SWITCH_SEC, WorkoutGuide.restAfter(listOf(a, b), 0, "a1", 12))
     }
+
+    @Test fun dropSetFollowsWithoutRest() {
+        val sets = listOf(set("w1", 0, 80f, 8, done = true), set("w2", 1, 80f, 8), WorkoutGuide.GuideSet("d", 2, false, 60f, 0, null, false, drop = true))
+        val block = bench.copy(sets = sets)
+        val next = WorkoutGuide.next(listOf(block))!!
+        org.junit.Assert.assertEquals("w2", next.set.id)
+        org.junit.Assert.assertEquals(0, next.restSec)
+        org.junit.Assert.assertTrue(next.dropNext)
+        org.junit.Assert.assertEquals(0, WorkoutGuide.restAfter(listOf(block), 0, "w2", 8))
+        val drop = WorkoutGuide.next(listOf(block.copy(sets = sets.map { if (it.id == "w2") it.copy(completed = true) else it })))!!
+        org.junit.Assert.assertTrue(drop.isDrop)
+        org.junit.Assert.assertEquals("60 kg × max", drop.plannedText)
+        org.junit.Assert.assertTrue(drop.restSec > 60)
+    }
 }

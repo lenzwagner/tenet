@@ -378,6 +378,12 @@ interface SportDao {
     @Insert
     suspend fun insertSessionExercises(exercises: List<SessionExercise>)
 
+    @Query("UPDATE SessionExercise SET supersetGroup = :group WHERE id IN (:ids)")
+    suspend fun setSessionSuperset(ids: List<String>, group: Int?)
+
+    @Query("UPDATE RoutineExercise SET supersetGroup = :group WHERE plannedWorkoutId = :workoutId AND exerciseId IN (:exerciseIds)")
+    suspend fun setRoutineSuperset(workoutId: String, exerciseIds: List<String>, group: Int?)
+
     @Query("SELECT * FROM SessionExercise WHERE sessionId = :sessionId ORDER BY sortOrder")
     suspend fun sessionExercisesOnce(sessionId: String): List<SessionExercise>
 

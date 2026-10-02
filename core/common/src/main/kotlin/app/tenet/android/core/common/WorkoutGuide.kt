@@ -15,6 +15,8 @@ object WorkoutGuide {
         val reps: Int,
         val durationSec: Int?,
         val completed: Boolean,
+        /** Drop set: lighter, straight after the set before it. */
+        val drop: Boolean = false,
     )
 
     data class GuideBlock(
@@ -49,7 +51,12 @@ object WorkoutGuide {
         val restSec: Int,
         val advice: RestAdvisor.Advice,
         val bodyweight: Boolean = false,
+        /** A drop set follows right away (no rest before it). */
+        val dropNext: Boolean = false,
     ) {
+        /** This set is a drop set (to failure, no rest before it). */
+        val isDrop: Boolean get() = set.drop
+
         /** First time with weights: nothing to suggest yet, the user picks the weight. */
         val weightUnknown: Boolean get() = !timed && !bodyweight && !set.warmup && plannedKg <= 0f
 
@@ -60,6 +67,7 @@ object WorkoutGuide {
         val plannedText: String
             get() = when {
                 timed -> "${plannedSec ?: 0} s"
+                isDrop && plannedKg > 0f -> "${fmt(plannedKg)} kg × max"
                 plannedKg > 0f -> "${fmt(plannedKg)} kg × $plannedReps"
                 weightUnknown -> "? kg × $plannedReps"
                 else -> "× $plannedReps"
@@ -95,8 +103,15 @@ object WorkoutGuide {
         val (bi, k) = seq[pos]
         val ordered = blocks[bi].sets.sortedBy { it.sortOrder }
         val described = describe(bi, blocks[bi], ordered, k)
-        return if (switchesWithinSuperset(blocks, seq, pos)) described.copy(restSec = SUPERSET_SWITCH_SEC) else described
+        return when {
+            dropFollows(ordered, k) -> described.copy(restSec = 0, dropNext = true)
+            switchesWithinSuperset(blocks, seq, pos) -> described.copy(restSec = SUPERSET_SWITCH_SEC)
+            else -> described
+        }
     }
+
+    /** The next set of the same exercise is a drop set (done straight away). */
+    private fun dropFollows(ordered: List<GuideSet>, k: Int): Boolean = ordered.getOrNull(k + 1)?.drop == true
 
     /**
      * Rest after a set that was just done with [reps]: a short switch inside
@@ -107,6 +122,7 @@ object WorkoutGuide {
         val ordered = block.sets.sortedBy { it.sortOrder }
         val k = ordered.indexOfFirst { it.id == setId }.coerceAtLeast(0)
         val set = ordered.getOrNull(k)
+        if (dropFollows(ordered, k)) return 0
         val seq = sequence(blocks)
         val pos = seq.indexOf(blockIndex to k)
         if (pos >= 0 && switchesWithinSuperset(blocks, seq, pos)) return SUPERSET_SWITCH_SEC
@@ -137,6 +153,8 @@ object WorkoutGuide {
         }
         val reps = when {
             set.reps > 0 -> set.reps
+            // Drop: to failure; a rough guess for the quick choices.
+            set.drop -> ((previousDone?.reps ?: block.targetReps ?: 8) * 0.75f).toInt().coerceAtLeast(1)
             else -> previousDone?.reps?.takeIf { it > 0 } ?: block.targetReps ?: 8
         }
         val advice = RestAdvisor.advise(block.pattern, block.primaryMuscles, if (block.timed) 0 else reps, set.warmup)

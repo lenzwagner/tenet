@@ -216,10 +216,12 @@ class RestTimerService : Service() {
                 if (Build.VERSION.SDK_INT >= 36) builder.setShortCriticalText(clock(left))
             }
             n != null -> {
-                builder.setContentTitle("${n.name} · Satz ${n.number}/${n.count}")
+                builder.setContentTitle(if (n.isDrop) "${n.name} · Dropsatz" else "${n.name} · Satz ${n.number}/${n.count}")
                     .setContentText(
                         hint ?: when {
                             n.weightUnknown -> "Erstes Mal: Gewicht und Wiederholungen eintragen, z. B. 40x${n.plannedReps}"
+                            n.isDrop -> "Sofort weiter: ${n.plannedText}"
+                            n.dropNext -> "Geplant: ${n.plannedText} · danach sofort Dropsatz"
                             n.supersetSwitch -> "Geplant: ${n.plannedText} · danach direkt Supersatz-Partner"
                             else -> "Geplant: ${n.plannedText} · danach ${clock(n.restSec)} Pause"
                         },
