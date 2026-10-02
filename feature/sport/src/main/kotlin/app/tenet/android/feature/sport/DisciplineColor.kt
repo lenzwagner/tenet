@@ -15,6 +15,10 @@ import app.tenet.android.core.database.entity.Discipline
 @Composable
 fun disciplineColor(discipline: Discipline): Color {
     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    // "Nur zwei Farben": the disciplines share primary and secondary (icons tell them apart).
+    if (app.tenet.android.core.designsystem.theme.LocalTwoTone.current) {
+        return if (discipline == Discipline.CALISTHENICS) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
+    }
     return when (discipline) {
         Discipline.GYM ->
             if (isDark) Color(0xFFB3C8E8) else Color(0xFF4B607C)

@@ -1,6 +1,6 @@
 # Tenet – offene ToDos
 
-Stand: 02.10.2026, Version 0.23.1. Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 02.10.2026, Version 0.23.2. Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Google-Anmeldung & Sync (0.15)
 
@@ -73,7 +73,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Datenbank-Verschlüsselung (SQLCipher). Erst sinnvoll zusammen mit einem Backup.
 
-## Zuletzt erledigt (0.5.0 – 0.23.1)
+## Zuletzt erledigt (0.5.0 – 0.23.2)
+
+- 0.23.2: Alle Seiten im Zwei-Farben-Modus geprüft; Disziplin-Farben (Wochenkalender, Sport) folgen jetzt Primär-/Sekundärfarbe statt drei fester Töne. Datenfarben (Makro-Ringe, Stimmung, Pulszonen) bewusst mehrfarbig
 
 - 0.23.1: Ganze App zweifarbig: „Nur zwei Farben“ ist Standard (Primär- + Sekundärfarbe, keine Bereichs-/Tertiärfarben; in den Einstellungen abschaltbar); App-Icon und Intro nur noch Lavendel + Blau
 
