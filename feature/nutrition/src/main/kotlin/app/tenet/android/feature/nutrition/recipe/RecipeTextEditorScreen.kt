@@ -292,7 +292,7 @@ fun RecipeTextEditorScreen(
 }
 
 @Composable
-private fun SectionHeader(title: String, count: Int) {
+internal fun SectionHeader(title: String, count: Int) {
     Row(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(title, style = MaterialTheme.typography.titleMediumEmphasized, modifier = Modifier.weight(1f))
         Text("$count", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -300,7 +300,7 @@ private fun SectionHeader(title: String, count: Int) {
 }
 
 @Composable
-private fun AddButton(label: String, onClick: () -> Unit) {
+internal fun AddButton(label: String, onClick: () -> Unit) {
     FilledTonalButton(onClick = onClick, shapes = ButtonDefaults.shapes()) {
         Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
         Spacer(Modifier.width(ButtonDefaults.IconSpacing))
@@ -383,7 +383,7 @@ private fun StepCard(
 
 /** Filled field without underline: calm tonal rows instead of many outlines. */
 @Composable
-private fun softFieldColors(container: Color = MaterialTheme.colorScheme.surfaceContainerHigh) = TextFieldDefaults.colors(
+internal fun softFieldColors(container: Color = MaterialTheme.colorScheme.surfaceContainerHigh) = TextFieldDefaults.colors(
     focusedContainerColor = container,
     unfocusedContainerColor = container,
     focusedIndicatorColor = Color.Transparent,

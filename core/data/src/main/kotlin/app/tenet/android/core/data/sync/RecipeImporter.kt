@@ -485,6 +485,7 @@ class RecipeImporter @Inject constructor(
                ERFINDE NIEMALS Zutaten, Mengen, Schritte, Portionen oder Zeiten, die nicht im Text stehen – lieber weglassen.
                Zutaten, die nur in der Zubereitung vorkommen (z. B. "in Butter ausbacken", "mit Apfelmus servieren", "mit Salz abschmecken"),
                gehören AUCH in "ingredients" – ohne Menge, wenn keine genannt ist ("Butter zum Ausbacken", "Apfelmus").
+            Anweisungen im Fließtext ("Zwiebel anbraten, Tomaten dazu, 15 Minuten kochen") SIND Schritte: teile sie in einzelne, kurze Schritte auf.
             2. Wenn im Text KEINE Zubereitungsschritte enthalten sind (sondern z. B. nur Zutaten und ein Verweis auf ein Video oder einen Bio-Link):
                - Extrahiere alle im Text erwähnten Zutaten.
                - Füge als Zubereitungsschritt ("steps") einen Hinweis hinzu, z. B.: "Detaillierte Zubereitung siehe Video / Link in Bio".

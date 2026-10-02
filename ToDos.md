@@ -1,6 +1,6 @@
 # Tenet – offene ToDos
 
-Stand: 02.10.2026, Version 0.24.0. Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 02.10.2026, Version 0.24.1. Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Google-Anmeldung & Sync (0.15)
 
@@ -73,7 +73,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Datenbank-Verschlüsselung (SQLCipher). Erst sinnvoll zusammen mit einem Backup.
 
-## Zuletzt erledigt (0.5.0 – 0.24.0)
+## Zuletzt erledigt (0.5.0 – 0.24.1)
+
+- 0.24.1: Rezept-Import: Vorschau direkt bearbeitbar (Titel, Kategorie, Portionen, Minuten, Zutaten, Schritte inkl. Reihenfolge), Vegetarisch-Erkennung aus den bearbeiteten Zutaten; KI erkennt Anweisungen im Fließtext als Schritte
 
 - 0.24: Laufform „Deine Form“ (5 km, 10 km, Halbmarathon, Marathon) aus allen Läufen der letzten 8 Wochen inkl. Health Connect, mit Puls (Daniels-VDOT + Pulsreserve nach Swain/Karvonen, Maxpuls nach Tanaka aus dem Profilalter); Plan-Prognose und „Tempi an Form anpassen“ nutzen sie; Trainingsmodus: kg/Wdh direkt eintippbar; Gym-Steigerung rundet auf 2,5-kg-Raster (62,5 → 67,5 statt 70); Health-Connect-Import mit Test-App (tools/hcseed) im Emulator geprüft
 

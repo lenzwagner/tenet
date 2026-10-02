@@ -43,6 +43,18 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.key
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.material.icons.outlined.ArrowDropDown
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Remove
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -69,8 +81,21 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/** Editable copy of the import result (the preview is the editor). */
+data class ImportEdit(
+    val title: String,
+    val category: String,
+    val servings: Int,
+    val minutes: String,
+    val ingredients: List<EditLine>,
+    val steps: List<EditLine>,
+    /** Row just added: gets the keyboard focus once. */
+    val focusKey: Long? = null,
+)
+
 data class RecipeImportState(
     val fromText: Boolean = false,
+    val edit: ImportEdit? = null,
     val input: String = "",
     /** Progress text while working; null = idle. */
     val step: String? = null,
@@ -111,14 +136,67 @@ class RecipeImportViewModel @Inject constructor(
             _state.update { it.copy(step = "Wird geladen …", error = null, result = null) }
             val onStep: (String) -> Unit = { msg -> _state.update { it.copy(step = msg) } }
             val result = if (s.fromText) importer.fromText(s.input, onStep) else importer.fromUrl(s.input, onStep)
+            val r = result.getOrNull()
             _state.update {
-                it.copy(step = null, result = result.getOrNull(), error = result.exceptionOrNull()?.message)
+                it.copy(
+                    step = null,
+                    result = r,
+                    edit = r?.let { rec ->
+                        ImportEdit(
+                            title = rec.title,
+                            category = rec.category,
+                            servings = rec.servings,
+                            minutes = rec.minutes.takeIf { m -> m > 0 }?.toString().orEmpty(),
+                            ingredients = rec.ingredients.map { line -> EditLine(key(), line) },
+                            steps = rec.steps.map { line -> EditLine(key(), line) },
+                        )
+                    },
+                    error = result.exceptionOrNull()?.message,
+                )
             }
         }
     }
 
+    private var nextKey = 0L
+    private fun key() = nextKey++
+
+    private fun edit(block: ImportEdit.() -> ImportEdit) = _state.update { s -> s.copy(edit = s.edit?.block()) }
+
+    fun onTitle(v: String) = edit { copy(title = v) }
+    fun onCategory(v: String) = edit { copy(category = v) }
+    fun onServings(delta: Int) = edit { copy(servings = (servings + delta).coerceIn(1, 24)) }
+    fun onMinutes(v: String) = edit { copy(minutes = v.filter(Char::isDigit).take(4)) }
+    fun onIngredient(k: Long, v: String) = edit { copy(ingredients = ingredients.map { if (it.key == k) it.copy(text = v) else it }) }
+    fun addIngredient() = edit { key().let { k -> copy(ingredients = ingredients + EditLine(k, ""), focusKey = k) } }
+    fun removeIngredient(k: Long) = edit { copy(ingredients = ingredients.filterNot { it.key == k }) }
+    fun onStep(k: Long, v: String) = edit { copy(steps = steps.map { if (it.key == k) it.copy(text = v) else it }) }
+    fun addStep() = edit { key().let { k -> copy(steps = steps + EditLine(k, ""), focusKey = k) } }
+    fun removeStep(k: Long) = edit { copy(steps = steps.filterNot { it.key == k }) }
+    fun moveStep(k: Long, by: Int) = edit {
+        val i = steps.indexOfFirst { it.key == k }
+        val j = i + by
+        if (i < 0 || j !in steps.indices) this else copy(steps = steps.toMutableList().apply { add(j, removeAt(i)) })
+    }
+    fun focused() = edit { copy(focusKey = null) }
+
     fun save() {
-        val r = _state.value.result ?: return
+        val base = _state.value.result ?: return
+        val e = _state.value.edit
+        // The edited version wins; the diet tag follows the edited ingredients.
+        val r = if (e == null) base else {
+            val ingredients = e.ingredients.map { it.text.trim() }.filter { it.isNotEmpty() }
+            val tags = app.tenet.android.core.common.DietDetector.correct(base.tags, ingredients)
+            base.copy(
+                title = e.title.trim().ifBlank { base.title },
+                category = e.category,
+                servings = e.servings,
+                minutes = e.minutes.toIntOrNull() ?: 0,
+                ingredients = ingredients,
+                steps = e.steps.map { it.text.trim() }.filter { it.isNotEmpty() },
+                tags = tags,
+                vegetarian = tags.firstOrNull() in setOf("Vegetarisch", "Vegan"),
+            )
+        }
         viewModelScope.launch {
             _state.update { it.copy(saving = true) }
             importer.save(r)
@@ -187,7 +265,7 @@ fun RecipeImportScreen(
             val r = s.result
             AnimatedContent(targetState = Triple(r != null, s.step != null, s.fromText), label = "import") { (hasResult, busy, _) ->
                 when {
-                    hasResult && r != null -> ImportPreview(r, viewModel.signedIn)
+                    hasResult && r != null -> s.edit?.let { e -> ImportPreview(r, e, viewModel, viewModel.signedIn) }
                     busy -> Column(
                         Modifier.fillMaxWidth().padding(vertical = 64.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -247,7 +325,7 @@ fun RecipeImportScreen(
 }
 
 @Composable
-private fun ImportPreview(r: ImportedRecipe, signedIn: Boolean) {
+private fun ImportPreview(r: ImportedRecipe, e: ImportEdit, vm: RecipeImportViewModel, signedIn: Boolean) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         if (r.thumbnailUrl.startsWith("http")) {
             AsyncImage(
@@ -257,44 +335,89 @@ private fun ImportPreview(r: ImportedRecipe, signedIn: Boolean) {
                 modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f).heightIn(max = 320.dp).clip(MaterialTheme.shapes.extraLarge),
             )
         }
-        Text(r.title, style = MaterialTheme.typography.headlineSmallEmphasized)
         Text(
-            listOfNotNull(r.category, "${r.servings} Portionen", r.minutes.takeIf { it > 0 }?.let { "$it Min" }, "vegetarisch".takeIf { r.vegetarian })
-                .joinToString(" · "),
-            style = MaterialTheme.typography.bodyMedium,
+            "Alles hier kannst du vor dem Speichern anpassen.",
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        // Title as a large, quiet field.
+        androidx.compose.material3.TextField(
+            value = e.title,
+            onValueChange = vm::onTitle,
+            label = { Text("Titel") },
+            textStyle = MaterialTheme.typography.titleLarge,
+            shape = MaterialTheme.shapes.large,
+            colors = softFieldColors(),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        ImportMeta(e, vm)
         if (r.tags.isNotEmpty()) {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 r.tags.forEach { tag -> RecipeTagChip(tag) }
             }
         }
-        if (r.ingredients.isEmpty()) {
+        if (r.ingredients.isEmpty() && e.ingredients.isEmpty()) {
             // Captions like "full recipe on my website (link in bio)".
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer), modifier = Modifier.fillMaxWidth()) {
                 Text(
                     "Im Beitrag stehen keine Zutaten – das ganze Rezept liegt meist auf der Seite des Autors (Link in Bio). " +
-                        "Du kannst es trotzdem speichern und später ergänzen.",
+                        "Du kannst sie hier selbst eintragen oder später ergänzen.",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(16.dp),
                 )
             }
-        } else {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer), modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(if (r.ingredients.size == 1) "1 Zutat" else "${r.ingredients.size} Zutaten", style = MaterialTheme.typography.titleSmall)
-                    r.ingredients.forEach { Text("• $it", style = MaterialTheme.typography.bodyMedium) }
+        }
+        SectionHeader("Zutaten", e.ingredients.size)
+        e.ingredients.forEach { line ->
+            key(line.key) {
+                val focus = remember { FocusRequester() }
+                LaunchedEffect(e.focusKey) { if (e.focusKey == line.key) { focus.requestFocus(); vm.focused() } }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.material3.TextField(
+                        value = line.text,
+                        onValueChange = { vm.onIngredient(line.key, it) },
+                        placeholder = { Text("z. B. 200 g Mehl") },
+                        singleLine = true,
+                        shape = MaterialTheme.shapes.large,
+                        colors = softFieldColors(),
+                        modifier = Modifier.weight(1f).focusRequester(focus),
+                    )
+                    TooltipIconButton(Icons.Outlined.Close, "Zutat entfernen", { vm.removeIngredient(line.key) })
                 }
             }
         }
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer), modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(if (r.steps.size == 1) "1 Schritt" else "${r.steps.size} Schritte", style = MaterialTheme.typography.titleSmall)
-                r.steps.forEachIndexed { i, step ->
-                    Text("${i + 1}. $step", style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = TextOverflow.Ellipsis)
+        AddButton("Zutat hinzufügen", vm::addIngredient)
+        SectionHeader("Schritte", e.steps.size)
+        e.steps.forEachIndexed { index, line ->
+            key(line.key) {
+                val focus = remember { FocusRequester() }
+                LaunchedEffect(e.focusKey) { if (e.focusKey == line.key) { focus.requestFocus(); vm.focused() } }
+                Row(verticalAlignment = Alignment.Top) {
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.padding(top = 14.dp).size(28.dp),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) { Text("${index + 1}", style = MaterialTheme.typography.labelLarge) }
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    androidx.compose.material3.TextField(
+                        value = line.text,
+                        onValueChange = { vm.onStep(line.key, it) },
+                        placeholder = { Text("Was ist zu tun?") },
+                        minLines = 2,
+                        shape = MaterialTheme.shapes.large,
+                        colors = softFieldColors(),
+                        modifier = Modifier.weight(1f).focusRequester(focus),
+                    )
+                    Column {
+                        if (index > 0) TooltipIconButton(Icons.Outlined.KeyboardArrowUp, "Nach oben", { vm.moveStep(line.key, -1) })
+                        TooltipIconButton(Icons.Outlined.Close, "Schritt entfernen", { vm.removeStep(line.key) })
+                    }
                 }
             }
         }
+        AddButton("Schritt hinzufügen", vm::addStep)
         if (signedIn) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.CloudDone, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
@@ -303,5 +426,51 @@ private fun ImportPreview(r: ImportedRecipe, signedIn: Boolean) {
             }
         }
         Spacer(Modifier.height(8.dp))
+    }
+}
+
+private val IMPORT_CATEGORIES = listOf("Hähnchen", "Pute", "Rind", "Fisch", "Pasta", "Reis", "Kartoffeln", "Mexikanisch", "Asiatisch", "Vegetarisch", "Andere")
+
+/** Category (Saffron's list), portions and time in one row of chips. */
+@Composable
+private fun ImportMeta(e: ImportEdit, vm: RecipeImportViewModel) {
+    Row(
+        Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        var menu by remember { mutableStateOf(false) }
+        Box {
+            androidx.compose.material3.FilterChip(
+                selected = true,
+                onClick = { menu = true },
+                label = { Text(e.category.ifBlank { "Kategorie" }) },
+                trailingIcon = { Icon(Icons.Outlined.ArrowDropDown, contentDescription = null) },
+            )
+            androidx.compose.material3.DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                IMPORT_CATEGORIES.forEach { c ->
+                    androidx.compose.material3.DropdownMenuItem(text = { Text(c) }, onClick = { menu = false; vm.onCategory(c) })
+                }
+            }
+        }
+        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TooltipIconButton(Icons.Outlined.Remove, "Weniger Portionen", { vm.onServings(-1) })
+                Text("${e.servings} Portionen", style = MaterialTheme.typography.labelLarge)
+                TooltipIconButton(Icons.Outlined.Add, "Mehr Portionen", { vm.onServings(1) })
+            }
+        }
+        androidx.compose.material3.TextField(
+            value = e.minutes,
+            onValueChange = vm::onMinutes,
+            placeholder = { Text("Min") },
+            suffix = { Text("Min") },
+            leadingIcon = { Icon(Icons.Outlined.Timer, contentDescription = null, modifier = Modifier.size(18.dp)) },
+            singleLine = true,
+            shape = CircleShape,
+            colors = softFieldColors(),
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+            modifier = Modifier.width(130.dp),
+        )
     }
 }
