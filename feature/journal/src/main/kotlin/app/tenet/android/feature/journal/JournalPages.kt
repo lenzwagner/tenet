@@ -74,6 +74,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
@@ -201,6 +202,7 @@ internal fun NotesPage(state: JournalUiState, actions: EntryActions) {
                             image = state.attachments[note.id]?.firstOrNull { it.mimeType.startsWith("image") },
                             hasVoice = state.attachments[note.id].orEmpty().any { it.mimeType.startsWith("audio") },
                             previewLines = 4,
+                            fixedHeight = true,
                             modifier = Modifier.height(240.dp).animateItem(),
                         )
                     }
@@ -674,6 +676,8 @@ internal fun EntryCard(
     image: Attachment?,
     previewLines: Int,
     hasVoice: Boolean = false,
+    /** Grid tile with a fixed height: tags stay pinned at the bottom, the preview gives way. */
+    fixedHeight: Boolean = false,
     modifier: Modifier = Modifier,
     leading: (@Composable () -> Unit)? = null,
     extra: (@Composable () -> Unit)? = null,
@@ -689,6 +693,7 @@ internal fun EntryCard(
         Column(
             Modifier
                 .fillMaxWidth()
+                .then(if (fixedHeight) Modifier.fillMaxHeight() else Modifier)
                 .combinedClickable(onClick = { actions.open(entry) }, onLongClick = { menu = true }),
         ) {
             if (image != null) {
@@ -702,7 +707,12 @@ internal fun EntryCard(
                         .clip(MaterialTheme.shapes.medium),
                 )
             }
-            Column(Modifier.padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(
+                Modifier
+                    .then(if (fixedHeight) Modifier.weight(1f) else Modifier)
+                    .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (leading != null) {
                         leading()
@@ -759,20 +769,27 @@ internal fun EntryCard(
                         }
                     }
                 }
-                Column(Modifier.padding(end = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(
+                    Modifier.then(if (fixedHeight) Modifier.weight(1f) else Modifier).padding(end = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
                     if (entry.title.isNotBlank()) {
                         Text(entry.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }
                     if (preview.isNotBlank()) {
                         // Rendered Markdown (headings, lists, tappable checkboxes) as preview.
-                        MarkdownView(
-                            body = entry.body,
-                            onToggleCheck = { line -> actions.toggleCheck(entry, line) },
-                            onLink = { actions.open(entry) },
-                            compact = true,
-                            maxBlocks = previewLines,
-                            maxLines = previewLines,
-                        )
+                        // In fixed tiles it takes the space left and is cut there, so tags never are.
+                        val lines = if (fixedHeight && tags.isNotEmpty()) (previewLines - 1).coerceAtLeast(1) else previewLines
+                        Box(if (fixedHeight) Modifier.weight(1f, fill = false).clipToBounds() else Modifier) {
+                            MarkdownView(
+                                body = entry.body,
+                                onToggleCheck = { line -> actions.toggleCheck(entry, line) },
+                                onLink = { actions.open(entry) },
+                                compact = true,
+                                maxBlocks = lines,
+                                maxLines = lines,
+                            )
+                        }
                     }
                     extra?.invoke()
                     if (tags.isNotEmpty()) {
@@ -780,7 +797,7 @@ internal fun EntryCard(
                             tags.joinToString("  ") { "#$it" },
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary,
-                            maxLines = 2,
+                            maxLines = if (fixedHeight) 1 else 2,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }

@@ -164,7 +164,7 @@ class RestTimerService : Service() {
             )
             _changes.tryEmit(id)
             // Rest after this set, from what was actually done (more reps → a bit less rest).
-            val rest = restFor(guide[target.blockIndex].second, reps ?: 0, target)
+            val rest = WorkoutGuide.restAfter(guide.map { it.second }, target.blockIndex, target.set.id, reps ?: 0)
             val remaining = WorkoutGuide.remaining(guide.map { it.second }) - 1
             if (remaining <= 0) {
                 endRest(alert = false)
@@ -174,10 +174,6 @@ class RestTimerService : Service() {
             }
         }
     }
-
-    private fun restFor(block: WorkoutGuide.GuideBlock, reps: Int, target: WorkoutGuide.Next): Int =
-        block.routineRestSec?.takeIf { it > 0 && !target.set.warmup }
-            ?: app.tenet.android.core.common.RestAdvisor.advise(block.pattern, block.primaryMuscles, reps, target.set.warmup).seconds
 
     // ---- Notification -------------------------------------------------------
 
@@ -221,9 +217,16 @@ class RestTimerService : Service() {
             }
             n != null -> {
                 builder.setContentTitle("${n.name} · Satz ${n.number}/${n.count}")
-                    .setContentText(hint ?: "Geplant: ${n.plannedText} · danach ${clock(n.restSec)} Pause")
-                    .addAction(action("Wie geplant", ACTION_LOG_PLANNED))
-                    .addAction(inputAction(n))
+                    .setContentText(
+                        hint ?: when {
+                            n.weightUnknown -> "Erstes Mal: Gewicht und Wiederholungen eintragen, z. B. 40x${n.plannedReps}"
+                            n.supersetSwitch -> "Geplant: ${n.plannedText} · danach direkt Supersatz-Partner"
+                            else -> "Geplant: ${n.plannedText} · danach ${clock(n.restSec)} Pause"
+                        },
+                    )
+                // "Wie geplant" only when there is a plan (weight known).
+                if (!n.weightUnknown) builder.addAction(action("Wie geplant", ACTION_LOG_PLANNED))
+                builder.addAction(inputAction(n))
                 if (Build.VERSION.SDK_INT >= 36) builder.setShortCriticalText("Satz ${n.number}")
             }
             else -> {
@@ -253,7 +256,8 @@ class RestTimerService : Service() {
     }
 
     private fun inputAction(n: WorkoutGuide.Next): Notification.Action {
-        val choices: Array<CharSequence> = when {
+        val choices: Array<CharSequence>? = when {
+            n.weightUnknown -> null
             n.timed -> arrayOf("${n.plannedSec ?: 30}", "${(n.plannedSec ?: 30) + 15}")
             n.plannedKg > 0f -> {
                 val kg = WorkoutGuide.fmt(n.plannedKg)
@@ -263,7 +267,7 @@ class RestTimerService : Service() {
         }
         val input = RemoteInput.Builder(KEY_INPUT)
             .setLabel(if (n.timed) "Sekunden, z. B. 45" else "kg × Wdh, z. B. 80x8")
-            .setChoices(choices)
+            .apply { if (choices != null) setChoices(choices) }
             .build()
         val pending = PendingIntent.getForegroundService(
             this,

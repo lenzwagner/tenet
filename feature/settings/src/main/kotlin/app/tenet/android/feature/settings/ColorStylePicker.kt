@@ -47,6 +47,8 @@ internal fun ColorStylePicker(
     primary: Int?,
     secondary: Int?,
     darkTheme: Boolean,
+    /** "Nur zwei Farben": the preview shows primary and secondary only. */
+    twoTone: Boolean = false,
     onSelect: (ColorStyle) -> Unit,
 ) {
     val context = LocalContext.current
@@ -81,7 +83,7 @@ internal fun ColorStylePicker(
                         // Three overlapping blobs: primary, secondary, tertiary.
                         Swatch(scheme.primary, Modifier.align(Alignment.TopStart))
                         Swatch(scheme.secondaryContainer, Modifier.align(Alignment.TopEnd))
-                        Swatch(scheme.tertiary, Modifier.align(Alignment.BottomCenter))
+                        Swatch(if (twoTone) scheme.secondary else scheme.tertiary, Modifier.align(Alignment.BottomCenter))
                         if (isSelected) {
                             Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) {
                                 Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.padding(3.dp))

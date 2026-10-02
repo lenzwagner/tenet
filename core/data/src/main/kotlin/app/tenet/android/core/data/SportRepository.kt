@@ -828,6 +828,7 @@ fun guideBlock(
     targetReps = target?.targetReps,
     suggestedKg = suggestion?.weightKg?.takeIf { it > 0f },
     routineRestSec = target?.restSec,
+    superset = target?.supersetGroup,
     bodyweight = exercise.discipline == Discipline.CALISTHENICS || exercise.equipment.contains("körpergewicht", ignoreCase = true),
     sets = sets.map {
         app.tenet.android.core.common.WorkoutGuide.GuideSet(

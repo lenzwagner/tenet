@@ -261,6 +261,7 @@ fun SettingsScreen(
                             primary = settings.primaryColor,
                             secondary = settings.secondaryColor,
                             darkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f,
+                            twoTone = settings.twoTone,
                             onSelect = viewModel::setColorStyle,
                         )
                         Text(

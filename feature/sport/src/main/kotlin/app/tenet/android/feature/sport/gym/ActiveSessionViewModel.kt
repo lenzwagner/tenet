@@ -347,12 +347,11 @@ class ActiveSessionViewModel @Inject constructor(
     // ---- Rest timer + live notification (foreground service) ------------
 
     /** Ideal rest after [set]: the routine's own value, else advised per exercise and reps. */
+    /** Ideal rest after [set]: short switch inside a superset, else the routine's value or the advised one. */
     private fun restAfter(block: BlockUi, set: SetEntry): Int {
-        val g = block.toGuide()
-        val warmup = set.type == SetType.WARMUP
-        g.routineRestSec?.takeIf { it > 0 && !warmup }?.let { return it }
-        val reps = if (g.timed) 0 else set.reps.takeIf { it > 0 } ?: g.targetReps ?: 8
-        return app.tenet.android.core.common.RestAdvisor.advise(g.pattern, g.primaryMuscles, reps, warmup, set.rpe).seconds
+        val blocks = _uiState.value.blocks
+        val index = blocks.indexOfFirst { it.sessionExerciseId == block.sessionExerciseId }
+        return WorkoutGuide.restAfter(blocks.map { it.toGuide() }, index, set.id, set.reps, set.rpe)
     }
 
     private fun startRest(totalSec: Int) {

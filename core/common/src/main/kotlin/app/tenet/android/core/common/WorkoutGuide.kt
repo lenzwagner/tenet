@@ -30,6 +30,8 @@ object WorkoutGuide {
         val sets: List<GuideSet>,
         /** Bodyweight exercise: no weight field unless extra load was entered. */
         val bodyweight: Boolean = false,
+        /** Superset group: neighbouring blocks with the same group alternate set by set. */
+        val superset: Int? = null,
     )
 
     data class Next(
@@ -48,22 +50,78 @@ object WorkoutGuide {
         val advice: RestAdvisor.Advice,
         val bodyweight: Boolean = false,
     ) {
-        /** "80 kg × 8", "× 12" (bodyweight), "45 s". */
+        /** First time with weights: nothing to suggest yet, the user picks the weight. */
+        val weightUnknown: Boolean get() = !timed && !bodyweight && !set.warmup && plannedKg <= 0f
+
+        /** Next set is the other exercise of a superset (short switch, no real rest). */
+        val supersetSwitch: Boolean get() = restSec == SUPERSET_SWITCH_SEC
+
+        /** "80 kg × 8", "× 12" (bodyweight), "? kg × 8" (weight still open), "45 s". */
         val plannedText: String
             get() = when {
                 timed -> "${plannedSec ?: 0} s"
                 plannedKg > 0f -> "${fmt(plannedKg)} kg × $plannedReps"
+                weightUnknown -> "? kg × $plannedReps"
                 else -> "× $plannedReps"
             }
     }
 
-    fun next(blocks: List<GuideBlock>): Next? {
-        blocks.forEachIndexed { bi, block ->
-            val ordered = block.sets.sortedBy { it.sortOrder }
-            val index = ordered.indexOfFirst { !it.completed }
-            if (index >= 0) return describe(bi, block, ordered, index)
+    /** Short switch between the exercises of a superset (rest comes after the round). */
+    const val SUPERSET_SWITCH_SEC = 20
+
+    /**
+     * Order in which the sets are done: block by block, but neighbouring
+     * blocks of one superset alternate (A1, B1, A2, B2 …).
+     */
+    fun sequence(blocks: List<GuideBlock>): List<Pair<Int, Int>> {
+        val out = mutableListOf<Pair<Int, Int>>()
+        var i = 0
+        while (i < blocks.size) {
+            val group = blocks[i].superset
+            var end = i + 1
+            if (group != null) while (end < blocks.size && blocks[end].superset == group) end++
+            val run = (i until end).toList()
+            val rounds = run.maxOf { blocks[it].sets.size }
+            for (k in 0 until rounds) for (b in run) if (k < blocks[b].sets.size) out += b to k
+            i = end
         }
-        return null
+        return out
+    }
+
+    fun next(blocks: List<GuideBlock>): Next? {
+        val seq = sequence(blocks)
+        val pos = seq.indexOfFirst { (b, k) -> !blocks[b].sets.sortedBy { it.sortOrder }[k].completed }
+        if (pos < 0) return null
+        val (bi, k) = seq[pos]
+        val ordered = blocks[bi].sets.sortedBy { it.sortOrder }
+        val described = describe(bi, blocks[bi], ordered, k)
+        return if (switchesWithinSuperset(blocks, seq, pos)) described.copy(restSec = SUPERSET_SWITCH_SEC) else described
+    }
+
+    /**
+     * Rest after a set that was just done with [reps]: a short switch inside
+     * a superset round, else the routine's own value or the advised one.
+     */
+    fun restAfter(blocks: List<GuideBlock>, blockIndex: Int, setId: String, reps: Int, rpe: Float? = null): Int {
+        val block = blocks.getOrNull(blockIndex) ?: return RestAdvisor.advise(null, "", reps).seconds
+        val ordered = block.sets.sortedBy { it.sortOrder }
+        val k = ordered.indexOfFirst { it.id == setId }.coerceAtLeast(0)
+        val set = ordered.getOrNull(k)
+        val seq = sequence(blocks)
+        val pos = seq.indexOf(blockIndex to k)
+        if (pos >= 0 && switchesWithinSuperset(blocks, seq, pos)) return SUPERSET_SWITCH_SEC
+        val warmup = set?.warmup == true
+        block.routineRestSec?.takeIf { it > 0 && !warmup }?.let { return it }
+        val r = if (block.timed) 0 else reps.takeIf { it > 0 } ?: block.targetReps ?: 8
+        return RestAdvisor.advise(block.pattern, block.primaryMuscles, r, warmup, rpe).seconds
+    }
+
+    /** The set after [pos] is another exercise of the same superset (same round). */
+    private fun switchesWithinSuperset(blocks: List<GuideBlock>, seq: List<Pair<Int, Int>>, pos: Int): Boolean {
+        val (b, k) = seq[pos]
+        val group = blocks[b].superset ?: return false
+        val following = seq.getOrNull(pos + 1) ?: return false
+        return following.first != b && blocks[following.first].superset == group && following.second == k
     }
 
     /** Sets still open in the whole workout (for "noch 7 Sätze"). */

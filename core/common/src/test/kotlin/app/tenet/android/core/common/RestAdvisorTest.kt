@@ -71,4 +71,18 @@ class WorkoutGuideTest {
         val custom = curl.copy(routineRestSec = 100)
         org.junit.Assert.assertEquals(100, WorkoutGuide.next(listOf(custom))!!.restSec)
     }
+
+    @Test fun supersetAlternates() {
+        val a = curl.copy(name = "A", superset = 1, sets = listOf(set("a1", 0), set("a2", 1)))
+        val b = curl.copy(name = "B", superset = 1, sets = listOf(set("b1", 0), set("b2", 1)))
+        org.junit.Assert.assertEquals(listOf(0 to 0, 1 to 0, 0 to 1, 1 to 1), WorkoutGuide.sequence(listOf(a, b)))
+        val first = WorkoutGuide.next(listOf(a, b))!!
+        org.junit.Assert.assertEquals("a1", first.set.id)
+        org.junit.Assert.assertEquals(WorkoutGuide.SUPERSET_SWITCH_SEC, first.restSec)
+        val aDone = a.copy(sets = listOf(set("a1", 0, done = true), set("a2", 1)))
+        val second = WorkoutGuide.next(listOf(aDone, b))!!
+        org.junit.Assert.assertEquals("b1", second.set.id)
+        org.junit.Assert.assertTrue(second.restSec > WorkoutGuide.SUPERSET_SWITCH_SEC)
+        org.junit.Assert.assertEquals(WorkoutGuide.SUPERSET_SWITCH_SEC, WorkoutGuide.restAfter(listOf(a, b), 0, "a1", 12))
+    }
 }

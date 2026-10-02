@@ -483,6 +483,8 @@ class RecipeImporter @Inject constructor(
             Regeln für die Extraktion:
             1. Falls Zutaten oder Schritte im Text beschrieben sind, extrahiere sie präzise. Übernimm Mengenangaben (z. B. "200 g Mehl") NUR, wenn sie im Text stehen.
                ERFINDE NIEMALS Zutaten, Mengen, Schritte, Portionen oder Zeiten, die nicht im Text stehen – lieber weglassen.
+               Zutaten, die nur in der Zubereitung vorkommen (z. B. "in Butter ausbacken", "mit Apfelmus servieren", "mit Salz abschmecken"),
+               gehören AUCH in "ingredients" – ohne Menge, wenn keine genannt ist ("Butter zum Ausbacken", "Apfelmus").
             2. Wenn im Text KEINE Zubereitungsschritte enthalten sind (sondern z. B. nur Zutaten und ein Verweis auf ein Video oder einen Bio-Link):
                - Extrahiere alle im Text erwähnten Zutaten.
                - Füge als Zubereitungsschritt ("steps") einen Hinweis hinzu, z. B.: "Detaillierte Zubereitung siehe Video / Link in Bio".

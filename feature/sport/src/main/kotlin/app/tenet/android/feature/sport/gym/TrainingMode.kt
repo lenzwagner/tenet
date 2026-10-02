@@ -190,7 +190,8 @@ private fun SetPhase(next: WorkoutGuide.Next, exerciseId: String?, onLog: (Float
             Icon(Icons.Outlined.Timer, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(4.dp))
             Text(
-                "Danach ${clock(next.restSec)} Pause (${next.advice.range} empfohlen)",
+                if (next.supersetSwitch) "Supersatz: danach direkt zur nächsten Übung"
+                else "Danach ${clock(next.restSec)} Pause (${next.advice.range} empfohlen)",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
