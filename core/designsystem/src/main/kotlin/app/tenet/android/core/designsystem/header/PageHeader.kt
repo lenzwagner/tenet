@@ -122,8 +122,13 @@ class HeaderScrollState internal constructor(private val rangePx: Float) {
     }
 }
 
+/** Height of the "Klar" large-title header (status bar excluded). */
+val ClearHeaderHeight: Dp = 112.dp
+
 @Composable
-fun rememberHeaderScrollState(headerHeight: Dp = 184.dp): HeaderScrollState {
+fun rememberHeaderScrollState(
+    headerHeight: Dp = if (app.tenet.android.core.designsystem.theme.isClearStyle) ClearHeaderHeight else 184.dp,
+): HeaderScrollState {
     val rangePx = with(LocalDensity.current) { headerHeight.toPx() }
     return remember(rangePx) { HeaderScrollState(rangePx) }
 }
@@ -146,10 +151,14 @@ fun PageHeader(
     title: String,
     progress: () -> Float,
     modifier: Modifier = Modifier,
-    height: Dp = 184.dp,
+    height: Dp = if (app.tenet.android.core.designsystem.theme.isClearStyle) ClearHeaderHeight else 184.dp,
     subtitle: String? = null,
     onSearch: (() -> Unit)? = null,
 ) {
+    if (app.tenet.android.core.designsystem.theme.isClearStyle) {
+        LargeTitleHeader(title, progress, modifier, height, subtitle, onSearch)
+        return
+    }
     Box(
         modifier
             .fillMaxWidth()
@@ -240,6 +249,77 @@ fun PageHeader(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+            }
+        }
+    }
+}
+
+/**
+ * "Klar" header like an iOS large title: bold page name on the plain
+ * background, optional small line above it, search as a plain accent icon.
+ * Collapses with the same [progress] as the photo header and fades out.
+ */
+@Composable
+private fun LargeTitleHeader(
+    title: String,
+    progress: () -> Float,
+    modifier: Modifier,
+    height: Dp,
+    subtitle: String?,
+    onSearch: (() -> Unit)?,
+) {
+    Box(
+        modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background)
+            .statusBarsPadding()
+            .collapsingHeight(height) { 1f - progress() }
+            .clipToBounds(),
+    ) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    val p = progress()
+                    alpha = (1f - p * 1.6f).coerceIn(0f, 1f)
+                    val scale = 1f - 0.06f * p
+                    scaleX = scale
+                    scaleY = scale
+                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 1f)
+                },
+        ) {
+            if (onSearch != null) {
+                androidx.compose.material3.IconButton(
+                    onClick = onSearch,
+                    shapes = IconButtonDefaults.shapes(),
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 4.dp, end = 8.dp),
+                ) {
+                    Icon(Icons.Outlined.Search, contentDescription = "Suchen", tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+            Column(
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 20.dp, end = 20.dp, bottom = 8.dp),
+            ) {
+                if (subtitle != null) {
+                    Text(
+                        text = subtitle.uppercase(),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.displaySmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }

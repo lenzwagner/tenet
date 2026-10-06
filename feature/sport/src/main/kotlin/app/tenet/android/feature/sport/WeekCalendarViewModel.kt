@@ -45,6 +45,8 @@ data class WeekDayUi(
 data class WeekCalendarUiState(
     val weekStart: LocalDate = WeekMath.weekStart(LocalDate.now()),
     val days: List<WeekDayUi> = emptyList(),
+    /** Active plans without fixed training days (any day): not on single days, named in a hint. */
+    val flexiblePlans: List<WeekPlannedUi> = emptyList(),
     val loading: Boolean = true,
 )
 
@@ -68,7 +70,14 @@ class WeekCalendarViewModel @Inject constructor(
             combine(
                 repository.observeSessionsBetween(start, start.plusDays(7)),
                 repository.observePlannedBetween(start, start.plusDays(6)),
-            ) { sessions, planned -> buildState(start, sessions, planned) }
+                repository.observeActivePlanHeads(),
+            ) { sessions, planned, heads ->
+                buildState(start, sessions, planned).copy(
+                    flexiblePlans = heads
+                        .filter { app.tenet.android.core.common.TrainingDays.parse(it.plan.trainingDays).isEmpty() }
+                        .map { WeekPlannedUi(it.workout.title, it.plan.discipline) },
+                )
+            }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WeekCalendarUiState())
 

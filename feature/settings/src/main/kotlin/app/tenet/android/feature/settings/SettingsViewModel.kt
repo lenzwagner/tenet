@@ -66,10 +66,6 @@ class SettingsViewModel @Inject constructor(
     }
 
     /** Round trip; returns null on success, else the error text. */
-    fun testAi(onResult: (String?) -> Unit) {
-        viewModelScope.launch { onResult(if (ai.test()) null else (ai.lastError ?: "Keine Antwort")) }
-    }
-
     fun refreshAiModels() {
         viewModelScope.launch {
             val models = ai.fetchModels()
@@ -208,6 +204,10 @@ class SettingsViewModel @Inject constructor(
         val kcal = app.tenet.android.core.common.EnergyMath.targetKcal(profile)
         val m = app.tenet.android.core.common.EnergyMath.macrosByBodyWeight(kcal, profile.weightKg, 2f, 0.9f)
         setGoal(m.kcal, m.protein, m.carbs, m.fat)
+    }
+
+    fun setDesignStyle(style: app.tenet.android.core.common.DesignStyle) {
+        viewModelScope.launch { repository.setDesignStyle(style) }
     }
 
     fun setAmoledMode(mode: app.tenet.android.core.common.AmoledMode) {

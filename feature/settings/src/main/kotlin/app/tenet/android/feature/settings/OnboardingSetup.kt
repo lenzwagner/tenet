@@ -1,5 +1,6 @@
 package app.tenet.android.feature.settings
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -129,7 +130,7 @@ internal fun ModulesStep(step: Int, steps: Int, enabled: Set<AppModule>, onToggl
                 SegmentedListItem(
                     onClick = { onToggle(m, !on) },
                     shapes = ListItemDefaults.segmentedShapes(i, AppModule.entries.size),
-                    colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                    colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                     leadingContent = { SettingsIcon(m.icon) },
                     supportingContent = { Text(m.why()) },
                     trailingContent = { Switch(checked = on, onCheckedChange = { onToggle(m, it) }) },
@@ -228,7 +229,7 @@ internal fun GoalsStep(
                 val p = profile.copy(goal = goal)
                 val kcal = EnergyMath.targetKcal(p)
                 val m = EnergyMath.macrosByBodyWeight(kcal, p.weightKg, 2f, 0.9f)
-                Card(
+                TenetCard(
                     Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                 ) {

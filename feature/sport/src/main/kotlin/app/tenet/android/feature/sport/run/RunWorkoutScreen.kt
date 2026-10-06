@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.run
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -148,7 +149,7 @@ fun RunWorkoutScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item(key = "hero") {
-                Card(
+                TenetCard(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -178,7 +179,7 @@ fun RunWorkoutScreen(
             }
             u.doneRun?.let { r ->
                 item(key = "done") {
-                    Card(onClick = { onOpenRun(r.session.id) }, modifier = Modifier.fillMaxWidth()) {
+                    TenetCard(onClick = { onOpenRun(r.session.id) }, modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Dein Lauf", style = MaterialTheme.typography.titleMedium)
                             Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -225,7 +226,7 @@ fun RunWorkoutScreen(
                 }
             }
             item(key = "why") {
-                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
+                TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Outlined.Lightbulb, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiaryContainer)

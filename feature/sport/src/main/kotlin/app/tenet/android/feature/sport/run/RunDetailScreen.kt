@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.run
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import kotlinx.coroutines.launch
 import app.tenet.android.core.designsystem.component.LocalAppSnackbar
 import androidx.compose.ui.platform.LocalContext
@@ -195,7 +196,7 @@ fun RunDetailScreen(
             // Runna-style: which plan workout this run completed.
             planUnit?.let { (plannedId, label) ->
                 item(key = "plan-unit") {
-                    Card(
+                    TenetCard(
                         onClick = { onOpenPlanned(plannedId) },
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                         modifier = Modifier.fillMaxWidth(),
@@ -213,7 +214,7 @@ fun RunDetailScreen(
                 }
             }
             item(key = "stats") {
-                Card(Modifier.fillMaxWidth()) {
+                TenetCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row {
                             Stat(formatKmDe(run.distanceM.toDouble()), "km", Modifier.weight(1f))
@@ -327,7 +328,7 @@ private fun Stat(value: String, label: String, modifier: Modifier = Modifier) {
 
 @Composable
 private fun SectionCard(icon: ImageVector, title: String, content: @Composable () -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)

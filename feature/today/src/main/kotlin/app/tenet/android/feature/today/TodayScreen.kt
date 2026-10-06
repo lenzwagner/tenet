@@ -1,5 +1,7 @@
 package app.tenet.android.feature.today
 
+import app.tenet.android.core.designsystem.theme.TenetCard
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import app.tenet.android.core.designsystem.component.animatedMorphShape
@@ -467,7 +469,7 @@ private fun DreamCard(
     onOpen: (Entry) -> Unit,
     locked: Boolean = false,
 ) {
-    Card(
+    TenetCard(
         colors = CardDefaults.cardColors(
             containerColor = if (prominent) MaterialTheme.colorScheme.tertiaryContainer else areaColors(AppArea.JOURNAL).card,
         ),
@@ -524,7 +526,7 @@ private fun DreamCard(
 @Composable
 private fun NutritionCard(state: TodayUiState, onAddFood: () -> Unit, onEditGoal: () -> Unit) {
     val area = areaColors(AppArea.NUTRITION)
-    Card(Modifier.fillMaxWidth(), colors = areaCardColors(AppArea.NUTRITION)) {
+    TenetCard(Modifier.fillMaxWidth(), colors = areaCardColors(AppArea.NUTRITION)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             CardTitle(Icons.Outlined.Restaurant, "Ernährung", containerColor = area.container, contentColor = area.onContainer, action = {
                 TooltipIconButton(icon = Icons.Outlined.Edit, contentDescription = "Tagesziel bearbeiten", onClick = onEditGoal)
@@ -568,7 +570,7 @@ private val Discipline.label: String
 @Composable
 private fun SportCard(state: TodayUiState, onOpenSport: () -> Unit, onStartRun: (String) -> Unit) {
     val area = areaColors(AppArea.SPORT)
-    Card(onClick = onOpenSport, modifier = Modifier.fillMaxWidth(), colors = areaCardColors(AppArea.SPORT)) {
+    TenetCard(onClick = onOpenSport, modifier = Modifier.fillMaxWidth(), colors = areaCardColors(AppArea.SPORT)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             CardTitle(Icons.Outlined.FitnessCenter, "Sport", containerColor = area.container, contentColor = area.onContainer)
             val rows = state.sessions.map { s ->
@@ -651,7 +653,7 @@ private fun JournalCard(
     onOpenJournal: () -> Unit,
     locked: Boolean = false,
 ) {
-    Card(Modifier.fillMaxWidth(), colors = areaCardColors(AppArea.JOURNAL)) {
+    TenetCard(Modifier.fillMaxWidth(), colors = areaCardColors(AppArea.JOURNAL)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             CardTitle(
                 Icons.Outlined.AutoStories,
@@ -702,7 +704,17 @@ private fun JournalCard(
 /** Diary, tracking and training streaks (App_Konzept.md 5.1). */
 @Composable
 private fun StreakCard(streaks: Streaks) {
-    Card(Modifier.fillMaxWidth()) {
+    // Same lightly tinted surface and text color as the area cards above it
+    // (the default card was a darker block with greyish text).
+    val c = MaterialTheme.colorScheme
+    val dark = c.surface.luminance() < 0.5f
+    TenetCard(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = androidx.compose.ui.graphics.lerp(c.surfaceContainerLow, c.secondaryContainer, if (dark) 0.22f else 0.30f),
+            contentColor = c.onSurface,
+        ),
+    ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             CardTitle(
                 Icons.Outlined.LocalFireDepartment,

@@ -55,6 +55,16 @@ private fun areaScheme(primary: Color, area: AppArea, dark: Boolean, style: Colo
 fun areaColors(area: AppArea): AreaColors {
     val c = MaterialTheme.colorScheme
     val dark = c.surface.luminance() < 0.5f
+    if (LocalDesignStyle.current == app.tenet.android.core.common.DesignStyle.CLEAR) {
+        // "Klar": one accent, neutral white cells – no tinted area cards.
+        return AreaColors(
+            accent = c.primary,
+            onAccent = c.onPrimary,
+            container = c.secondaryContainer,
+            onContainer = c.onSecondaryContainer,
+            card = c.surfaceContainerLow,
+        )
+    }
     if (LocalTwoTone.current) {
         return AreaColors(
             accent = c.primary,
@@ -91,8 +101,8 @@ fun areaCardColors(area: AppArea): CardColors =
  */
 @Composable
 fun AreaTheme(area: AppArea, content: @Composable () -> Unit) {
-    // Two-tone: the app scheme already is primary + secondary everywhere.
-    if (LocalTwoTone.current) return content()
+    // Two-tone and "Klar": the app scheme already is what every area uses.
+    if (LocalTwoTone.current || LocalDesignStyle.current == app.tenet.android.core.common.DesignStyle.CLEAR) return content()
     val base = MaterialTheme.colorScheme
     val colors = areaColors(area)
     val tint = colors.container

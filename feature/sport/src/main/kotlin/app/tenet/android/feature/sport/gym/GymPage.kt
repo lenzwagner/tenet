@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.gym
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.material3.Surface
 import androidx.compose.material.icons.outlined.AccessibilityNew
 import androidx.compose.material3.ListItemDefaults
@@ -261,7 +262,7 @@ private fun TodayCard(
     onFinishStale: (String) -> Unit = {},
     onDiscardStale: () -> Unit = {},
 ) {
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
@@ -335,7 +336,8 @@ private fun RoutineCard(
     onSetup: () -> Unit,
 ) {
     val exerciseNames = overview.exercises.associateBy({ it.id }, { it.name })
-    Card(Modifier.fillMaxWidth()) {
+    val exercisesById = overview.exercises.associateBy { it.id }
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -392,7 +394,7 @@ private fun RoutineCard(
                 )
                 Text(
                     text = "${target.targetSets} × ${target.targetReps} · " +
-                        "Pause ${target.restSec / 60}:" + (target.restSec % 60).toString().padStart(2, '0'),
+                        app.tenet.android.feature.sport.planRestLabel(target.restSec, exercisesById[target.exerciseId], target.targetReps),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -404,7 +406,7 @@ private fun RoutineCard(
 @Composable
 private fun SessionsCard(overview: GymOverview, onOpenSession: (String) -> Unit, onOpenHistory: () -> Unit) {
     val titles = overview.workouts.associate { it.id to it.title }
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
@@ -454,7 +456,7 @@ private fun SessionsCard(overview: GymOverview, onOpenSession: (String) -> Unit,
 @Composable
 private fun MuscleWeekCard(muscles: List<Pair<String, Int>>) {
     if (muscles.isEmpty()) return
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.AccessibilityNew, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
@@ -486,7 +488,7 @@ private fun ProgressCard(overview: GymOverview) {
     val sessionsThisWeek = overview.sessions.count { session ->
         Instant.ofEpochMilli(session.startedAt).isAfter(now.minus(java.time.Duration.ofDays(7)))
     }
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(

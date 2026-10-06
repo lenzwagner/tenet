@@ -1,5 +1,6 @@
 package app.tenet.android.feature.journal
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material3.AlertDialog
@@ -600,7 +601,7 @@ private fun EditorScaffold(
                 Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
                     backlinks.forEachIndexed { index, entry ->
                         SegmentedListItem(
-                            colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                            colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                             onClick = { onOpenEntry(entry.id, entry.type) },
                             shapes = ListItemDefaults.segmentedShapes(index, backlinks.size),
                             leadingContent = { Icon(Icons.Outlined.Link, contentDescription = null) },
@@ -760,7 +761,7 @@ private fun DiarySection(
 
         var promptOffset by rememberSaveable { mutableIntStateOf(0) }
         val prompt = promptOfDay(promptOffset)
-        Card(
+        TenetCard(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -909,7 +910,7 @@ private fun DreamSection(
         Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
             options.forEachIndexed { index, (label, checked, onChange) ->
                 SegmentedListItem(
-                    colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                    colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                     checked = checked,
                     onCheckedChange = onChange,
                     shapes = ListItemDefaults.segmentedShapes(index, options.size),

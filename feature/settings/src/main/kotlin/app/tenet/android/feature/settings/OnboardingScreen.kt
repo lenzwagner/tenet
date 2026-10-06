@@ -348,7 +348,7 @@ private fun PermRow(icon: ImageVector, title: String, why: String, granted: Bool
     SegmentedListItem(
         onClick = { if (!granted) onAllow() },
         shapes = ListItemDefaults.segmentedShapes(index, count),
-        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
         leadingContent = { SettingsIcon(icon) },
         supportingContent = { Text(why) },
         trailingContent = {

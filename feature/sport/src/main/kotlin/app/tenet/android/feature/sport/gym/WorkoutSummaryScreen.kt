@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.gym
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -125,7 +126,7 @@ fun WorkoutSummaryScreen(
             val prs = sum.exercises.filter { it.anyPr }
             if (prs.isNotEmpty()) {
                 item(key = "prs") {
-                    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
+                    TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 RecordBadge()
@@ -155,7 +156,7 @@ fun WorkoutSummaryScreen(
             item(key = "ex-h") { SectionTitle(Icons.Outlined.FitnessCenter, "Übungen") }
             sum.exercises.forEach { ex ->
                 item(key = "ex-${ex.exercise.id}") {
-                    Card(onClick = { onOpenExercise(ex.exercise.id) }, modifier = Modifier.fillMaxWidth()) {
+                    TenetCard(onClick = { onOpenExercise(ex.exercise.id) }, modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(ex.exercise.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -208,7 +209,7 @@ fun WorkoutSummaryScreen(
             }
             if (sum.muscles.isNotEmpty()) {
                 item(key = "muscles") {
-                    Card(Modifier.fillMaxWidth()) {
+                    TenetCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             SectionTitle(Icons.Outlined.AccessibilityNew, "Muskeln")
                             val max = sum.muscles.maxOf { it.second }.coerceAtLeast(1)
@@ -233,7 +234,7 @@ fun WorkoutSummaryScreen(
 
 @Composable
 private fun Hero(sum: WorkoutSummary, fresh: Boolean) {
-    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+    TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             if (fresh) {
                 Text(sum.title, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)

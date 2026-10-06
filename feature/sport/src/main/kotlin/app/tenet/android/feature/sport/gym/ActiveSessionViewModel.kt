@@ -247,7 +247,8 @@ class ActiveSessionViewModel @Inject constructor(
             SetRowUi(
                 set = set,
                 previous = previousBySortOrder[set.sortOrder],
-                kgText = formatNumber(set.weight),
+                // No weight yet (first session): empty with "?" instead of a misleading 0.
+                kgText = if (set.weight == 0f && !set.completed) "" else formatNumber(set.weight),
                 repsText = if (set.reps > 0) set.reps.toString() else "",
                 rpeText = set.rpe?.let { formatNumber(it) } ?: "",
             )

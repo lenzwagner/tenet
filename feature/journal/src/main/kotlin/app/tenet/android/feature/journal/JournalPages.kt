@@ -1,5 +1,6 @@
 package app.tenet.android.feature.journal
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import app.tenet.android.core.database.entity.EntryType
 import app.tenet.android.core.designsystem.theme.JournalReading
 import app.tenet.android.core.designsystem.theme.LocalJournalSerif
@@ -339,7 +340,7 @@ private fun WeeklyGoal(done: Int) {
 /** "An diesem Tag": diary entries from the same day in earlier years. */
 @Composable
 private fun OnThisDayCard(entries: List<Entry>, actions: EntryActions) {
-    Card(
+    TenetCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -549,7 +550,7 @@ internal fun SleepNightCard(
     val zone = java.time.ZoneId.systemDefault()
     val fmt = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
     val colors = MaterialTheme.colorScheme
-    Card(colors = CardDefaults.cardColors(containerColor = colors.secondaryContainer), modifier = Modifier.fillMaxWidth()) {
+    TenetCard(colors = CardDefaults.cardColors(containerColor = colors.secondaryContainer), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(title, style = MaterialTheme.typography.titleMedium, color = colors.onSecondaryContainer, modifier = Modifier.weight(1f))
@@ -694,7 +695,7 @@ internal fun EntryCard(
     // Diary and dreams in the serif reading font if set; notes stay in the UI font.
     val serif = entry.type != EntryType.NOTE && LocalJournalSerif.current
 
-    Card(
+    TenetCard(
         colors = CardDefaults.cardColors(containerColor = noteContainer(entry.color)),
         modifier = modifier.fillMaxWidth(),
     ) {

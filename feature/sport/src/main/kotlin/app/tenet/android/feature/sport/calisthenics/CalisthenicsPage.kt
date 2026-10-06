@@ -1,5 +1,8 @@
 package app.tenet.android.feature.sport.calisthenics
 
+import app.tenet.android.core.designsystem.theme.TenetCard
+import androidx.compose.material.icons.outlined.MilitaryTech
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material3.FilledTonalButton
 import app.tenet.android.core.database.entity.MeasureType
 import app.tenet.android.core.designsystem.component.SegmentedRows
@@ -330,7 +333,7 @@ private fun TodayCard(
     onStartStrength: () -> Unit,
 ) {
     val overview = uiState.overview
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
@@ -417,7 +420,7 @@ private fun SkillTreeCard(
     onDeleteVideo: (app.tenet.android.core.database.entity.FormVideo) -> Unit = {},
 ) {
     val overview = uiState.overview
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Skill-Tree", style = MaterialTheme.typography.titleMedium)
 
@@ -436,7 +439,7 @@ private fun SkillTreeCard(
                 val current = uiState.currentStep
                 val next = uiState.nextStep
                 if (current != null && next != null) {
-                    Card(
+                    TenetCard(
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
                         ),
@@ -501,7 +504,20 @@ private fun SkillCarousel(cards: List<SkillCardUi>, selectedId: String?, onSelec
             color = if (selected) colors.primaryContainer else colors.surfaceContainerHighest,
             modifier = Modifier.fillMaxSize().maskClip(MaterialTheme.shapes.extraLarge),
         ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            // Squeezed neighbours showed cut-off words ("dstand", "Klimm:"): keep the
+            // text at the visible edge and fade it out as the item gets narrow.
+            val info = carouselItemDrawInfo
+            Column(
+                Modifier
+                    .graphicsLayer {
+                        val range = info.maxSize - info.minSize
+                        val open = if (range <= 0f) 1f else ((info.size - info.minSize) / range).coerceIn(0f, 1f)
+                        alpha = (open * 1.6f - 0.6f).coerceIn(0f, 1f)
+                        translationX = info.maskRect.left
+                    }
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 Text(
                     card.name,
                     style = MaterialTheme.typography.titleMedium,
@@ -592,7 +608,7 @@ private fun PlanCard(
     onOpenExercise: (String) -> Unit,
 ) {
     val exerciseNames = overview.exercises.associateBy({ it.id }, { it.name })
-    Card(onClick = onOpenPlan, modifier = Modifier.fillMaxWidth()) {
+    TenetCard(onClick = onOpenPlan, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Trainingsplan · Kraft-Block", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
@@ -610,8 +626,8 @@ private fun PlanCard(
             // Plan as an M3 segmented group instead of divider lines.
             SegmentedRows(count = overview.routine.size, onClick = { onOpenExercise(overview.routine[it].exerciseId) }) { index ->
                 val target = overview.routine[index]
-                val timed = overview.exercises.firstOrNull { it.id == target.exerciseId }?.measureType
-                    ?.let { it == MeasureType.HOLD || it == MeasureType.DURATION } == true
+                val exercise = overview.exercises.firstOrNull { it.id == target.exerciseId }
+                val timed = exercise?.measureType?.let { it == MeasureType.HOLD || it == MeasureType.DURATION } == true
                 Text(
                     text = exerciseNames[target.exerciseId] ?: target.exerciseId,
                     style = MaterialTheme.typography.bodyLarge,
@@ -619,7 +635,7 @@ private fun PlanCard(
                 )
                 Text(
                     text = "${target.targetSets} × ${target.targetReps}${if (timed) " s" else ""} · " +
-                        "Pause ${target.restSec / 60}:" + (target.restSec % 60).toString().padStart(2, '0'),
+                        app.tenet.android.feature.sport.planRestLabel(target.restSec, exercise, target.targetReps),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -630,7 +646,7 @@ private fun PlanCard(
 
 @Composable
 private fun SessionsCard(overview: CalisthenicsOverview, onOpenSummary: (String) -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
@@ -671,11 +687,12 @@ private fun SessionsCard(overview: CalisthenicsOverview, onOpenSummary: (String)
 
 @Composable
 private fun TimelineCard(uiState: CalisthenicsUiState) {
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    Icons.Outlined.History,
+                    // Own icon: "Letzte Sessions" right above already uses the history clock.
+                    Icons.Outlined.MilitaryTech,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.tertiary,
                 )

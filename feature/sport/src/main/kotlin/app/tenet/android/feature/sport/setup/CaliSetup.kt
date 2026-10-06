@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.setup
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -164,7 +165,7 @@ fun CaliSetupScreen(onDone: () -> Unit, viewModel: CaliSetupViewModel = hiltView
                     val checked = skill.id in s.focus
                     val stepLabel = data.steps.firstOrNull { it.id == (s.currentSteps[skill.id]) }?.label
                         ?: data.steps.filter { it.skillId == skill.id }.minByOrNull { it.sortOrder }?.label
-                    Card(
+                    TenetCard(
                         colors = CardDefaults.cardColors(
                             containerColor = if (checked) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
                         ),
@@ -200,7 +201,7 @@ fun CaliSetupScreen(onDone: () -> Unit, viewModel: CaliSetupViewModel = hiltView
                 val data = s.data ?: return@SetupScaffold
                 val plan = CaliPlanBuilder.build(s.input(viewModel.steps()))
                 val holds = data.steps.filter { it.criterionType == CriterionType.HOLD }.map { it.exerciseId }.toSet() + "ex-cs-hollow"
-                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+                TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("Skill + Kraft", style = MaterialTheme.typography.titleMedium)
                         plan.routine.forEach { ex ->

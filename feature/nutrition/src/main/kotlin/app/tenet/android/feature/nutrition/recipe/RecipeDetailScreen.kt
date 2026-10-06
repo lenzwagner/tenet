@@ -1,5 +1,6 @@
 package app.tenet.android.feature.nutrition.recipe
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.graphics.luminance
 import androidx.core.view.WindowCompat
@@ -476,7 +477,7 @@ fun RecipeDetailScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
                     d.ingredientLines.forEachIndexed { index, line ->
                         SegmentedListItem(
-                            colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                            colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                             shapes = ListItemDefaults.segmentedShapes(index, d.ingredientLines.size),
                         ) { Text(IngredientScaler.scale(line, factor.toDouble())) }
                     }
@@ -485,7 +486,7 @@ fun RecipeDetailScreen(
             Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
                 d.ingredients.forEachIndexed { index, item ->
                     SegmentedListItem(
-                        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                        colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                         shapes = ListItemDefaults.segmentedShapes(index, d.ingredients.size),
                         trailingContent = {
                             Text("${(item.grams * factor).roundToInt()} g", style = MaterialTheme.typography.labelLarge)
@@ -535,7 +536,7 @@ fun RecipeDetailScreen(
             if (notes.isNotBlank()) {
                 SectionHeader("Notizen")
                 var expanded by rememberSaveable { mutableStateOf(false) }
-                Card(
+                TenetCard(
                     onClick = { expanded = !expanded },
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                     modifier = Modifier.fillMaxWidth().animateContentSize(),

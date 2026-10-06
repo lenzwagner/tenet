@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.calisthenics
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -257,7 +258,7 @@ fun SkillSessionScreen(
             if (videos.isNotEmpty()) {
                 item(key = "videos") {
                     val setNumbers = state.sets.associate { it.id to it.sortOrder + 1 }
-                    Card(Modifier.fillMaxWidth()) {
+                    TenetCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Formvideos", style = MaterialTheme.typography.titleMedium)
                             FormVideoStrip(
@@ -285,7 +286,7 @@ private fun CriterionCard(
     required: Int,
     met: Boolean,
 ) {
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Aufstiegskriterium", style = MaterialTheme.typography.titleMedium)
             Text(
@@ -349,7 +350,7 @@ private fun HoldTimerCard(targetSeconds: Int) {
         }
     }
 
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(
             Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -408,7 +409,7 @@ private fun SetRow(
     videoCount: Int = 0,
     onRecordVideo: () -> Unit = {},
 ) {
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Row(
             Modifier
                 .fillMaxWidth()

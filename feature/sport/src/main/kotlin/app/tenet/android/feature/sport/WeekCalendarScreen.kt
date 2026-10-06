@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.runtime.getValue
 import java.util.Locale
 import androidx.compose.material3.MediumFlexibleTopAppBar
@@ -94,7 +95,18 @@ fun WeekCalendarScreen(
             }
 
             val isEmpty = state.days.none { it.sessions.isNotEmpty() || it.planned.isNotEmpty() }
-            if (!state.loading && isEmpty) {
+            // Plans without fixed days count as "any day" (like on Heute), so name
+            // them instead of claiming the week is empty.
+            if (!state.loading && state.flexiblePlans.isNotEmpty()) {
+                item {
+                    Text(
+                        text = state.flexiblePlans.joinToString(" und ") { "${it.discipline.label()} · ${it.title}" } +
+                            " ohne feste Tage – an jedem Tag möglich. Feste Trainingstage legst du auf der Sport-Seite fest.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else if (!state.loading && isEmpty) {
                 item {
                     Text(
                         text = "Keine Einheiten in dieser Woche. " +
@@ -106,7 +118,8 @@ fun WeekCalendarScreen(
             }
 
             items(state.days, key = { it.date.toString() }) { day ->
-                DayCard(day)
+                // Month only on the first day and where a new month starts.
+                DayCard(day, showMonth = day == state.days.first() || day.date.dayOfMonth == 1)
             }
 
             item { Legend() }
@@ -150,8 +163,8 @@ private fun WeekSelector(
 }
 
 @Composable
-private fun DayCard(day: WeekDayUi) {
-    Card(Modifier.fillMaxWidth()) {
+private fun DayCard(day: WeekDayUi, showMonth: Boolean = true) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val dayLabel = weekdayLabel(day.date)
@@ -175,11 +188,13 @@ private fun DayCard(day: WeekDayUi) {
                     )
                 }
                 Spacer(Modifier.weight(1f))
-                Text(
-                    text = day.date.format(monthShort),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (showMonth) {
+                    Text(
+                        text = day.date.format(monthShort),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             if (day.sessions.isEmpty() && day.planned.isEmpty()) {

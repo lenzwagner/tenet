@@ -190,7 +190,7 @@ private fun <T> LazyListScope.group(
     item(key = "h-$key") { SectionHeader("$title · ${items.size}", Modifier.padding(top = 8.dp)) }
     itemsIndexed(items, key = { i, _ -> "$key-$i" }) { index, item ->
         SegmentedListItem(
-            colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+            colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
             onClick = { onClick(item) },
             shapes = ListItemDefaults.segmentedShapes(index, items.size),
             leadingContent = { ShapeIcon(icon(item)) },

@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.run
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import app.tenet.android.core.designsystem.component.LocalAppSnackbar
@@ -227,7 +228,7 @@ private fun SetupContent(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (planned != null) {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+            TenetCard(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Heute geplant", style = MaterialTheme.typography.labelLarge)
                     Text(planned.title, style = MaterialTheme.typography.headlineSmall)
@@ -251,7 +252,7 @@ private fun SetupContent(
         }
         Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
             SegmentedListItem(
-                colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                 checked = voice,
                 onCheckedChange = onVoice,
                 shapes = ListItemDefaults.segmentedShapes(0, 2),
@@ -260,7 +261,7 @@ private fun SetupContent(
                 trailingContent = { TenetSwitch(checked = voice, onCheckedChange = null) },
             ) { Text("Sprachansagen") }
             SegmentedListItem(
-                colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                 checked = autoPause,
                 onCheckedChange = onAutoPause,
                 shapes = ListItemDefaults.segmentedShapes(1, 2),

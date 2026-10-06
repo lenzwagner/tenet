@@ -1,5 +1,6 @@
 package app.tenet.android.feature.nutrition
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Card
 import app.tenet.android.core.designsystem.component.rememberDictation
@@ -305,7 +306,7 @@ private fun LazyListScope.foodGroup(key: String, title: String?, foods: List<Foo
 @Composable
 private fun FoodRow(food: Food, shapes: androidx.compose.material3.ListItemShapes, onClick: () -> Unit) {
     SegmentedListItem(
-        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
         onClick = onClick,
         shapes = shapes,
         leadingContent = {
@@ -366,7 +367,7 @@ private fun RecipeList(recipes: List<RecipeDetail>, onSelect: (RecipeDetail) -> 
     ) {
         itemsIndexed(recipes, key = { _, r -> r.recipe.id }) { index, detail ->
             SegmentedListItem(
-                colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                 onClick = { onSelect(detail) },
                 shapes = ListItemDefaults.segmentedShapes(index, recipes.size),
                 leadingContent = { ShapeIcon(Icons.Outlined.Restaurant) },
@@ -479,7 +480,7 @@ internal fun RecipePortionSheet(
                     shapes = IconButtonDefaults.shapes(),
                 ) { Icon(Icons.Outlined.Add, contentDescription = "Mehr") }
             }
-            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
+            TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
                 Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                     Nutrient("${(per.kcal * portions).roundToInt()}", "kcal")
                     Nutrient((per.protein * portions).fmt(), "Eiweiß g")

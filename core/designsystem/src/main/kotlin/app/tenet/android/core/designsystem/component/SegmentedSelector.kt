@@ -1,5 +1,7 @@
 package app.tenet.android.core.designsystem.component
 
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.runtime.getValue
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -57,6 +59,15 @@ fun SegmentedSelector(
 ) {
     val haptics = LocalHapticFeedback.current
     val colors = MaterialTheme.colorScheme
+    // "Klar": white thumb with a soft shadow on a grey track, dark label (iOS);
+    // Expressive: filled accent pill.
+    val clear = app.tenet.android.core.designsystem.theme.isClearStyle
+    val dark = colors.background.luminance() < 0.5f
+    val thumb = when {
+        !clear -> colors.primary
+        dark -> Color(0xFF636366)
+        else -> Color.White
+    }
     val moveSpec = MaterialTheme.motionScheme.fastSpatialSpec<Dp>()
     val colorSpec = MaterialTheme.motionScheme.fastEffectsSpec<Color>()
     BoxWithConstraints(
@@ -75,14 +86,20 @@ fun SegmentedSelector(
                 .offset(x = indicatorX)
                 .width(segmentWidth)
                 .fillMaxHeight()
+                .then(if (clear) Modifier.shadow(3.dp, CircleShape, clip = false) else Modifier)
                 .clip(CircleShape)
-                .background(colors.primary),
+                .background(thumb),
         )
         Row(Modifier.fillMaxSize().selectableGroup()) {
             segments.forEachIndexed { index, segment ->
                 val selected = index == selectedIndex
                 val content by animateColorAsState(
-                    if (selected) colors.onPrimary else colors.onSurfaceVariant,
+                    when {
+                        selected && clear -> colors.onSurface
+                        selected -> colors.onPrimary
+                        clear -> colors.onSurface.copy(alpha = 0.75f)
+                        else -> colors.onSurfaceVariant
+                    },
                     colorSpec,
                     label = "segmentContent",
                 )

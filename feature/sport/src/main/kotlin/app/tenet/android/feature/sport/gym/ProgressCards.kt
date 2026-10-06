@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.gym
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.material3.Surface
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.FlowRow
@@ -76,7 +77,7 @@ fun PrBadgeCard(personalBests: List<ProgressMath.PersonalBest>) {
     val recent = personalBests.filter { it.at >= cutoff }.take(5)
     if (recent.isEmpty()) return
 
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RecordBadge()
@@ -133,7 +134,7 @@ fun OneRmHistoryCard(
     if (exercises.isEmpty()) return
     var selected by remember(exercises) { mutableStateOf(exercises.first()) }
 
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
@@ -240,7 +241,7 @@ fun VolumeHistoryCard(
     if (sets.isEmpty()) return
     var selected by remember(muscleGroups) { mutableStateOf<String?>(null) }
 
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
@@ -381,7 +382,7 @@ fun BodyMetricCard(
         )
     }
 
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(

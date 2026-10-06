@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.run
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -132,7 +133,7 @@ internal fun paceText(sec: Int) = "%d:%02d /km".format(sec / 60, sec % 60)
 internal fun NextRunCard(unit: PlanRunUnit, onStart: () -> Unit, onOpen: () -> Unit) {
     val today = unit.date == LocalDate.now()
     val done = unit.status == UnitStatus.DONE
-    Card(
+    TenetCard(
         onClick = onOpen,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         modifier = Modifier.fillMaxWidth(),
@@ -191,7 +192,7 @@ internal fun PlanWeekCard(weeks: List<PlanWeekUi>, currentWeek: Int, onOpen: (St
     if (weeks.isEmpty()) return
     var index by rememberSaveable(weeks.size) { mutableIntStateOf(currentWeek.coerceIn(0, weeks.lastIndex)) }
     val week = weeks[index.coerceIn(0, weeks.lastIndex)]
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TooltipIconButton(Icons.Outlined.ChevronLeft, "Vorherige Woche", { index-- }, enabled = index > 0)

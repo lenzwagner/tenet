@@ -1,5 +1,6 @@
 package app.tenet.android.feature.nutrition
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import app.tenet.android.core.designsystem.component.TenetFabMenu
 import app.tenet.android.core.designsystem.component.FabMenuAction
 import androidx.compose.material.icons.outlined.Link
@@ -301,15 +302,6 @@ private fun TrackerPage(
                 )
             }
         }
-        item(key = "optimize") {
-            // Makro-Optimierer: suggestions for what is left of the day's goal.
-            AssistChip(
-                onClick = onOptimize,
-                label = { Text(if (state.isToday) "Was passt noch zu meinen Zielen?" else "Tag planen") },
-                leadingIcon = { Icon(Icons.Outlined.AutoAwesome, contentDescription = null) },
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
-        }
         item(key = "water") {
             WaterCard(
                 ml = state.waterMl,
@@ -319,14 +311,24 @@ private fun TrackerPage(
                 onEditGoal = { waterGoalDialog = true },
             )
         }
-        if (state.logs.isEmpty() && !state.loading) {
-            item(key = "copy") {
+        // Day actions in one row: optimizer, and on an empty day copying the day before.
+        item(key = "actions") {
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(top = 8.dp),
+            ) {
                 AssistChip(
-                    onClick = viewModel::copyPreviousDay,
-                    label = { Text("Vortag kopieren") },
-                    leadingIcon = { Icon(Icons.Outlined.ContentCopy, contentDescription = null) },
-                    modifier = Modifier.padding(top = 8.dp),
+                    onClick = onOptimize,
+                    label = { Text(if (state.isToday) "Was passt noch?" else "Tag planen") },
+                    leadingIcon = { Icon(Icons.Outlined.AutoAwesome, contentDescription = null) },
                 )
+                if (state.logs.isEmpty() && !state.loading) {
+                    AssistChip(
+                        onClick = viewModel::copyPreviousDay,
+                        label = { Text("Vortag kopieren") },
+                        leadingIcon = { Icon(Icons.Outlined.ContentCopy, contentDescription = null) },
+                    )
+                }
             }
         }
         MealType.entries.forEach { meal ->
@@ -431,7 +433,7 @@ private fun DaySwitcher(
 
 @Composable
 private fun WaterCard(ml: Int, goalMl: Int, onAdd: () -> Unit, onRemove: () -> Unit, onEditGoal: () -> Unit) {
-    Card(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+    TenetCard(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
         Row(Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             ShapeIcon(
                 Icons.Outlined.LocalDrink,
@@ -479,7 +481,7 @@ private fun MealCard(
 ) {
     var menu by remember { mutableStateOf(false) }
     val kcal = logs.sumOf { it.kcal.toDouble() }.roundToInt()
-    Card(
+    TenetCard(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {

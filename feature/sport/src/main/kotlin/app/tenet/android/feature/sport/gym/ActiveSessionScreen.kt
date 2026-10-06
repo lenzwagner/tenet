@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.gym
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.runtime.key
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.rememberSwipeToDismissBoxState
@@ -538,7 +539,7 @@ private fun PlateCalculatorSheet(
             }
 
             if (result != null) {
-                Card(Modifier.fillMaxWidth()) {
+                TenetCard(Modifier.fillMaxWidth()) {
                     Column(
                         Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -945,6 +946,7 @@ private fun SetRow(
             onValueChange = { onText(sessionExerciseId, setId, ActiveSessionViewModel.Field.KG, it) },
             done = row.set.completed,
             selectAllOnFocus = true,
+            placeholder = "?",
             modifier = Modifier.weight(1f),
         )
         CompactNumberField(

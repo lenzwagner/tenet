@@ -1,5 +1,6 @@
 package app.tenet.android.core.designsystem.component
 
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -78,6 +79,16 @@ fun TenetLoading(modifier: Modifier = Modifier) {
 /** List/section label in the M3 "title small, primary" style. */
 @Composable
 fun SectionHeader(text: String, modifier: Modifier = Modifier) {
+    if (app.tenet.android.core.designsystem.theme.isClearStyle) {
+        // iOS grouped-list header: small, grey, set in from the cell edge.
+        Text(
+            text = text.uppercase(),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = modifier.padding(start = 16.dp, top = 12.dp, bottom = 6.dp),
+        )
+        return
+    }
     Text(
         text = text,
         style = MaterialTheme.typography.titleSmallEmphasized,
@@ -157,6 +168,29 @@ fun TenetSwitch(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    if (app.tenet.android.core.designsystem.theme.isClearStyle) {
+        // iOS-like: always a full-size white knob, accent track when on, a
+        // plain grey track when off – no outline, no check mark.
+        val c = MaterialTheme.colorScheme
+        val dark = c.background.luminance() < 0.5f
+        val offTrack = if (dark) androidx.compose.ui.graphics.Color(0xFF39393D) else androidx.compose.ui.graphics.Color(0xFFE5E5EA)
+        androidx.compose.material3.Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            modifier = modifier,
+            enabled = enabled,
+            thumbContent = { Box(Modifier.size(androidx.compose.material3.SwitchDefaults.IconSize)) },
+            colors = androidx.compose.material3.SwitchDefaults.colors(
+                checkedThumbColor = androidx.compose.ui.graphics.Color.White,
+                checkedTrackColor = c.primary,
+                checkedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+                uncheckedThumbColor = androidx.compose.ui.graphics.Color.White,
+                uncheckedTrackColor = offTrack,
+                uncheckedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+            ),
+        )
+        return
+    }
     androidx.compose.material3.Switch(
         checked = checked,
         onCheckedChange = onCheckedChange,
@@ -219,6 +253,8 @@ fun CompactNumberField(
     modifier: Modifier = Modifier,
     suffix: String? = null,
     selectAllOnFocus: Boolean = false,
+    /** Shown dimmed while the field is empty. */
+    placeholder: String? = null,
 ) {
     var editor by remember { mutableStateOf(TextFieldValue(value)) }
     var focused by remember { mutableStateOf(false) }
@@ -253,7 +289,12 @@ fun CompactNumberField(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
             ) {
-                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { inner() }
+                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    if (placeholder != null && currentEditor.text.isEmpty()) {
+                        Text(placeholder, style = MaterialTheme.typography.titleSmall, color = colors.onSurfaceVariant.copy(alpha = 0.6f))
+                    }
+                    inner()
+                }
                 if (suffix != null) Text(suffix, style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
             }
         },

@@ -1,5 +1,6 @@
 package app.tenet.android.core.designsystem.nutrition
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Card
 import androidx.compose.runtime.setValue
@@ -158,7 +159,7 @@ fun GoalEditorSheet(
             val fatPct = if (kcal > 0f) (fat * 9f / kcal * 100f).roundToInt() else 0
             val mismatch = abs(delta) > 25
 
-            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
+            TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
                 Column(
                     Modifier
                         .fillMaxWidth()
@@ -326,7 +327,7 @@ private fun GoalCalculator(
         LabeledSlider("Eiweiß", proteinPerKg, 1.2f..2.6f, 13, "%.1f g/kg".format(java.util.Locale.GERMAN, proteinPerKg)) { proteinPerKg = it }
         LabeledSlider("Fett", fatPerKg, 0.6f..1.4f, 7, "%.1f g/kg".format(java.util.Locale.GERMAN, fatPerKg)) { fatPerKg = it }
 
-        Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
+        TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     "Grundumsatz ${EnergyMath.bmr(body).roundToInt()} kcal · Gesamtumsatz ${EnergyMath.tdee(body).roundToInt()} kcal",

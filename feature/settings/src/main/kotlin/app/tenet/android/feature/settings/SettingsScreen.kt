@@ -1,6 +1,5 @@
 package app.tenet.android.feature.settings
 
-import android.widget.Toast
 import androidx.compose.material.icons.outlined.NetworkCheck
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Key
@@ -154,6 +153,7 @@ fun SettingsScreen(
     var formulaDialogVisible by remember { mutableStateOf(false) }
     var paceDialogVisible by remember { mutableStateOf(false) }
     var amoledDialogVisible by remember { mutableStateOf(false) }
+    var styleDialogVisible by remember { mutableStateOf(false) }
     var colorSheet by remember { mutableStateOf<ColorSlot?>(null) }
     var timePickerVisible by remember { mutableStateOf(false) }
     var trainingTimeVisible by remember { mutableStateOf(false) }
@@ -245,8 +245,15 @@ fun SettingsScreen(
                 }
                 item {
                     SettingsGroup {
+                        NavItem(
+                            shapes = it(0, 5),
+                            icon = Icons.Outlined.AutoAwesome,
+                            title = "Stil",
+                            supporting = "${settings.designStyle.label} · ${settings.designStyle.description}",
+                            onClick = { styleDialogVisible = true },
+                        )
                         SwitchItem(
-                            shapes = it(0, 4),
+                            shapes = it(1, 5),
                             icon = Icons.Outlined.Palette,
                             title = "Dynamic Color",
                             supporting = "Farben aus dem Wallpaper übernehmen (Android 12+)",
@@ -254,14 +261,14 @@ fun SettingsScreen(
                             onCheckedChange = viewModel::setDynamicColor,
                         )
                         NavItem(
-                            shapes = it(1, 4),
+                            shapes = it(2, 5),
                             icon = Icons.Outlined.DarkMode,
                             title = "AMOLED-Schwarz",
                             supporting = "${settings.amoledMode.label} · nur im dunklen Modus",
                             onClick = { amoledDialogVisible = true },
                         )
                         SwitchItem(
-                            shapes = it(2, 4),
+                            shapes = it(3, 5),
                             icon = Icons.Outlined.AutoStories,
                             title = "Serifenschrift im Journal",
                             supporting = "Tagebuch und Träume in Newsreader, ruhiger zu lesen",
@@ -269,7 +276,7 @@ fun SettingsScreen(
                             onCheckedChange = viewModel::setJournalSerif,
                         )
                         SwitchItem(
-                            shapes = it(3, 4),
+                            shapes = it(4, 5),
                             icon = Icons.Outlined.BlurOn,
                             title = "Glas-Leiste",
                             supporting = "Transluzente Navigationsleiste mit Unschärfe",
@@ -464,7 +471,7 @@ fun SettingsScreen(
                 item {
                     SettingsGroup { shapes ->
                         SegmentedListItem(
-                            colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                            colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                             shapes = shapes(0, 1),
                             leadingContent = { SettingsIcon(Icons.Outlined.Info) },
                             trailingContent = {
@@ -547,6 +554,22 @@ fun SettingsScreen(
                 }
             },
         ) { TimePicker(state = pickerState) }
+    }
+
+    if (styleDialogVisible) {
+        ChoiceDialog(
+            title = "Stil",
+            icon = Icons.Outlined.AutoAwesome,
+            options = app.tenet.android.core.common.DesignStyle.entries,
+            selected = settings.designStyle,
+            label = { it.label },
+            description = { it.description },
+            onSelect = {
+                viewModel.setDesignStyle(it)
+                styleDialogVisible = false
+            },
+            onDismiss = { styleDialogVisible = false },
+        )
     }
 
     if (amoledDialogVisible) {
@@ -702,14 +725,13 @@ private fun AiGroup(viewModel: SettingsViewModel) {
     val availableModels by viewModel.availableModels.collectAsStateWithLifecycle()
     var keyDialog by remember { mutableStateOf(false) }
     var modelDialog by remember { mutableStateOf(false) }
-    var modelTesting by remember { mutableStateOf(false) }
     var testing by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<String?>(null) }
 
     Column(Modifier.padding(top = 8.dp)) {
         SettingsGroup { shapes ->
             SwitchItem(
-                shapes = shapes(0, 5),
+                shapes = shapes(0, 4),
                 icon = Icons.Outlined.AutoAwesome,
                 title = "KI-Ausfüllhilfe",
                 supporting = "Diktat füllt Traum, Tagebuch, Notiz, Mahlzeit, Lauf und Gym-Sätze aus",
@@ -717,53 +739,38 @@ private fun AiGroup(viewModel: SettingsViewModel) {
                 onCheckedChange = viewModel::setAiEnabled,
             )
             NavItem(
-                shapes = shapes(1, 5),
+                shapes = shapes(1, 4),
                 icon = Icons.Outlined.Key,
                 title = "NVIDIA-API-Schlüssel",
                 supporting = if (aiConfig.apiKey.isBlank()) "Nicht gesetzt" else "nvapi-…" + aiConfig.apiKey.takeLast(4),
                 onClick = { keyDialog = true },
             )
             NavItem(
-                shapes = shapes(2, 5),
+                shapes = shapes(2, 4),
                 icon = Icons.Outlined.Memory,
                 title = "Modell",
                 supporting = aiConfig.model,
                 onClick = { modelDialog = true },
             )
+            // One test: sends a short request to exactly the model shown above
+            // and says inline whether it answered (was two rows plus a toast).
             NavItem(
-                shapes = shapes(3, 5),
-                icon = Icons.Outlined.NetworkCheck,
-                title = "Aktuelle AI testen",
-                supporting = if (modelTesting) "Teste ${aiConfig.model} …" else "Zeigt das verwendete Modell per Toast",
-                onClick = {
-                    if (!modelTesting) {
-                        modelTesting = true
-                        // Test exactly the model shown in this row. This avoids
-                        // a stale/default selection if model state changes while
-                        // the coroutine is being scheduled.
-                        viewModel.testAiModel(aiConfig.model) { model, error ->
-                            modelTesting = false
-                            val message = model?.let { "Die aktuelle AI ist: $it" } ?: "AI-Test fehlgeschlagen: $error"
-                            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-                        }
-                    }
-                },
-            )
-            NavItem(
-                shapes = shapes(4, 5),
+                shapes = shapes(3, 4),
                 icon = Icons.Outlined.NetworkCheck,
                 title = "Verbindung testen",
                 supporting = when {
-                    testing -> "Teste …"
-                    testResult == null -> "Schickt eine kurze Testanfrage"
+                    testing -> "Teste ${aiConfig.model} …"
+                    testResult == null -> "Schickt eine kurze Testanfrage an das Modell"
                     testResult == "" -> "Verbunden ✓"
                     else -> "Fehler: $testResult"
                 },
                 onClick = {
-                    testing = true
-                    viewModel.testAi { error ->
-                        testing = false
-                        testResult = error.orEmpty()
+                    if (!testing) {
+                        testing = true
+                        viewModel.testAiModel(aiConfig.model) { _, error ->
+                            testing = false
+                            testResult = error.orEmpty()
+                        }
                     }
                 },
             )
@@ -859,6 +866,18 @@ internal fun SettingsGroup(
 
 @Composable
 internal fun SettingsIcon(icon: ImageVector) {
+    if (app.tenet.android.core.designsystem.theme.isClearStyle) {
+        // iOS settings: white glyph on a small rounded square in the accent color.
+        androidx.compose.material3.Surface(
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            modifier = Modifier.size(30.dp),
+        ) {
+            androidx.compose.foundation.layout.Box(contentAlignment = androidx.compose.ui.Alignment.Center) { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) }
+        }
+        return
+    }
     ShapeIcon(
         icon = icon,
         containerShape = MaterialShapes.Cookie6Sided.toShape(),
@@ -878,7 +897,7 @@ private fun SwitchItem(
 ) {
     val haptics = LocalHapticFeedback.current
     SegmentedListItem(
-        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
         checked = checked,
         onCheckedChange = {
             haptics.performHapticFeedback(if (it) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff)
@@ -903,7 +922,7 @@ private fun ColorItem(
     onClick: () -> Unit,
 ) {
     SegmentedListItem(
-        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
         onClick = onClick,
         shapes = shapes,
         leadingContent = {
@@ -926,7 +945,7 @@ internal fun NavItem(
     onClick: () -> Unit,
 ) {
     SegmentedListItem(
-        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
         onClick = onClick,
         shapes = shapes,
         leadingContent = { SettingsIcon(icon) },
@@ -956,7 +975,7 @@ private fun <T> ChoiceDialog(
             ) {
                 options.forEachIndexed { index, option ->
                     SegmentedListItem(
-                        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                        colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                         selected = option == selected,
                         onClick = { onSelect(option) },
                         shapes = ListItemDefaults.segmentedShapes(index, options.size),

@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import app.tenet.android.feature.sport.run.PlanWeekCard
 import app.tenet.android.feature.sport.run.NextRunCard
 import app.tenet.android.feature.sport.setup.SportSetupViewModel
@@ -171,7 +172,8 @@ fun RunningPage(
         ),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        if (setupDone?.contains("RUNNING") == false && state.planStart == null) {
+        val showSetup = setupDone?.contains("RUNNING") == false && state.planStart == null
+        if (showSetup) {
             item(key = "setup") {
                 SetupIntroCard(
                     icon = Icons.AutoMirrored.Outlined.DirectionsRun,
@@ -203,12 +205,15 @@ fun RunningPage(
                 freeRun = state.nextUnit != null,
             )
         }
-        item {
-            PlanCard(
-                state = state,
-                onCreatePlan = onOpenSetup,
-                onOpenPlan = onOpenPlan,
-            )
+        // Without a plan the setup card above already asks for one: no second "Plan erstellen".
+        if (!(showSetup && state.overview.plan == null)) {
+            item {
+                PlanCard(
+                    state = state,
+                    onCreatePlan = onOpenSetup,
+                    onOpenPlan = onOpenPlan,
+                )
+            }
         }
         if (state.planWeeks.isNotEmpty()) {
             item(key = "plan-week") { PlanWeekCard(state.planWeeks, state.currentWeek, onOpenWorkout) }
@@ -228,7 +233,7 @@ fun RunningPage(
 private fun VolumeCard(state: RunningUiState) {
     var monthly by rememberSaveable { mutableStateOf(false) }
     val periods = if (monthly) state.monthlyVolume else state.weeklyVolume
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.BarChart, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
@@ -350,7 +355,7 @@ private fun formatHours(sec: Int): String = "%d:%02d h".format(sec / 3600, (sec 
 
 @Composable
 private fun PlanCard(state: RunningUiState, onCreatePlan: () -> Unit, onOpenPlan: (String) -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
@@ -419,7 +424,7 @@ private fun PlanCard(state: RunningUiState, onCreatePlan: () -> Unit, onOpenPlan
 
 @Composable
 private fun RecentRunsCard(state: RunningUiState, onOpenRun: (String) -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(

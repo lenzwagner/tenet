@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.calisthenics
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -172,7 +173,7 @@ fun CaliPlanScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item(key = "hero") {
-                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                     Row(Modifier.padding(20.dp)) {
                         Stat("${s.sessions}", "Trainings", Modifier.weight(1f))
                         Stat("${s.weeks}", "Wochen", Modifier.weight(1f))
@@ -188,7 +189,7 @@ fun CaliPlanScreen(
                 item(key = "sk-h") { Title(Icons.Outlined.AccountTree, "Skills") }
                 s.skills.forEach { sk ->
                     item(key = "sk-${sk.name}") {
-                        Card(Modifier.fillMaxWidth()) {
+                        TenetCard(Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(sk.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
@@ -208,7 +209,7 @@ fun CaliPlanScreen(
 @Composable
 private fun ExerciseCard(ex: CaliExerciseUi, onClick: () -> Unit) {
     val unit = if (ex.hold) " s" else ""
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+    TenetCard(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {

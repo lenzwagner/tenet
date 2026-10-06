@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.gym
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -129,7 +130,7 @@ fun ExerciseDetailScreen(
             }
             detail.lastNote?.let { note ->
                 item(key = "note") {
-                    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
+                    TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
                         Row(Modifier.padding(16.dp), verticalAlignment = androidx.compose.ui.Alignment.Top) {
                             Icon(Icons.Outlined.PushPin, contentDescription = "Letzte Notiz", tint = MaterialTheme.colorScheme.onTertiaryContainer)
                             Spacer(Modifier.width(12.dp))
@@ -139,7 +140,7 @@ fun ExerciseDetailScreen(
                 }
             }
             item(key = "records") {
-                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         SectionTitle(Icons.Outlined.EmojiEvents, "Rekorde")
                         if (detail.bodyweight && detail.mostReps == 0 && detail.longestHold > 0) {
@@ -184,7 +185,7 @@ fun ExerciseDetailScreen(
             }
             if (detail.sessions.size >= 2 && series != null) {
                 item(key = "chart") {
-                    Card(Modifier.fillMaxWidth()) {
+                    TenetCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             SectionTitle(Icons.AutoMirrored.Outlined.ShowChart, series.first)
                             E1rmChart(series.second, Modifier.fillMaxWidth().height(140.dp))
@@ -203,7 +204,7 @@ fun ExerciseDetailScreen(
                     SegmentedListItem(
                         onClick = { onOpenSession(s.sessionId) },
                         shapes = ListItemDefaults.segmentedShapes(i, sessions.size),
-                        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                        colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                         supportingContent = {
                             Text(
                                 s.sets.joinToString("  ·  ") { set ->

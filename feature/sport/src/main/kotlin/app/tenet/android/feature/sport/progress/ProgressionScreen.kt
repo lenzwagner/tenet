@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.progress
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.fadeIn
@@ -179,7 +180,7 @@ private fun SlideCard(slide: Slide, series: List<Series>, from: LocalDate?) {
     val scroll = rememberScrollState()
     val scope = rememberCoroutineScope()
 
-    Card(
+    TenetCard(
         Modifier.fillMaxSize(),
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),

@@ -119,6 +119,8 @@ fun TenetTheme(
     amoledMode: app.tenet.android.core.common.AmoledMode = app.tenet.android.core.common.AmoledMode.OFF,
     /** Serif reading font for diary and dreams. */
     journalSerif: Boolean = false,
+    /** "Klar" (iOS-like neutral surfaces, Inter) or Material 3 Expressive. */
+    designStyle: app.tenet.android.core.common.DesignStyle = app.tenet.android.core.common.DesignStyle.CLEAR,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -151,19 +153,28 @@ fun TenetTheme(
             onTertiaryContainer = colorScheme.onSecondaryContainer,
         )
     }
+    val clear = designStyle == app.tenet.android.core.common.DesignStyle.CLEAR
     val amoledApp = darkTheme && amoledMode == app.tenet.android.core.common.AmoledMode.APP
-    val finalScheme = if (amoledApp) remember(toned) { toned.amoled() } else toned
+    val finalScheme = when {
+        // "Klar" is already black in dark mode, cells stay #1C1C1E like on iOS.
+        clear -> remember(toned, darkTheme) { toned.clear(darkTheme) }
+        amoledApp -> remember(toned) { toned.amoled() }
+        else -> toned
+    }
+    val typography = if (clear) remember { clearTypography(TenetTypography) } else TenetTypography
     androidx.compose.runtime.CompositionLocalProvider(
         LocalColorStyle provides colorStyle,
         LocalTwoTone provides twoTone,
         LocalAmoledDreams provides (darkTheme && amoledMode == app.tenet.android.core.common.AmoledMode.DREAMS),
         LocalJournalSerif provides journalSerif,
+        LocalDesignStyle provides designStyle,
     ) {
         MaterialExpressiveTheme(
             colorScheme = finalScheme,
-            motionScheme = MotionScheme.expressive(),
+            // "Klar": calm, barely bouncing springs like iOS; Expressive keeps its overshoot.
+            motionScheme = if (clear) MotionScheme.standard() else MotionScheme.expressive(),
             shapes = TenetShapes,
-            typography = TenetTypography,
+            typography = typography,
             content = content,
         )
     }

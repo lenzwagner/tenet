@@ -168,6 +168,7 @@ class MainActivity : FragmentActivity() {
                 colorStyle = settings.colorStyle,
                 twoTone = settings.twoTone,
                 amoledMode = settings.amoledMode,
+                designStyle = settings.designStyle,
                 journalSerif = settings.journalSerif,
             ) {
                 when {

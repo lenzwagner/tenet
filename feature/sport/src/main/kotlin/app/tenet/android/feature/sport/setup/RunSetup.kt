@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.setup
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import app.tenet.android.core.designsystem.component.TenetSwitch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -256,7 +257,7 @@ private fun RunPlanPreview(s: RunSetupState) {
     val anchor = s.form5kSec?.let { PaceAnchor(5_000, it) }
     val dayNames = listOf("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")
     Text("${s.goal.label} · $weeks Wochen", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+    TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("Woche 1", style = MaterialTheme.typography.titleSmall)
             week1.sortedBy { it.dayIndex }.forEach { unit ->

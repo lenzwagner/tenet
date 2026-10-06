@@ -78,7 +78,7 @@ fun WorkoutHistoryScreen(
                         SegmentedListItem(
                             onClick = { onOpenSession(session.id) },
                             shapes = ListItemDefaults.segmentedShapes(i, sessions.size),
-                            colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                            colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                             supportingContent = { Text(Instant.ofEpochMilli(session.startedAt).atZone(zone).format(DAY)) },
                             trailingContent = {
                                 Text("$minutes min · ${tonsText(volume)}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)

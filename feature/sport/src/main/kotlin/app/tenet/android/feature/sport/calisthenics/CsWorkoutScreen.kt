@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.calisthenics
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -251,7 +252,7 @@ private fun CircuitCard(
         (session.restSec ?: 20).coerceAtLeast(1)
     }
 
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(
             Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -331,7 +332,7 @@ private fun EmomCard(
     val state = IntervalMath.emom(elapsedSec, minutes, interval)
     val station = info.stations[((state.round - 1).coerceAtLeast(0)) % info.stations.size]
 
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(
             Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -406,7 +407,7 @@ private fun AmrapCard(
         onRound()
     }
     VolumeKeyHandler(enabled = timer.running) { round() }
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(
             Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -495,7 +496,7 @@ private fun StationList(info: CsStrengthInfo, elapsedSec: Long, onSwap: (Strengt
         }
     }
 
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("Stationen", style = MaterialTheme.typography.titleMedium)
             info.stations.forEachIndexed { index, station ->

@@ -1,5 +1,6 @@
 package app.tenet.android.feature.nutrition.recipe
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
@@ -406,7 +407,7 @@ fun RecipeImportScreen(
                 }
             }
             s.error?.let {
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer), modifier = Modifier.fillMaxWidth()) {
+                TenetCard(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer), modifier = Modifier.fillMaxWidth()) {
                     Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.padding(16.dp))
                 }
             }
@@ -448,7 +449,7 @@ private fun ImportPreview(r: ImportedRecipe, e: ImportEdit, vm: RecipeImportView
         }
         if (r.ingredients.isEmpty() && e.ingredients.isEmpty()) {
             // Captions like "full recipe on my website (link in bio)".
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer), modifier = Modifier.fillMaxWidth()) {
+            TenetCard(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer), modifier = Modifier.fillMaxWidth()) {
                 Text(
                     "Im Beitrag stehen keine Zutaten – das ganze Rezept liegt meist auf der Seite des Autors (Link in Bio). " +
                         "Du kannst sie hier selbst eintragen oder später ergänzen.",
@@ -618,7 +619,7 @@ private fun BatchImport(s: RecipeImportState, vm: RecipeImportViewModel, clip: S
                     androidx.compose.material3.SegmentedListItem(
                         onClick = { item.recipeId?.let(onOpen) },
                         shapes = androidx.compose.material3.ListItemDefaults.segmentedShapes(i, s.batchItems.size),
-                        colors = androidx.compose.material3.ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                        colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                         leadingContent = {
                             when (item.status) {
                                 BatchItem.Status.RUNNING -> LoadingIndicator(Modifier.size(28.dp))

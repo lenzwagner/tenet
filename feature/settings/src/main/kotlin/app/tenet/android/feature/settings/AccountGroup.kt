@@ -1,5 +1,6 @@
 package app.tenet.android.feature.settings
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -159,7 +160,7 @@ internal fun AccountGroup(viewModel: AccountViewModel = hiltViewModel()) {
                 onClick = {},
             )
         }
-        acc == null -> Card(
+        acc == null -> TenetCard(
             Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         ) {
@@ -188,7 +189,7 @@ internal fun AccountGroup(viewModel: AccountViewModel = hiltViewModel()) {
             }
         }
         else -> SettingsGroup { shapes ->
-            Card(
+            TenetCard(
                 shape = shapes(0, 4).shape,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
                 modifier = Modifier.fillMaxWidth(),

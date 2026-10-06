@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material3.AssistChipDefaults
@@ -213,7 +214,7 @@ private fun RoutineRow(
     onSuperset: (Int?) -> Unit,
     onRule: () -> Unit,
 ) {
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(

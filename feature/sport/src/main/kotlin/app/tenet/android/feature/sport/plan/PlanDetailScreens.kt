@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.plan
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -137,7 +138,7 @@ fun RunPlanDetailScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
                         s.done.forEachIndexed { i, d ->
                             SegmentedListItem(
-                                colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                                colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                                 onClick = { onOpenRun(d.run.session.id) },
                                 shapes = ListItemDefaults.segmentedShapes(i, s.done.size),
                                 leadingContent = { Icon(Icons.AutoMirrored.Outlined.DirectionsRun, null, tint = MaterialTheme.colorScheme.primary) },
@@ -161,7 +162,7 @@ fun RunPlanDetailScreen(
 @Composable
 private fun FitCard(s: RunPlanUi, fit: app.tenet.android.core.common.PlanFit.Assessment, onAdjust: () -> Unit) {
     val unrealistic = fit.goal == app.tenet.android.core.common.PlanFit.Goal.UNREALISTIC
-    Card(
+    TenetCard(
         Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = if (unrealistic) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.tertiaryContainer,
@@ -194,7 +195,7 @@ private fun FitCard(s: RunPlanUi, fit: app.tenet.android.core.common.PlanFit.Ass
 
 @Composable
 private fun PrognosisCard(s: RunPlanUi) {
-    Card(
+    TenetCard(
         Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
     ) {
@@ -254,7 +255,7 @@ private fun PrognosisCard(s: RunPlanUi) {
 
 @Composable
 private fun ProgressCard(s: RunPlanUi) {
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row {
                 Stat("${s.done.size}/${s.dueCount}", "Einheiten bis heute", Modifier.weight(1f))
@@ -272,7 +273,7 @@ private fun ProgressCard(s: RunPlanUi) {
 private fun WeeklyVolumeCard(s: RunPlanUi) {
     val grow = rememberGrowIn(s.weekly)
     val colors = MaterialTheme.colorScheme
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SectionTitle(Icons.Outlined.BarChart, "Wochenumfang geplant / gelaufen")
             val max = maxOf(s.weekly.maxOfOrNull { maxOf(it.plannedKm, it.doneKm) } ?: 0f, 1f)
@@ -322,7 +323,7 @@ private fun WeeklyVolumeCard(s: RunPlanUi) {
 
 @Composable
 private fun PrognosisTrendCard(points: List<Pair<LocalDate, Int>>) {
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SectionTitle(Icons.AutoMirrored.Outlined.ShowChart, "Prognose-Verlauf")
             Sparkline(
@@ -413,7 +414,7 @@ fun GymPlanDetailScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item(key = "summary") {
-                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                     Row(Modifier.padding(20.dp)) {
                         Stat("${s.sessions.size}", "Trainings", Modifier.weight(1f))
                         Stat(tons(s.totalVolumeKg), "Gesamtvolumen", Modifier.weight(1f))
@@ -435,7 +436,7 @@ private fun SessionVolumeCard(sessions: List<GymPlanStats.SessionStat>) {
     val grow = rememberGrowIn(sessions)
     val colors = MaterialTheme.colorScheme
     val shown = sessions.takeLast(16)
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SectionTitle(Icons.Outlined.BarChart, "Volumen pro Training")
             val max = maxOf(shown.maxOf { it.volumeKg }, 1f)
@@ -469,7 +470,7 @@ private fun SessionVolumeCard(sessions: List<GymPlanStats.SessionStat>) {
 @Composable
 private fun ExerciseProgressCard(ex: GymPlanStats.ExerciseStat, next: OverloadMath.Suggestion?) {
     val last = ex.points.last()
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {

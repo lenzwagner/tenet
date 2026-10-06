@@ -69,6 +69,10 @@ internal fun TrainingDaysRow(
                         else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                     },
                     contentPadding = PaddingValues(0.dp),
+                    // Grey fill for off days so the toggles read as buttons on white cards ("Klar").
+                    colors = androidx.compose.material3.ToggleButtonDefaults.colors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    ),
                     modifier = Modifier
                         .weight(1f)
                         .semantics {

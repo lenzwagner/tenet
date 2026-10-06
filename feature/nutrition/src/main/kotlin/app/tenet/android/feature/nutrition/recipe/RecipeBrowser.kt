@@ -1,5 +1,6 @@
 package app.tenet.android.feature.nutrition.recipe
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import app.tenet.android.core.data.sync.RecipeThumbnails
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.ButtonDefaults
@@ -297,7 +298,7 @@ private fun RecipeTile(detail: RecipeDetail, onClick: () -> Unit, modifier: Modi
     val hasPhoto = r.photoUri != null && !failed
     // Varying heights make the grid look like a cookbook, not a table.
     val ratio = if (detail.fromSaffron) (if (r.title.length % 3 == 0) 0.8f else 0.7f) else 1f
-    Card(onClick = onClick, shape = MaterialTheme.shapes.large, modifier = modifier.fillMaxWidth()) {
+    TenetCard(onClick = onClick, shape = MaterialTheme.shapes.large, modifier = modifier.fillMaxWidth()) {
         Column {
             if (hasPhoto) {
                 // Photo with the title on a soft scrim (Pinterest/Saffron style).

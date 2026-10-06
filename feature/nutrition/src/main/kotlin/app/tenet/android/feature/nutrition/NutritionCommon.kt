@@ -1,5 +1,6 @@
 package app.tenet.android.feature.nutrition
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Card
 import androidx.compose.runtime.setValue
@@ -190,7 +191,7 @@ internal fun PortionSheet(
                 },
             )
 
-            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
+            TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
                 Row(
                     Modifier
                         .fillMaxWidth()

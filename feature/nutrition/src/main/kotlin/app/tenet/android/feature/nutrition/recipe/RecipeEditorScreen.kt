@@ -222,7 +222,7 @@ fun RecipeEditorScreen(
                 state.ingredients.forEachIndexed { index, item ->
                     val unmatched = item.foodId == null && item.kcalPer100 == 0f
                     SegmentedListItem(
-                        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                        colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                         onClick = {
                             replacing = item
                             viewModel.onPickerQuery(item.displayName)
@@ -395,7 +395,7 @@ private fun IngredientPickerSheet(
                 ) {
                     itemsIndexed(results, key = { _, f -> f.id }) { index, f ->
                         SegmentedListItem(
-                            colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                            colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                             onClick = {
                                 chosen = f
                                 grams = f.servingSizeG?.fmt() ?: "100"

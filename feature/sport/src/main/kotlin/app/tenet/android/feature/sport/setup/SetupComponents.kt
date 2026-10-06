@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.setup
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateFloatAsState
@@ -152,7 +153,7 @@ internal fun <T> ChoiceCards(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         options.forEach { option ->
             val isSelected = option == selected
-            Card(
+            TenetCard(
                 colors = CardDefaults.cardColors(
                     containerColor = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
                 ),
@@ -228,7 +229,7 @@ internal fun SetupIntroCard(
     onSetup: () -> Unit,
     onSkip: () -> Unit,
 ) {
-    Card(
+    TenetCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         modifier = Modifier.fillMaxWidth(),
     ) {

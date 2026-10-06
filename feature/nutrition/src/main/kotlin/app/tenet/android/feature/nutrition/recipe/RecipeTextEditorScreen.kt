@@ -1,5 +1,6 @@
 package app.tenet.android.feature.nutrition.recipe
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -329,7 +330,7 @@ private fun StepCard(
             onFocused()
         }
     }
-    Card(
+    TenetCard(
         Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {

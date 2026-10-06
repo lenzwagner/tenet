@@ -316,7 +316,7 @@ private fun ExerciseRow(
     SegmentedListItem(
         onClick = onOpen,
         shapes = shapes,
-        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
         overlineContent = MovementPattern.fromName(exercise.pattern)?.let { p -> { Text(p.label) } },
         leadingContent = { ExerciseThumb(exercise.id, size = 56.dp) },
         supportingContent = {

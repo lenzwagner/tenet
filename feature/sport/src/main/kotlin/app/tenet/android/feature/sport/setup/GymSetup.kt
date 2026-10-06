@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.setup
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
 import app.tenet.android.feature.sport.ExerciseThumb
@@ -421,7 +422,7 @@ private fun PlanPreview(
     Text(plan.name, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
     SetupHint("${s.days.size} Tage pro Woche · ${plan.routines.joinToString(" → ") { it.title }} im Wechsel")
     plan.routines.forEach { routine ->
-        Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+        TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(routine.title, style = MaterialTheme.typography.titleMedium)
                 routine.exercises.forEachIndexed { index, ex ->
@@ -454,7 +455,7 @@ private fun PlanPreview(
             onDismiss = { swapTarget = null },
         )
     }
-    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+    TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("Geschätztes Maximum (1RM) · ${s.formula.label}", style = MaterialTheme.typography.titleSmall)
             plan.benchEstimate?.let { Text(it.label, style = MaterialTheme.typography.bodySmall) }

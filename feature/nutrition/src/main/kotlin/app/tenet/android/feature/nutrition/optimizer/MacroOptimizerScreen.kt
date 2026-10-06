@@ -1,5 +1,6 @@
 package app.tenet.android.feature.nutrition.optimizer
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -205,7 +206,7 @@ fun MacroOptimizerScreen(
                     val m = item.macros
                     SegmentedListItem(
                         onClick = {},
-                        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                        colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                         shapes = ListItemDefaults.segmentedShapes(index, plan.items.size),
                         supportingContent = {
                             Text(
@@ -245,7 +246,7 @@ fun MacroOptimizerScreen(
 @Composable
 private fun FitCard(target: Macros, plan: MacroPlan?) {
     val total = plan?.total ?: Macros()
-    Card(Modifier.fillMaxWidth().animateContentSize()) {
+    TenetCard(Modifier.fillMaxWidth().animateContentSize()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Ziel", style = MaterialTheme.typography.titleMedium)
             FitRow("Kalorien", total.kcal, target.kcal, "kcal", RingColors.kcal)

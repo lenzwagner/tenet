@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.run
 
+import app.tenet.android.core.designsystem.theme.TenetCard
 import app.tenet.android.core.designsystem.component.RecordBadge
 import app.tenet.android.core.designsystem.component.rememberDictation
 import app.tenet.android.core.data.ai.AiFiller
@@ -91,7 +92,7 @@ internal fun StartRunCard(
     /** A plan workout is shown above: this starts a run outside the plan. */
     freeRun: Boolean = false,
 ) {
-    Card(
+    TenetCard(
         Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = if (recording) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
@@ -187,7 +188,7 @@ internal fun StartRunCard(
 /** Fastest effort per standard distance; tap opens the run. */
 @Composable
 internal fun RecordsCard(state: RunningUiState, onOpenRun: (String) -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RecordBadge()
