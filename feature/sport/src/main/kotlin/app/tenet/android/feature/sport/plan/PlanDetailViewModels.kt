@@ -115,8 +115,13 @@ class RunPlanDetailViewModel @Inject constructor(
         val raceDistance = RunPlanMath.raceDistanceM(goal)
 
         fun dateOf(ms: Long) = Instant.ofEpochMilli(ms).atZone(zone).toLocalDate()
-        val runsByUnit = d.runs.filter { it.session.plannedWorkoutId != null }.associateBy { it.session.plannedWorkoutId }
-        val done = d.units.mapNotNull { u -> runsByUnit[u.id]?.let { DoneUnit(u, it) } }
+        // Same matching as the week view: linked runs, else runs added later for that day.
+        val matches = app.tenet.android.core.common.RunPlanMatcher.match(
+            planned = d.units.map { app.tenet.android.core.common.RunPlanMatcher.Planned(it.id, it.date, it.skipped) },
+            runs = d.runs.map { r -> app.tenet.android.core.common.RunPlanMatcher.Run(r.session.id, dateOf(r.session.startedAt), r.session.plannedWorkoutId) },
+        )
+        val runsById = d.runs.associateBy { it.session.id }
+        val done = d.units.mapNotNull { u -> matches[u.id]?.let(runsById::get)?.let { DoneUnit(u, it) } }
         val doneIds = done.map { it.unit.id }.toSet()
 
         // Prognosis from best efforts (+ the 5 km form given at plan creation).

@@ -263,7 +263,7 @@ private fun GoalCalculator(
     var sex by rememberSaveable { mutableStateOf(initial.sex) }
     var age by rememberSaveable { mutableStateOf(initial.age.toString()) }
     var height by rememberSaveable { mutableStateOf(initial.heightCm.roundToInt().toString()) }
-    var weight by rememberSaveable { mutableStateOf(initial.weightKg.toString().removeSuffix(".0")) }
+    var weight by rememberSaveable { mutableStateOf(initial.weightKg.toString().removeSuffix(".0").replace('.', ',')) }
     var activity by rememberSaveable { mutableStateOf(initial.activity) }
     var goal by rememberSaveable { mutableStateOf(initial.goal) }
     var proteinPerKg by rememberSaveable { mutableFloatStateOf(2f) }

@@ -44,6 +44,35 @@ class RunWorkoutStructureTest {
     }
 
     @Test
+    fun matcher_madeUpRunCountsForMissedUnit() {
+        val d = LocalDate.of(2026, 9, 29)
+        val planned = listOf(
+            RunPlanMatcher.Planned("p1", d),
+            RunPlanMatcher.Planned("p2", d.plusDays(3)),
+            RunPlanMatcher.Planned("skip", d.plusDays(5), skipped = true),
+        )
+        // Monday's run added on Tuesday; another run too late for any unit; one after a skipped unit.
+        val runs = listOf(
+            RunPlanMatcher.Run("late", d.plusDays(1), null),
+            RunPlanMatcher.Run("other", d.plusDays(10), null),
+            RunPlanMatcher.Run("afterSkip", d.plusDays(6), null),
+        )
+        val m = RunPlanMatcher.match(planned, runs)
+        assertEquals("late", m["p1"])
+        assertEquals(null, m["p2"])
+        assertEquals(null, m["skip"])
+    }
+
+    @Test
+    fun matcher_sameDayBeatsCatchUp() {
+        val d = LocalDate.of(2026, 9, 29)
+        val planned = listOf(RunPlanMatcher.Planned("mon", d), RunPlanMatcher.Planned("tue", d.plusDays(1)))
+        val m = RunPlanMatcher.match(planned, listOf(RunPlanMatcher.Run("r", d.plusDays(1), null)))
+        assertEquals("r", m["tue"])
+        assertEquals(null, m["mon"])
+    }
+
+    @Test
     fun guidance_warmupBeforeFirstRep() {
         val phases = RunGuidance.parseIntervals("""[{"reps":2,"lengthM":400,"restSec":60}]""", 270, warmupSec = 600)
         assertTrue(phases.first() is RunGuidance.Phase.Warmup)

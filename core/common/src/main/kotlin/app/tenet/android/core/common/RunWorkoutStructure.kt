@@ -130,11 +130,15 @@ object RunWorkoutStructure {
 /**
  * Which recorded run completes which planned unit: runs started from the
  * plan are linked directly; other runs (manual, Health Connect) count for a
- * still open unit on the same day, like Runna's auto-matching.
+ * still open unit on the same day, else for a missed one up to
+ * [CATCH_UP_DAYS] days earlier (run made up the next day), like Runna's
+ * auto-matching. Skipped units are never matched automatically.
  */
 object RunPlanMatcher {
 
-    data class Planned(val id: String, val date: java.time.LocalDate)
+    const val CATCH_UP_DAYS = 2L
+
+    data class Planned(val id: String, val date: java.time.LocalDate, val skipped: Boolean = false)
     data class Run(val id: String, val date: java.time.LocalDate, val plannedId: String?)
 
     /** plannedId → runId */
@@ -148,8 +152,19 @@ object RunPlanMatcher {
                 used += run.id
             }
         }
-        planned.filter { it.id !in result }.forEach { p ->
-            runs.firstOrNull { it.id !in used && it.plannedId == null && it.date == p.date }?.let { run ->
+        // Unlinked runs, or ones linked to a unit outside this plan.
+        fun free(run: Run) = run.id !in used && (run.plannedId == null || run.plannedId !in plannedIds)
+        val open = planned.filter { !it.skipped }.sortedBy { it.date }
+        open.filter { it.id !in result }.forEach { p ->
+            runs.firstOrNull { free(it) && it.date == p.date }?.let { run ->
+                result[p.id] = run.id
+                used += run.id
+            }
+        }
+        runs.filter { free(it) }.sortedBy { it.date }.forEach { run ->
+            open.lastOrNull { p ->
+                p.id !in result && p.date.isBefore(run.date) && !p.date.isBefore(run.date.minusDays(CATCH_UP_DAYS))
+            }?.let { p ->
                 result[p.id] = run.id
                 used += run.id
             }

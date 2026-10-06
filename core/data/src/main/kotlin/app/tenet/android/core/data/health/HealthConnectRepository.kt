@@ -207,7 +207,7 @@ class HealthConnectRepository @Inject constructor(
             WorkoutSession(
                 id = id,
                 discipline = Discipline.RUNNING,
-                plannedWorkoutId = existing?.plannedWorkoutId ?: runningRepository.matchPlannedRun(startMs),
+                plannedWorkoutId = existing?.plannedWorkoutId ?: runningRepository.matchPlannedRun(startMs, catchUp = true),
                 startedAt = startMs,
                 endedAt = end.toEpochMilli(),
                 notes = existing?.notes?.takeIf { it.isNotBlank() } ?: defaultNote(record),

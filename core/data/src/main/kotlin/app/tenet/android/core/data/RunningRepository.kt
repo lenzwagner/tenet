@@ -12,6 +12,7 @@ import app.tenet.android.core.database.entity.RunSource
 import app.tenet.android.core.database.entity.RunSession
 import app.tenet.android.core.database.entity.PersonalBest
 import app.tenet.android.core.common.RunAnalysis
+import app.tenet.android.core.common.RunPlanMatcher
 import app.tenet.android.core.common.PaceAnchor
 import app.tenet.android.core.common.PaceMethod
 import app.tenet.android.core.common.RunPaceMath
@@ -50,6 +51,7 @@ data class PlanUnitUi(
     val targetDistanceM: Int?,
     val targetDurationSec: Int?,
     val targetPaceSecPerKm: Int?,
+    val skipped: Boolean = false,
 ) {
     val isRace: Boolean get() = title.startsWith("Wettkampf")
 }
@@ -337,6 +339,7 @@ class RunningRepository @Inject constructor(
                             targetDistanceM = row.runWorkout?.targetDistanceM,
                             targetDurationSec = row.runWorkout?.targetDurationSec,
                             targetPaceSecPerKm = row.runWorkout?.targetPaceSecPerKm,
+                            skipped = row.planned.skipped,
                         )
                     }.sortedBy { it.date },
                     runs = runs,
@@ -389,7 +392,7 @@ class RunningRepository @Inject constructor(
             WorkoutSession(
                 id = id,
                 discipline = Discipline.RUNNING,
-                plannedWorkoutId = matchPlannedRun(startMs),
+                plannedWorkoutId = matchPlannedRun(startMs, catchUp = true),
                 startedAt = startMs,
                 endedAt = startMs + durationSec * 1000L,
                 notes = notes,
@@ -430,7 +433,7 @@ class RunningRepository @Inject constructor(
             WorkoutSession(
                 id = id,
                 discipline = Discipline.RUNNING,
-                plannedWorkoutId = matchPlannedRun(startMs),
+                plannedWorkoutId = matchPlannedRun(startMs, catchUp = true),
                 startedAt = startMs,
                 endedAt = points.last().time,
                 notes = track.name.orEmpty(),
@@ -545,17 +548,23 @@ class RunningRepository @Inject constructor(
         sportDao.deleteSession(sessionId)
     }
 
-    /** First open running unit planned for that day, so it counts as done. */
-    suspend fun matchPlannedRun(startMs: Long): String? {
+    /**
+     * First open running unit planned for that day, so it counts as done.
+     * With [catchUp] (runs added afterwards) a missed unit of the previous
+     * [RunPlanMatcher.CATCH_UP_DAYS] days also counts when that day has none.
+     */
+    suspend fun matchPlannedRun(startMs: Long, catchUp: Boolean = false): String? {
         val day = Instant.ofEpochMilli(startMs).atZone(ZoneId.systemDefault()).toLocalDate()
-        val planned = weekCalendarRepository.observePlannedBetween(day, day).first()
-            .filter { it.discipline == Discipline.RUNNING && it.date == day.toString() }
-            .sortedBy { it.sortOrder }
+        val from = if (catchUp) day.minusDays(RunPlanMatcher.CATCH_UP_DAYS) else day
+        val planned = weekCalendarRepository.observePlannedBetween(from, day).first()
+            .filter { it.discipline == Discipline.RUNNING && !it.skipped }
         if (planned.isEmpty()) return null
-        val taken = weekCalendarRepository.observeSessionsBetween(day, day.plusDays(1)).first()
+        val taken = weekCalendarRepository.observeSessionsBetween(from, day.plusDays(1)).first()
             .mapNotNull { it.session.plannedWorkoutId }
             .toSet()
-        return planned.firstOrNull { it.id !in taken }?.id
+        val open = planned.filter { it.id !in taken }
+        return open.filter { it.date == day.toString() }.minByOrNull { it.sortOrder }?.id
+            ?: open.filter { it.date != day.toString() }.maxWithOrNull(compareBy({ it.date }, { -it.sortOrder }))?.id
     }
 
     /** Today's open planned run with its detail (for "Geplanten Lauf starten"). */

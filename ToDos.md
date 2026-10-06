@@ -1,6 +1,6 @@
 # Tenet – offene ToDos
 
-Stand: 06.10.2026, Version 1.0.0.4. Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 06.10.2026, Version 1.0.0.5. Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Google-Anmeldung & Sync (0.15)
 
@@ -73,7 +73,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Datenbank-Verschlüsselung (SQLCipher). Erst sinnvoll zusammen mit einem Backup.
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.4)
+## Zuletzt erledigt (0.5.0 – 1.0.0.5)
+
+- 1.0.0.5: Laufplan: nachgetragene oder importierte Läufe zählen für die Einheit am selben Tag oder für eine verpasste Einheit bis zu 2 Tage davor (übersprungene nie), Plan-Detail zählt wie die Wochenansicht; Satztabelle zeigt „22,5“ statt „22.5“; Live-Mitteilung liest Tabellenänderungen nach; Mitteilungs-Knöpfe (+30 s, Überspringen, Eintragen) funktionieren auch nach Neustart des Prozesses (Pause und Session werden gesichert)
 
 - 1.0.0.1–1.0.0.4: Gym-Einrichtung: eigener Split (Trainingstage selbst benennen), optionale 30°-Schrägbank-Werte (LH/KH) ersetzen fehlende Bankdrück-Werte, gewählte 1RM-Formel überall; Brzycki korrigiert (36/(37 − Wdh)); Plan aus Trainingshistorie neu aufbauen; Startgewicht aus anderen Bank-Varianten (gekennzeichnet, keine PRs); beim Beenden nur abgehakte Sätze behalten, Sätze löschbar; Pause bleibt beim Wechsel in/aus dem Trainingsmodus; wöchentliche Gewichtsabfrage am Montag; „Kein Traum“ auf Heute; Schlaf der Nacht im Traum-Editor; KI: Modellliste vom Schlüssel laden, Modelle einzeln testen
 

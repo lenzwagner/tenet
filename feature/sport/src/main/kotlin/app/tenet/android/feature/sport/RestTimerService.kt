@@ -57,13 +57,17 @@ class RestTimerService : Service() {
     private var endAt = 0L // elapsedRealtime of the rest end; 0 = no rest running
     private var next: WorkoutGuide.Next? = null
     private var progress: Pair<List<Int>, Int> = emptyList<Int>() to 0 // sets per exercise, done
+    private var guideLoaded = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Started via startForegroundService(): always go foreground first.
         goForeground()
+        // Fresh process (app was killed): pick up the session and a running rest.
+        if (sessionId == null) restore(intent?.getStringExtra(EXTRA_SESSION))
         intent?.getStringExtra(EXTRA_SESSION)?.let { sessionId = it }
+        if (!guideLoaded && intent?.action in setOf(ACTION_ADD, ACTION_SKIP)) refreshGuide()
         when (intent?.action) {
             ACTION_START -> startRest(intent.getIntExtra(EXTRA_SECONDS, 0))
             ACTION_GUIDE -> refreshGuide()
@@ -71,6 +75,7 @@ class RestTimerService : Service() {
                 val add = intent.getIntExtra(EXTRA_SECONDS, 30) * 1000L
                 endAt += add
                 totalSec += add.toInt() / 1000
+                persist()
                 publishRest()
                 updateNotification()
             }
@@ -101,6 +106,11 @@ class RestTimerService : Service() {
         endAt = SystemClock.elapsedRealtime() + seconds * 1000L
         publishRest()
         refreshGuide()
+        startTicker()
+    }
+
+    private fun startTicker() {
+        persist()
         tickJob?.cancel()
         tickJob = scope.launch {
             while (isActive) {
@@ -121,6 +131,7 @@ class RestTimerService : Service() {
         endAt = 0
         totalSec = 0
         _state.value = null
+        persist()
         if (alert && wasResting) notifyDone()
         updateNotification()
     }
@@ -139,6 +150,8 @@ class RestTimerService : Service() {
             val blocks = guide.map { it.second }
             next = WorkoutGuide.next(blocks)
             progress = blocks.map { it.sets.size } to blocks.sumOf { b -> b.sets.count { it.completed } }
+            guideLoaded = true
+            persist()
             updateNotification()
         }
     }
@@ -232,6 +245,7 @@ class RestTimerService : Service() {
                 builder.addAction(inputAction(n))
                 if (Build.VERSION.SDK_INT >= 36) builder.setShortCriticalText("Satz ${n.number}")
             }
+            !guideLoaded -> builder.setContentTitle("Training").setContentText("Wird geladen …")
             else -> {
                 builder.setContentTitle("Alle Sätze geschafft")
                     .setContentText("Training in der App beenden")
@@ -311,6 +325,7 @@ class RestTimerService : Service() {
     private fun stopEverything() {
         tickJob?.cancel()
         endAt = 0
+        clearSaved(this)
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         _state.value = null
         stopSelf()
@@ -319,6 +334,32 @@ class RestTimerService : Service() {
     private fun launchIntent(): PendingIntent? {
         val intent = packageManager.getLaunchIntentForPackage(packageName) ?: return null
         return PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    }
+
+    // ---- Survives process death: the notification's actions restart the service ----
+
+    private fun persist() {
+        val id = sessionId ?: return
+        val left = if (endAt > 0) remainingSec() else 0
+        prefs(this).edit()
+            .putString(PREF_SESSION, id)
+            .putLong(PREF_REST_END, if (left > 0) System.currentTimeMillis() + left * 1000L else 0L)
+            .putInt(PREF_REST_TOTAL, totalSec)
+            .apply()
+    }
+
+    private fun restore(intentSession: String?) {
+        val p = prefs(this)
+        val saved = p.getString(PREF_SESSION, null) ?: return
+        if (intentSession != null && intentSession != saved) return
+        sessionId = saved
+        val left = p.getLong(PREF_REST_END, 0L) - System.currentTimeMillis()
+        if (left > 0) {
+            endAt = SystemClock.elapsedRealtime() + left
+            totalSec = p.getInt(PREF_REST_TOTAL, 0).coerceAtLeast(((left + 999) / 1000).toInt())
+            publishRest()
+            startTicker()
+        }
     }
 
     private fun manager(): NotificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -342,6 +383,14 @@ class RestTimerService : Service() {
         private const val EXTRA_SECONDS = "seconds"
         private const val EXTRA_SESSION = "session"
         private const val KEY_INPUT = "set_input"
+        private const val PREFS = "workout_live"
+        private const val PREF_SESSION = "session"
+        private const val PREF_REST_END = "rest_end_wall"
+        private const val PREF_REST_TOTAL = "rest_total"
+
+        private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+        private fun clearSaved(context: Context) = prefs(context).edit().clear().apply()
 
         private val _state = MutableStateFlow<RestUiState?>(null)
 
@@ -386,6 +435,7 @@ class RestTimerService : Service() {
         /** Removes the notification (session finished or discarded). */
         fun cancel(context: Context) {
             context.stopService(Intent(context, RestTimerService::class.java))
+            clearSaved(context)
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.cancel(NOTIF_ID)
             manager.cancel(NOTIF_DONE_ID)

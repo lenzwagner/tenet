@@ -7,6 +7,8 @@ import android.os.SystemClock
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -66,6 +68,7 @@ data class SessionUiState(
 
 data class RestUiState(val remainingSec: Int, val totalSec: Int)
 
+@OptIn(kotlinx.coroutines.FlowPreview::class)
 @HiltViewModel
 class ActiveSessionViewModel @Inject constructor(
     private val repository: SportRepository,
@@ -144,6 +147,13 @@ class ActiveSessionViewModel @Inject constructor(
     init {
         // Sets logged from the notification: reload the table.
         viewModelScope.launch { RestTimerService.changes.collect { if (it == sessionId) refresh() } }
+        // Table edits: the notification re-reads the session once the writes have landed.
+        viewModelScope.launch {
+            next.drop(1).debounce(500).collect {
+                val id = sessionId ?: return@collect
+                if (guided.value) RestTimerService.guide(application, id)
+            }
+        }
     }
 
     private val _finished = Channel<Unit>(Channel.BUFFERED)
@@ -507,7 +517,7 @@ class ActiveSessionViewModel @Inject constructor(
     }
 
     private fun formatNumber(value: Float): String =
-        if (value % 1f == 0f) value.toInt().toString() else value.toString()
+        if (value % 1f == 0f) value.toInt().toString() else value.toString().replace('.', ',')
 
     private fun String.toFloatCompat(): Float? =
         if (isBlank()) null else trim().replace(',', '.').toFloatOrNull() ?: if (isEmpty()) 0f else null

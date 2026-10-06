@@ -62,7 +62,7 @@ object RunPlanUiBuilder {
         }
         val runs = overview.planRuns
         val matches = RunPlanMatcher.match(
-            planned = units.map { (row, _, date) -> RunPlanMatcher.Planned(row.planned.id, date) },
+            planned = units.map { (row, _, date) -> RunPlanMatcher.Planned(row.planned.id, date, row.planned.skipped) },
             runs = runs.map { r ->
                 RunPlanMatcher.Run(r.session.id, Instant.ofEpochMilli(r.session.startedAt).atZone(zone).toLocalDate(), r.session.plannedWorkoutId)
             },
