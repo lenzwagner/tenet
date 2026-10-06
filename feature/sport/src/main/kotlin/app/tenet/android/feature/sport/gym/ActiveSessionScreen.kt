@@ -1,5 +1,8 @@
 package app.tenet.android.feature.sport.gym
 
+import androidx.compose.runtime.key
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.StickyNote2
@@ -64,6 +67,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Calculate
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -150,14 +154,15 @@ fun ActiveSessionScreen(
     val next by viewModel.next.collectAsStateWithLifecycle()
     val remaining by viewModel.remaining.collectAsStateWithLifecycle()
     var trainingMode by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(sessionId, trainingMode) { viewModel.setTrainingMode(trainingMode) }
 
     val context = LocalContext.current
     // The rest-timer notification needs the POST_NOTIFICATIONS permission (API 33+).
     val notifPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { }
-    LaunchedEffect(Unit) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+    LaunchedEffect(trainingMode) {
+        if (trainingMode && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
         ) {
@@ -207,7 +212,6 @@ fun ActiveSessionScreen(
                         TooltipIconButton(icon = Icons.Outlined.Calculate, contentDescription = "Plattenrechner", onClick = { plateSheetVisible = true })
                         TooltipIconButton(icon = Icons.Outlined.PlayCircle, contentDescription = "Trainingsmodus", onClick = {
                             trainingMode = true
-                            viewModel.startGuide()
                         })
                         FilledIconButton(onClick = { viewModel.requestEnd() }, shapes = IconButtonDefaults.shapes()) {
                         Icon(Icons.Outlined.Check, contentDescription = "Workout beenden")
@@ -236,7 +240,6 @@ fun ActiveSessionScreen(
                         FilledTonalButton(
                             onClick = {
                                 trainingMode = true
-                                viewModel.startGuide()
                             },
                             shapes = ButtonDefaults.shapes(),
                             modifier = Modifier.fillMaxWidth(),
@@ -281,6 +284,7 @@ fun ActiveSessionScreen(
                             viewModel.toggleComplete(exerciseId, setId)
                         },
                         onAddSet = viewModel::addSet,
+                        onDeleteSet = viewModel::deleteSet,
                         onSetType = viewModel::onSetType,
                         onSwap = { picker = PickerTarget.Swap(block) },
                         onRemove = { pending = PendingChange.Remove(block) },
@@ -393,6 +397,8 @@ fun ActiveSessionScreen(
 
     if (endRequested) {
         EndSessionSheet(
+            completedSets = state.blocks.sumOf { block -> block.rows.count { it.set.completed } },
+            openSets = state.blocks.sumOf { block -> block.rows.count { !it.set.completed } },
             onCancel = viewModel::cancelEnd,
             onConfirm = { notes, effort -> viewModel.endSession(notes, effort) },
         )
@@ -403,6 +409,8 @@ fun ActiveSessionScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EndSessionSheet(
+    completedSets: Int,
+    openSets: Int,
     onCancel: () -> Unit,
     onConfirm: (notes: String, effort: Int?) -> Unit,
 ) {
@@ -420,6 +428,11 @@ private fun EndSessionSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text("Workout beenden", style = MaterialTheme.typography.titleLarge)
+            Text(
+                text = "$completedSets abgehakte Sätze werden gespeichert." +
+                    if (openSets > 0) " $openSets offene Sätze werden nicht übernommen." else "",
+                style = MaterialTheme.typography.bodyMedium,
+            )
 
             OutlinedTextField(
                 value = notes,
@@ -603,6 +616,7 @@ private fun ExerciseCard(
     onText: (String, String, ActiveSessionViewModel.Field, String) -> Unit,
     onToggle: (String, String) -> Unit,
     onAddSet: (String) -> Unit,
+    onDeleteSet: (String, String) -> Unit,
     onSetType: (String, String, SetType) -> Unit,
     onSwap: () -> Unit,
     onRemove: () -> Unit,
@@ -791,15 +805,39 @@ private fun ExerciseCard(
             var workingNo = 0
             block.rows.forEach { row ->
                 if (row.set.type != SetType.WARMUP) workingNo++
-                SetRow(
-                    row = row,
-                    number = workingNo,
-                    sessionExerciseId = block.sessionExerciseId,
-                    onText = onText,
-                    onToggle = onToggle,
-                    onType = onSetType,
-                    onDropAfter = { onDropAfter(it) },
-                )
+                val number = workingNo
+                key(row.set.id) {
+                    val dismiss = rememberSwipeToDismissBoxState()
+                    SwipeToDismissBox(
+                        state = dismiss,
+                        enableDismissFromStartToEnd = false,
+                        onDismiss = { onDeleteSet(block.sessionExerciseId, row.set.id) },
+                        backgroundContent = {
+                            Box(
+                                Modifier.fillMaxSize()
+                                    .background(MaterialTheme.colorScheme.errorContainer, MaterialTheme.shapes.small)
+                                    .padding(horizontal = 12.dp),
+                                contentAlignment = Alignment.CenterEnd,
+                            ) {
+                                Icon(Icons.Outlined.Delete, contentDescription = "Satz löschen",
+                                    tint = MaterialTheme.colorScheme.onErrorContainer)
+                            }
+                        },
+                    ) {
+                        Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                            SetRow(
+                                row = row,
+                                number = number,
+                                sessionExerciseId = block.sessionExerciseId,
+                                onText = onText,
+                                onToggle = onToggle,
+                                onType = onSetType,
+                                onDropAfter = { onDropAfter(it) },
+                                onDelete = { onDeleteSet(block.sessionExerciseId, row.set.id) },
+                            )
+                        }
+                    }
+                }
             }
 
             TextButton(
@@ -835,6 +873,7 @@ private fun SetRow(
     onToggle: (String, String) -> Unit,
     onType: (String, String, SetType) -> Unit,
     onDropAfter: (setId: String) -> Unit = {},
+    onDelete: () -> Unit,
 ) {
     val setId = row.set.id
     Row(
@@ -873,6 +912,14 @@ private fun SetRow(
                         },
                     )
                 }
+                DropdownMenuItem(
+                    text = { Text("Satz löschen") },
+                    leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
+                    onClick = {
+                        typeMenuOpen = false
+                        onDelete()
+                    },
+                )
                 if (row.set.type != SetType.WARMUP) {
                     androidx.compose.material3.HorizontalDivider()
                     DropdownMenuItem(
@@ -897,6 +944,7 @@ private fun SetRow(
             value = row.kgText,
             onValueChange = { onText(sessionExerciseId, setId, ActiveSessionViewModel.Field.KG, it) },
             done = row.set.completed,
+            selectAllOnFocus = true,
             modifier = Modifier.weight(1f),
         )
         CompactNumberField(
@@ -905,23 +953,35 @@ private fun SetRow(
                 onText(sessionExerciseId, setId, ActiveSessionViewModel.Field.REPS, it)
             },
             done = row.set.completed,
+            selectAllOnFocus = true,
             modifier = Modifier.weight(1f),
         )
         CompactNumberField(
             value = row.rpeText,
             onValueChange = { onText(sessionExerciseId, setId, ActiveSessionViewModel.Field.RPE, it) },
             done = row.set.completed,
+            selectAllOnFocus = true,
             modifier = Modifier.weight(0.8f),
         )
         FilledIconToggleButton(
             checked = row.set.completed,
             onCheckedChange = { onToggle(sessionExerciseId, setId) },
             shapes = IconButtonDefaults.toggleableShapes(),
+            colors = IconButtonDefaults.filledIconToggleButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                checkedContainerColor = MaterialTheme.colorScheme.primary,
+                checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+            ),
             modifier = Modifier.size(44.dp).semantics {
                 stateDescription = if (row.set.completed) "abgehakt" else "offen"
             },
         ) {
-            Icon(Icons.Outlined.Check, contentDescription = "Satz")
+            Icon(
+                imageVector = if (row.set.completed) Icons.Outlined.Check else Icons.Outlined.RadioButtonUnchecked,
+                contentDescription = if (row.set.completed) "Satz erledigt – Haken entfernen" else "Satz als erledigt markieren",
+                modifier = Modifier.size(if (row.set.completed) 30.dp else 22.dp),
+            )
         }
     }
 }

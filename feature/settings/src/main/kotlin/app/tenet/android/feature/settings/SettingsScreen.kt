@@ -1,23 +1,19 @@
 package app.tenet.android.feature.settings
 
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import android.widget.Toast
 import androidx.compose.material.icons.outlined.NetworkCheck
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
-import app.tenet.android.core.designsystem.component.Segment
-import app.tenet.android.core.designsystem.component.SegmentedSelector
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
+
+import androidx.compose.ui.platform.LocalContext
+import app.tenet.android.core.data.health.HealthConnectRepository
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.MonitorHeart
-import app.tenet.android.core.data.health.HealthConnectRepository
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.HealthConnectClient
 import android.net.Uri
@@ -25,15 +21,15 @@ import android.content.Intent
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.material.icons.outlined.NightsStay
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerDialog
 import androidx.compose.material3.rememberTimePickerState
-import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import app.tenet.android.core.designsystem.navigation.rememberReselectListState
 import androidx.compose.foundation.layout.Arrangement
@@ -53,7 +49,10 @@ import androidx.compose.material.icons.outlined.Calculate
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Contrast
@@ -80,8 +79,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -93,6 +97,8 @@ import app.tenet.android.core.common.OneRepMaxFormula
 import app.tenet.android.core.common.PaceMethod
 import app.tenet.android.core.datastore.AppModule
 import app.tenet.android.core.datastore.ThemeMode
+import app.tenet.android.core.designsystem.component.Segment
+import app.tenet.android.core.designsystem.component.SegmentedSelector
 import app.tenet.android.core.designsystem.component.SectionHeader
 import app.tenet.android.core.designsystem.component.ShapeIcon
 import app.tenet.android.core.designsystem.component.TenetSwitch
@@ -159,6 +165,7 @@ fun SettingsScreen(
         pendingReminder = null
     }
     val context = LocalContext.current
+
     fun withNotificationPermission(action: () -> Unit) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
@@ -170,6 +177,10 @@ fun SettingsScreen(
             action()
         }
     }
+
+    val aiConfig by viewModel.aiConfig.collectAsStateWithLifecycle()
+    var testing by remember { mutableStateOf(false) }
+    var testResult by remember { mutableStateOf<String?>(null) }
 
     if (goalSheetOpen) {
         GoalEditorSheet(
@@ -654,37 +665,60 @@ private fun HealthConnectGroup(viewModel: SettingsViewModel) {
 /** AI fill-in: dictation → form fields via NVIDIA NIM. */
 @Composable
 private fun AiGroup(viewModel: SettingsViewModel) {
-    val config by viewModel.aiConfig.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val aiConfig by viewModel.aiConfig.collectAsStateWithLifecycle()
+    val availableModels by viewModel.availableModels.collectAsStateWithLifecycle()
     var keyDialog by remember { mutableStateOf(false) }
     var modelDialog by remember { mutableStateOf(false) }
+    var modelTesting by remember { mutableStateOf(false) }
     var testing by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<String?>(null) }
+
     Column(Modifier.padding(top = 8.dp)) {
         SettingsGroup { shapes ->
             SwitchItem(
-                shapes = shapes(0, 4),
+                shapes = shapes(0, 5),
                 icon = Icons.Outlined.AutoAwesome,
                 title = "KI-Ausfüllhilfe",
                 supporting = "Diktat füllt Traum, Tagebuch, Notiz, Mahlzeit, Lauf und Gym-Sätze aus",
-                checked = config.enabled,
+                checked = aiConfig.enabled,
                 onCheckedChange = viewModel::setAiEnabled,
             )
             NavItem(
-                shapes = shapes(1, 4),
+                shapes = shapes(1, 5),
                 icon = Icons.Outlined.Key,
                 title = "NVIDIA-API-Schlüssel",
-                supporting = if (config.apiKey.isBlank()) "Nicht gesetzt" else "nvapi-…" + config.apiKey.takeLast(4),
+                supporting = if (aiConfig.apiKey.isBlank()) "Nicht gesetzt" else "nvapi-…" + aiConfig.apiKey.takeLast(4),
                 onClick = { keyDialog = true },
             )
             NavItem(
-                shapes = shapes(2, 4),
+                shapes = shapes(2, 5),
                 icon = Icons.Outlined.Memory,
                 title = "Modell",
-                supporting = config.model,
+                supporting = aiConfig.model,
                 onClick = { modelDialog = true },
             )
             NavItem(
-                shapes = shapes(3, 4),
+                shapes = shapes(3, 5),
+                icon = Icons.Outlined.NetworkCheck,
+                title = "Aktuelle AI testen",
+                supporting = if (modelTesting) "Teste ${aiConfig.model} …" else "Zeigt das verwendete Modell per Toast",
+                onClick = {
+                    if (!modelTesting) {
+                        modelTesting = true
+                        // Test exactly the model shown in this row. This avoids
+                        // a stale/default selection if model state changes while
+                        // the coroutine is being scheduled.
+                        viewModel.testAiModel(aiConfig.model) { model, error ->
+                            modelTesting = false
+                            val message = model?.let { "Die aktuelle AI ist: $it" } ?: "AI-Test fehlgeschlagen: $error"
+                            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                },
+            )
+            NavItem(
+                shapes = shapes(4, 5),
                 icon = Icons.Outlined.NetworkCheck,
                 title = "Verbindung testen",
                 supporting = when {
@@ -703,13 +737,14 @@ private fun AiGroup(viewModel: SettingsViewModel) {
             )
         }
         Text(
-            "Nur der diktierte bzw. getippte Text des jeweiligen Eintrags wird an NVIDIA gesendet, " +
+            "${availableModels.size} NVIDIA-NIM-Modelle für diesen Schlüssel gefunden. Nur der diktierte bzw. getippte Text des jeweiligen Eintrags wird an NVIDIA gesendet, " +
                 "sonst nichts. Ohne Schlüssel oder ausgeschaltet funktioniert alles wie bisher.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         )
     }
+
     if (keyDialog) {
         TextInputDialog(
             title = "NVIDIA-API-Schlüssel",
@@ -725,16 +760,22 @@ private fun AiGroup(viewModel: SettingsViewModel) {
         )
     }
     if (modelDialog) {
-        TextInputDialog(
+        LaunchedEffect(Unit) { viewModel.refreshAiModels() }
+        ChoiceDialog(
             title = "Modell",
-            label = "z. B. meta/llama-3.2-11b-vision-instruct",
-            initial = config.model,
-            secret = false,
-            onDismiss = { modelDialog = false },
-            onSave = {
-                viewModel.setAiModel(it)
+            icon = Icons.Outlined.Memory,
+            options = availableModels,
+            selected = availableModels.find { it.id == aiConfig.model } ?: availableModels.first(),
+            label = { it.label },
+            description = { it.id },
+            onSelect = {
+                viewModel.setAiModel(it.id)
                 modelDialog = false
                 testResult = null
+            },
+            onDismiss = {
+                viewModel.refreshAiModels()
+                modelDialog = false
             },
         )
     }
@@ -877,7 +918,10 @@ private fun <T> ChoiceDialog(
         icon = { Icon(icon, contentDescription = null) },
         title = { Text(title) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+            Column(
+                modifier = Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+            ) {
                 options.forEachIndexed { index, option ->
                     SegmentedListItem(
                         colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),

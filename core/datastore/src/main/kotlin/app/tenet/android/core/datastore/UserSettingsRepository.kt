@@ -76,6 +76,7 @@ class UserSettingsRepository @Inject constructor(
             },
             todayCardOrder = prefs[KEY_TODAY_ORDER]?.split(',')?.filter { it.isNotBlank() } ?: emptyList(),
             todayHiddenCards = prefs[KEY_TODAY_HIDDEN] ?: emptySet(),
+            lastWeightPromptDate = prefs[KEY_LAST_WEIGHT_PROMPT_DATE],
         )
     }
 
@@ -174,6 +175,10 @@ class UserSettingsRepository @Inject constructor(
         }
     }
 
+    suspend fun markWeightPromptHandled(date: String) {
+        context.tenetDataStore.edit { it[KEY_LAST_WEIGHT_PROMPT_DATE] = date }
+    }
+
     suspend fun setGlassBar(enabled: Boolean) {
         context.tenetDataStore.edit { it[KEY_GLASS_BAR] = enabled }
     }
@@ -213,6 +218,7 @@ class UserSettingsRepository @Inject constructor(
         val KEY_PROFILE_WEIGHT = floatPreferencesKey("profile_weight_kg")
         val KEY_PROFILE_ACTIVITY = stringPreferencesKey("profile_activity")
         val KEY_PROFILE_GOAL = stringPreferencesKey("profile_goal")
+        val KEY_LAST_WEIGHT_PROMPT_DATE = stringPreferencesKey("last_weight_prompt_date")
         val MEAL_KEYS = listOf("BREAKFAST", "LUNCH", "DINNER", "SNACK")
             .map { it to stringPreferencesKey("meal_name_$it") }
     }

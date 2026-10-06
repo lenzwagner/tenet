@@ -33,6 +33,8 @@ data class ProgressState(
     val muscleGroups: List<String> = emptyList(),
     val personalBests: List<ProgressMath.PersonalBest> = emptyList(),
     val bodyMetrics: List<BodyMetric> = emptyList(),
+    val bodyMetricsLoaded: Boolean = false,
+    val lastWeightPromptDate: String? = null,
 )
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -40,7 +42,7 @@ data class ProgressState(
 class GymViewModel @Inject constructor(
     private val repository: SportRepository,
     private val weekCalendarRepository: WeekCalendarRepository,
-    settingsRepository: UserSettingsRepository,
+    private val settingsRepository: UserSettingsRepository,
     private val insights: GymInsights,
 ) : ViewModel() {
 
@@ -67,8 +69,9 @@ class GymViewModel @Inject constructor(
     val progressState: StateFlow<ProgressState> = combine(
         formulaFlow,
         repository.observeBodyMetrics(),
-    ) { formula, metrics -> formula to metrics }
-        .flatMapLatest { (formula, metrics) ->
+        settingsRepository.settings,
+    ) { formula, metrics, settings -> Triple(formula, metrics, settings.lastWeightPromptDate) }
+        .flatMapLatest { (formula, metrics, lastPromptDate) ->
             // Re-run whenever the overview changes (new finished session).
             overview.map { overview ->
                 val sets = repository.progressSets()
@@ -79,6 +82,8 @@ class GymViewModel @Inject constructor(
                     muscleGroups = ProgressMath.muscleGroups(sets),
                     personalBests = ProgressMath.personalBests(sets, formula),
                     bodyMetrics = metrics,
+                    bodyMetricsLoaded = true,
+                    lastWeightPromptDate = lastPromptDate,
                 )
             }
         }
@@ -92,6 +97,13 @@ class GymViewModel @Inject constructor(
                 bodyFat = bodyFat,
                 measurements = measurements,
             )
+            settingsRepository.markWeightPromptHandled(java.time.LocalDate.now().toString())
+        }
+    }
+
+    fun dismissWeeklyWeightPrompt() {
+        viewModelScope.launch {
+            settingsRepository.markWeightPromptHandled(java.time.LocalDate.now().toString())
         }
     }
 

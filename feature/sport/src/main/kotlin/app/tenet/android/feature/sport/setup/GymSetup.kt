@@ -3,6 +3,7 @@ package app.tenet.android.feature.sport.setup
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
 import app.tenet.android.feature.sport.ExerciseThumb
+import app.tenet.android.feature.sport.ExercisePickerSheet
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,10 +13,15 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -24,12 +30,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import app.tenet.android.core.common.GymPlanBuilder
+import app.tenet.android.core.common.OneRepMaxFormula
 import app.tenet.android.core.common.GymPlanBuilder.Goal
 import app.tenet.android.core.common.GymPlanBuilder.Level
 import app.tenet.android.core.common.GymPlanBuilder.Lift
 import app.tenet.android.core.common.GymPlanBuilder.Split
 import app.tenet.android.core.common.Sex
 import app.tenet.android.core.data.SportRepository
+import app.tenet.android.core.database.entity.Discipline
+import app.tenet.android.core.database.entity.Exercise
 import app.tenet.android.core.datastore.UserSettingsRepository
 import app.tenet.android.feature.sport.TrainingDaysRow
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -51,12 +60,19 @@ data class GymSetupState(
     /** ISO weekdays 1–7. */
     val days: Set<Int> = setOf(1, 3, 5),
     val split: Split? = null,
+    val customRoutineTitles: List<String> = emptyList(),
     val bodyweight: String = "",
     val female: Boolean = false,
     /** Lift → (weight, reps) as typed. */
     val lifts: Map<Lift, Pair<String, String>> = emptyMap(),
     val names: Map<String, String> = emptyMap(),
+    val exercises: List<Exercise> = emptyList(),
+    /** Preview-only changes; generated reps/weights still follow selected goal and strength data. */
+    val previewEdits: Map<String, PreviewExerciseEdit> = emptyMap(),
+    val historyMode: Boolean = false,
+    val historyLiftCount: Int? = null,
     val busy: Boolean = false,
+    val formula: OneRepMaxFormula = OneRepMaxFormula.EPLEY,
 ) {
     val effectiveSplit: Split get() = split ?: GymPlanBuilder.recommendedSplit(days.size)
 
@@ -67,16 +83,42 @@ data class GymSetupState(
         days = days.sorted(),
         bodyweightKg = bodyweight.toFloatOrNullDe(),
         female = female,
+        formula = formula,
+        customRoutineTitles = customRoutineTitles,
         lifts = lifts.mapNotNull { (lift, v) ->
             val r = v.second.toIntOrNull()
             // Pull-ups/dips: empty weight with reps = bodyweight only.
             val w = v.first.toFloatOrNullDe()
                 ?: if (lift.load == GymPlanBuilder.Load.BODYWEIGHT_PLUS && r != null) 0f else null
-            val ok = w != null && r != null && r > 0 && (w > 0f || lift.load == GymPlanBuilder.Load.BODYWEIGHT_PLUS)
-            if (ok) lift to GymPlanBuilder.LiftInput(w!!, r!!) else null
+            if (w != null && r != null && r > 0 && (w > 0f || lift.load == GymPlanBuilder.Load.BODYWEIGHT_PLUS)) {
+                lift to GymPlanBuilder.LiftInput(w, r)
+            } else {
+                null
+            }
         }.toMap(),
     )
+
+    fun plan(): GymPlanBuilder.Plan {
+        val generated = GymPlanBuilder.build(input())
+        return generated.copy(
+            routines = generated.routines.map { routine ->
+                routine.copy(
+                    exercises = routine.exercises.mapIndexed { index, exercise ->
+                        previewEdits["${routine.title}:$index"]?.let { edit ->
+                            exercise.copy(
+                                exerciseId = edit.exerciseId,
+                                sets = edit.sets,
+                                startWeightKg = if (edit.exerciseId == exercise.exerciseId) exercise.startWeightKg else null,
+                            )
+                        } ?: exercise
+                    },
+                )
+            },
+        )
+    }
 }
+
+data class PreviewExerciseEdit(val exerciseId: String, val sets: Int)
 
 @HiltViewModel
 class GymSetupViewModel @Inject constructor(
@@ -90,13 +132,17 @@ class GymSetupViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val profile = settings.settings.first().profile
+            val preferences = settings.settings.first()
+            val profile = preferences.profile
             val names = repository.exerciseNames()
+            val exercises = repository.observeExercisesOnce(Discipline.GYM)
             _state.update {
                 it.copy(
                     bodyweight = profile?.weightKg?.let { w -> num(w) }.orEmpty(),
                     female = profile?.sex == Sex.FEMALE,
                     names = names,
+                    exercises = exercises,
+                    formula = preferences.oneRepMaxFormula,
                 )
             }
         }
@@ -104,12 +150,47 @@ class GymSetupViewModel @Inject constructor(
 
     fun update(block: GymSetupState.() -> GymSetupState) = _state.update(block)
 
+    private var historyLoaded = false
+
+    fun useTrainingHistory(enabled: Boolean) {
+        if (!enabled || historyLoaded) return
+        historyLoaded = true
+        viewModelScope.launch {
+            _state.update { it.copy(historyMode = true) }
+            val formula = settings.settings.first().oneRepMaxFormula
+            val history = repository.setupLiftsFromHistory(formula)
+            val latestWeight = repository.latestBodyMetric()?.weight
+            _state.update { state ->
+                state.copy(
+                    bodyweight = latestWeight?.let(::num) ?: state.bodyweight,
+                    lifts = history.mapValues { (_, value) -> num(value.weightKg) to value.reps.toString() },
+                    formula = formula,
+                    historyLiftCount = history.size,
+                )
+            }
+        }
+    }
+
+    fun editPreview(routineTitle: String, index: Int, exerciseId: String? = null, sets: Int? = null) {
+        _state.update { state ->
+            val planExercise = state.plan().routines.firstOrNull { it.title == routineTitle }?.exercises?.getOrNull(index)
+                ?: return@update state
+            val key = "$routineTitle:$index"
+            state.copy(
+                previewEdits = state.previewEdits + (key to PreviewExerciseEdit(
+                    exerciseId = exerciseId ?: planExercise.exerciseId,
+                    sets = (sets ?: planExercise.sets).coerceIn(1, 10),
+                )),
+            )
+        }
+    }
+
     fun finish() {
         val s = _state.value
         if (s.busy) return
         _state.update { it.copy(busy = true) }
         viewModelScope.launch {
-            repository.applyGymSetup(GymPlanBuilder.build(s.input()), s.days.toList())
+            repository.applyGymSetup(s.plan(), s.days.toList())
             settings.markSportSetupDone("GYM")
             _done.emit(Unit)
         }
@@ -117,7 +198,7 @@ class GymSetupViewModel @Inject constructor(
 }
 
 private val STEPS = listOf(
-    "Was ist dein Ziel?",
+    "Kraft oder Muskelaufbau?",
     "Wie viel Erfahrung hast du?",
     "An welchen Tagen trainierst du?",
     "Welcher Split passt?",
@@ -125,15 +206,36 @@ private val STEPS = listOf(
     "Dein Plan",
 )
 
+private val CUSTOM_SPLIT_EXAMPLES = listOf(
+    "Brust", "Rücken", "Arme", "Beine", "Schultern", "Ganzkörper A", "Ganzkörper B",
+)
+
+private fun customSplitTitles(current: List<String>, count: Int): List<String> =
+    List(count.coerceIn(2, 7)) { index ->
+        current.getOrNull(index)?.takeIf(String::isNotBlank) ?: CUSTOM_SPLIT_EXAMPLES[index]
+    }
+
+private fun defaultCustomRoutineCount(trainingDays: Int): Int = trainingDays.coerceIn(2, 4)
+
 @Composable
-fun GymSetupScreen(onDone: () -> Unit, viewModel: GymSetupViewModel = hiltViewModel()) {
+fun GymSetupScreen(
+    onDone: () -> Unit,
+    useTrainingHistory: Boolean = false,
+    viewModel: GymSetupViewModel = hiltViewModel(),
+) {
     val s by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { viewModel.done.collect { onDone() } }
+    LaunchedEffect(useTrainingHistory) { viewModel.useTrainingHistory(useTrainingHistory) }
     SetupScaffold(
         title = "Gym einrichten",
         step = s.step,
         stepTitles = STEPS,
-        canContinue = s.step != 2 || s.days.size >= 2,
+        canContinue = when (s.step) {
+            2 -> s.days.size >= 2
+            3 -> s.effectiveSplit != Split.CUSTOM ||
+                (s.customRoutineTitles.size in 2..7 && s.customRoutineTitles.all(String::isNotBlank))
+            else -> true
+        },
         busy = s.busy,
         finishLabel = "Plan erstellen",
         onStep = { viewModel.update { copy(step = it) } },
@@ -158,7 +260,18 @@ fun GymSetupScreen(onDone: () -> Unit, viewModel: GymSetupViewModel = hiltViewMo
             2 -> {
                 TrainingDaysRow(
                     value = s.days.sorted().joinToString(","),
-                    onChange = { set -> viewModel.update { copy(days = set.map { it.value }.toSet(), split = null) } },
+                    onChange = { set ->
+                        viewModel.update {
+                            val selectedDays = set.map { it.value }.toSet()
+                            copy(
+                                days = selectedDays,
+                                split = null,
+                                customRoutineTitles = customRoutineTitles.ifEmpty {
+                                    customSplitTitles(emptyList(), defaultCustomRoutineCount(selectedDays.size))
+                                },
+                            )
+                        }
+                    },
                 )
                 SetupHint(
                     if (s.days.size < 2) "Wähle mindestens zwei Tage."
@@ -170,16 +283,82 @@ fun GymSetupScreen(onDone: () -> Unit, viewModel: GymSetupViewModel = hiltViewMo
                 ChoiceCards(
                     options = Split.entries,
                     selected = s.effectiveSplit,
-                    onSelect = { viewModel.update { copy(split = it) } },
+                    onSelect = { selected ->
+                        viewModel.update {
+                            copy(
+                                split = selected,
+                                customRoutineTitles = if (selected == Split.CUSTOM) {
+                                    customRoutineTitles.ifEmpty {
+                                        customSplitTitles(emptyList(), defaultCustomRoutineCount(days.size))
+                                    }
+                                } else {
+                                    customRoutineTitles
+                                },
+                            )
+                        }
+                    },
                     title = { it.label },
                     description = { it.description },
                     badge = { if (it == recommended) "Empfohlen" else null },
                 )
+                if (s.effectiveSplit == Split.CUSTOM) {
+                    val routineCount = s.customRoutineTitles.size.coerceIn(2, 7)
+                    SetupHint("Trainingstage und Split-Länge sind unabhängig. Einheiten rotieren fortlaufend über Wochengrenzen.")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text("Einheiten im Zyklus", modifier = Modifier.weight(1f))
+                        TextButton(
+                            enabled = routineCount > 2,
+                            onClick = {
+                                viewModel.update {
+                                    copy(customRoutineTitles = customSplitTitles(customRoutineTitles, routineCount - 1))
+                                }
+                            },
+                        ) { Text("−") }
+                        Text("$routineCount", style = MaterialTheme.typography.titleMedium)
+                        TextButton(
+                            enabled = routineCount < 7,
+                            onClick = {
+                                viewModel.update {
+                                    copy(customRoutineTitles = customSplitTitles(customRoutineTitles, routineCount + 1))
+                                }
+                            },
+                        ) { Text("+") }
+                    }
+                    customSplitTitles(s.customRoutineTitles, routineCount).forEachIndexed { index, title ->
+                        OutlinedTextField(
+                            value = title,
+                            onValueChange = { value ->
+                                viewModel.update {
+                                    val titles = customSplitTitles(customRoutineTitles, routineCount).toMutableList()
+                                    titles[index] = value
+                                    copy(customRoutineTitles = titles)
+                                }
+                            },
+                            label = { Text("Einheit ${index + 1}") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
                 SetupHint("Die Einheiten wechseln sich ab: nach A kommt B, nach Push kommt Pull und so weiter.")
             }
             4 -> {
+                if (s.historyMode) {
+                    SetupHint(
+                        when (s.historyLiftCount) {
+                            null -> "Bisherige Trainings werden ausgewertet …"
+                            0 -> "Keine passenden abgeschlossenen Sätze gefunden. Fehlende Werte werden geschätzt oder können hier eingetragen werden."
+                            else -> "${s.historyLiftCount} Kraftwerte aus abgeschlossenen Trainings übernommen. Du kannst sie hier korrigieren."
+                        },
+                    )
+                }
                 SetupHint(
-                    "Trag einen guten Satz der letzten Wochen ein, z. B. 80 kg × 5. Kurzhanteln: Gewicht pro Hand. " +
+                    "Trag einen schweren Satz der letzten Wochen ein, möglichst 1–10 Wiederholungen nahe am Limit. Kurzhanteln: Gewicht pro Hand. " +
+                        "Ohne flache Bench nutzt Tenet optional deine 30°-Schrägbank für eine grobe Bench-Schätzung. " +
                         "Klimmzüge und Dips: nur das Zusatzgewicht (0 = ohne). " +
                         "Leere Übungen schätzt Tenet aus Körpergewicht und Erfahrung.",
                 )
@@ -227,47 +406,60 @@ fun GymSetupScreen(onDone: () -> Unit, viewModel: GymSetupViewModel = hiltViewMo
                     }
                 }
             }
-            else -> PlanPreview(s)
+            else -> PlanPreview(s, viewModel::editPreview)
         }
     }
 }
 
 @Composable
-private fun PlanPreview(s: GymSetupState) {
-    val plan = GymPlanBuilder.build(s.input())
+private fun PlanPreview(
+    s: GymSetupState,
+    onEdit: (routineTitle: String, index: Int, exerciseId: String?, sets: Int?) -> Unit,
+) {
+    val plan = s.plan()
+    var swapTarget by remember { mutableStateOf<Pair<String, Int>?>(null) }
     Text(plan.name, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
     SetupHint("${s.days.size} Tage pro Woche · ${plan.routines.joinToString(" → ") { it.title }} im Wechsel")
     plan.routines.forEach { routine ->
         Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(routine.title, style = MaterialTheme.typography.titleMedium)
-                routine.exercises.forEach { ex ->
+                routine.exercises.forEachIndexed { index, ex ->
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         ExerciseThumb(ex.exerciseId, size = 36.dp)
                         Spacer(Modifier.width(10.dp))
-                        Text(s.names[ex.exerciseId] ?: ex.exerciseId, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                        Text(
-                            buildString {
-                                append("${ex.sets} × ${ex.reps}")
-                                if (ex.exerciseId == "ex-plank") append(" s")
-                                ex.startWeightKg?.let {
-                                    val prefix = if (ex.exerciseId == "ex-klimmzuege" || ex.exerciseId == "ex-g-dips") "+" else ""
-                                    append(" · $prefix${num(it)} kg")
-                                }
-                            },
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        Column(Modifier.weight(1f)) {
+                            Text(s.names[ex.exerciseId] ?: ex.exerciseId, style = MaterialTheme.typography.bodyMedium)
+                            TextButton(onClick = { swapTarget = routine.title to index }) { Text("Übung wechseln") }
+                        }
+                        TextButton(onClick = { onEdit(routine.title, index, null, ex.sets - 1) }, enabled = ex.sets > 1) { Text("−") }
+                        Text("${ex.sets} × ${ex.reps}", style = MaterialTheme.typography.labelLarge)
+                        TextButton(onClick = { onEdit(routine.title, index, null, ex.sets + 1) }, enabled = ex.sets < 10) { Text("+") }
                     }
                 }
             }
         }
     }
+
+    swapTarget?.let { (routineTitle, index) ->
+        val routine = plan.routines.first { it.title == routineTitle }
+        ExercisePickerSheet(
+            title = "Übung wechseln",
+            catalog = s.exercises,
+            exclude = routine.exercises.map { it.exerciseId }.toSet() - routine.exercises[index].exerciseId,
+            onPick = { exercise ->
+                onEdit(routineTitle, index, exercise.id, null)
+                swapTarget = null
+            },
+            onDismiss = { swapTarget = null },
+        )
+    }
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("Geschätztes Maximum (1RM)", style = MaterialTheme.typography.titleSmall)
+            Text("Geschätztes Maximum (1RM) · ${s.formula.label}", style = MaterialTheme.typography.titleSmall)
+            plan.benchEstimate?.let { Text(it.label, style = MaterialTheme.typography.bodySmall) }
             HorizontalDivider()
-            Lift.entries.forEach { lift ->
+            Lift.entries.filter { it !in setOf(Lift.INCLINE_BENCH, Lift.INCLINE_DUMBBELL) || it in s.input().lifts }.forEach { lift ->
                 Row(Modifier.fillMaxWidth()) {
                     Text(lift.label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                     Text(

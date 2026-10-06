@@ -492,6 +492,7 @@ private fun EditorScaffold(
         val tagSuggestions by viewModel.tagSuggestions.collectAsStateWithLifecycle()
         val symbolSuggestions by viewModel.symbolSuggestions.collectAsStateWithLifecycle()
         val dayContext by viewModel.dayContext.collectAsStateWithLifecycle()
+        val sleepNight by viewModel.sleepNight.collectAsStateWithLifecycle()
 
         Box(Modifier.fillMaxSize().padding(padding)) {
         Column(
@@ -529,7 +530,7 @@ private fun EditorScaffold(
                         (if (state.body.isBlank()) "" else state.body.trimEnd() + "\n\n") + "**$prompt**\n",
                     )
                 }
-                EntryType.DREAM -> DreamSection(state, viewModel, symbolSuggestions, ::dictate)
+                EntryType.DREAM -> DreamSection(state, viewModel, symbolSuggestions, sleepNight, ::dictate)
                 EntryType.NOTE -> Unit
             }
 
@@ -820,9 +821,12 @@ private fun DreamSection(
     state: EntryEditorState,
     viewModel: EntryEditorViewModel,
     symbolSuggestions: List<app.tenet.android.core.database.dao.TagCount>,
+    sleepNight: app.tenet.android.core.common.SleepNight?,
     onDictate: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        sleepNight?.let { SleepNightCard(it, title = "Schlaf dieser Nacht") }
+
         // Speak first, sort later: the dream fades within minutes.
         FilledTonalButton(
             onClick = onDictate,

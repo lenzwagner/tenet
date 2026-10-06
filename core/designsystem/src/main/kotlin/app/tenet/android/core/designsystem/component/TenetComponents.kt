@@ -23,6 +23,15 @@ import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.toShape
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -209,18 +218,33 @@ fun CompactNumberField(
     done: Boolean,
     modifier: Modifier = Modifier,
     suffix: String? = null,
+    selectAllOnFocus: Boolean = false,
 ) {
+    var editor by remember { mutableStateOf(TextFieldValue(value)) }
+    var focused by remember { mutableStateOf(false) }
+    val currentEditor = if (editor.text == value) editor else editor.copy(text = value)
+    LaunchedEffect(focused, selectAllOnFocus) {
+        if (focused && selectAllOnFocus) {
+            // Apply after the focus-causing tap has positioned the cursor.
+            withFrameNanos { }
+            editor = editor.copy(text = value, selection = TextRange(0, value.length))
+        }
+    }
     val colors = MaterialTheme.colorScheme
     val container = if (done) colors.secondaryContainer else colors.surfaceContainerHighest
     val content = if (done) colors.onSecondaryContainer else colors.onSurface
     androidx.compose.foundation.text.BasicTextField(
-        value = value,
-        onValueChange = onValueChange,
+        value = currentEditor,
+        onValueChange = { updated ->
+            editor = updated
+            if (updated.text != value) onValueChange(updated.text)
+        },
         singleLine = true,
         textStyle = MaterialTheme.typography.titleSmall.copy(color = content, textAlign = androidx.compose.ui.text.style.TextAlign.Center),
         cursorBrush = androidx.compose.ui.graphics.SolidColor(colors.primary),
         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
         modifier = modifier
+            .onFocusChanged { focused = it.isFocused }
             .height(40.dp)
             .background(container, MaterialTheme.shapes.small),
         decorationBox = { inner ->

@@ -6,23 +6,23 @@ package app.tenet.android.core.common
  */
 enum class OneRepMaxFormula(val label: String, val description: String) {
     EPLEY("Epley", "1RM = Gewicht × (1 + Wdh / 30)"),
-    BRZYCKI("Brzycki", "1RM = Gewicht × 36 / (36 − Wdh)"),
+    BRZYCKI("Brzycki", "1RM = Gewicht × 36 / (37 − Wdh)"),
 }
 
 object OneRepMax {
 
     fun epley(weight: Float, reps: Int): Float = when {
-        weight <= 0f || reps <= 0 -> 0f
+        !weight.isFinite() || weight <= 0f || reps <= 0 -> 0f
         reps == 1 -> weight
         else -> weight * (1f + reps / 30f)
     }
 
-    /** Brzycki is only defined for reps < 36; beyond that we fall back to 0. */
+    /** Brzycki is only defined for reps < 37; beyond that we fall back to 0. */
     fun brzycki(weight: Float, reps: Int): Float = when {
-        weight <= 0f || reps <= 0 -> 0f
+        !weight.isFinite() || weight <= 0f || reps <= 0 -> 0f
         reps == 1 -> weight
-        reps >= 36 -> 0f
-        else -> weight * 36f / (36f - reps)
+        reps >= 37 -> 0f
+        else -> weight * 36f / (37f - reps)
     }
 
     fun oneRepMax(weight: Float, reps: Int, formula: OneRepMaxFormula = OneRepMaxFormula.EPLEY): Float =
@@ -30,6 +30,16 @@ object OneRepMax {
             OneRepMaxFormula.EPLEY -> epley(weight, reps)
             OneRepMaxFormula.BRZYCKI -> brzycki(weight, reps)
         }
+
+    /** Inverse equation for planning loads; reps include any chosen reserve. */
+    fun weightForReps(oneRepMax: Float, reps: Int, formula: OneRepMaxFormula = OneRepMaxFormula.EPLEY): Float {
+        if (!oneRepMax.isFinite() || oneRepMax <= 0f || reps <= 0) return 0f
+        if (reps == 1) return oneRepMax
+        return when (formula) {
+            OneRepMaxFormula.EPLEY -> oneRepMax / (1f + reps / 30f)
+            OneRepMaxFormula.BRZYCKI -> if (reps < 37) oneRepMax * (37f - reps) / 36f else 0f
+        }
+    }
 
     fun best(
         pairs: Sequence<Pair<Float, Int>>,

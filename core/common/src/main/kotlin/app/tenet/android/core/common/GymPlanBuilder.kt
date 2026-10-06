@@ -3,7 +3,7 @@ package app.tenet.android.core.common
 /**
  * Builds a gym plan from the first-run setup: split and routines for the
  * chosen days, sets/reps for the goal and start weights from the user's
- * current strength (Epley 1RM from "weight × reps"; unknown lifts are
+ * current strength (selected 1RM formula from "weight × reps"; unknown lifts are
  * estimated from bodyweight and training level). Pure, unit tested.
  */
 object GymPlanBuilder {
@@ -24,6 +24,7 @@ object GymPlanBuilder {
         FULL_BODY("Ganzkörper", "Jede Einheit trainiert alles · ideal für 2–3 Tage"),
         UPPER_LOWER("Oberkörper / Unterkörper", "Im Wechsel · ideal für 4 Tage"),
         PPL("Push / Pull / Beine", "Drücken, Ziehen, Beine · ideal für 3, 5 oder 6 Tage"),
+        CUSTOM("Eigener Split", "Trainingstage selbst benennen und anschließend frei bearbeiten"),
     }
 
     /** How a lift is loaded; decides what the weight field means. */
@@ -49,7 +50,9 @@ object GymPlanBuilder {
         /** Accessory: trained with the goal's accessory reps. */
         val accessory: Boolean = false,
     ) {
-        BENCH("ex-bankdruecken", "Bankdrücken", Triple(0.6f, 1.0f, 1.3f), true),
+        BENCH("ex-bankdruecken", "Bankdrücken (LH, flach)", Triple(0.6f, 1.0f, 1.3f), true),
+        INCLINE_BENCH("ex-schraegbank-lh", "Schrägbank (LH, 30°) · optional", Triple(0.6f * BenchStrength.INCLINE_30_RATIO, BenchStrength.INCLINE_30_RATIO, 1.3f * BenchStrength.INCLINE_30_RATIO), true),
+        INCLINE_DUMBBELL("ex-schraegbank", "Schrägbank (KH, 30°) · optional", Triple(0.6f * BenchStrength.INCLINE_DUMBBELL_RATIO, BenchStrength.INCLINE_DUMBBELL_RATIO, 1.3f * BenchStrength.INCLINE_DUMBBELL_RATIO), true, Load.DUMBBELL),
         SQUAT("ex-kniebeugen", "Kniebeugen", Triple(0.8f, 1.3f, 1.7f), false),
         DEADLIFT("ex-kreuzheben", "Kreuzheben", Triple(1.0f, 1.6f, 2.0f), false),
         OHP("ex-kh-schulter", "Schulterdrücken (Kurzhantel)", Triple(0.16f, 0.26f, 0.34f), true, Load.DUMBBELL),
@@ -70,6 +73,9 @@ object GymPlanBuilder {
         val bodyweightKg: Float?,
         val female: Boolean = false,
         val lifts: Map<Lift, LiftInput> = emptyMap(),
+        val formula: OneRepMaxFormula = OneRepMaxFormula.EPLEY,
+        /** Names of rotating workouts when [split] is [Split.CUSTOM]. */
+        val customRoutineTitles: List<String> = emptyList(),
     )
 
     data class PlannedExercise(
@@ -91,6 +97,7 @@ object GymPlanBuilder {
         val oneRepMax: Map<Lift, Float>,
         /** Lifts whose 1RM was estimated, not entered. */
         val estimated: Set<Lift>,
+        val benchEstimate: BenchStrength.Estimate? = null,
     )
 
     fun recommendedSplit(days: Int): Split = when {
@@ -108,13 +115,17 @@ object GymPlanBuilder {
     fun oneRepMaxes(input: Input): Pair<Map<Lift, Float>, Set<Lift>> {
         val bw = bodyweight(input)
         val estimated = mutableSetOf<Lift>()
+        val transfer = benchEstimate(input)
         val map = Lift.entries.associateWith { lift ->
             val entered = input.lifts[lift]?.takeIf {
-                it.reps in 1..30 && (it.weightKg > 0f || (lift.load == Load.BODYWEIGHT_PLUS && it.weightKg >= 0f))
+                it.weightKg.isFinite() && it.reps in 1..30 && (it.weightKg > 0f || (lift.load == Load.BODYWEIGHT_PLUS && it.weightKg >= 0f))
             }
             if (entered != null) {
                 val load = if (lift.load == Load.BODYWEIGHT_PLUS) bw + entered.weightKg else entered.weightKg
-                OneRepMax.oneRepMax(load, entered.reps)
+                OneRepMax.oneRepMax(load, entered.reps, input.formula)
+            } else if (lift == Lift.BENCH && transfer != null) {
+                estimated += lift
+                transfer.oneRepMaxKg
             } else {
                 estimated += lift
                 val ratio = when (input.level) {
@@ -129,12 +140,25 @@ object GymPlanBuilder {
         return map to estimated
     }
 
+    /** Entered flat bench always wins; incline is only a fallback, never a record. */
+    private fun benchEstimate(input: Input): BenchStrength.Estimate? {
+        val own = input.lifts[Lift.BENCH]
+        if (own != null && own.weightKg.isFinite() && own.weightKg > 0f && own.reps in 1..30) return null
+        return listOf(Lift.INCLINE_BENCH, Lift.INCLINE_DUMBBELL).firstNotNullOfOrNull { lift ->
+            val set = input.lifts[lift] ?: return@firstNotNullOfOrNull null
+            BenchStrength.estimate(
+                BenchStrength.variant(lift.exerciseId)!!, BenchStrength.Variant.FLAT_BARBELL,
+                set.weightKg, set.reps, input.formula,
+            )
+        }
+    }
+
     /**
      * One setup lift in a routine. Bodyweight-plus lifts get the extra weight
      * (null = bodyweight); too weak for bodyweight reps → easier variant
      * (lat pulldown with a weight, bench dips).
      */
-    private fun mainExercise(lift: Lift, oneRepMax: Float, bw: Float, goal: Goal, mainSets: Int, accSets: Int): PlannedExercise {
+    private fun mainExercise(lift: Lift, oneRepMax: Float, bw: Float, goal: Goal, mainSets: Int, accSets: Int, formula: OneRepMaxFormula): PlannedExercise {
         val reps = when {
             lift.accessory -> goal.accReps
             lift.load == Load.BODYWEIGHT_PLUS -> goal.mainReps.coerceIn(5, 10)
@@ -148,22 +172,23 @@ object GymPlanBuilder {
         }
         val rest = if (lift.accessory) goal.accRestSec else goal.mainRestSec
         if (lift.load != Load.BODYWEIGHT_PLUS) {
-            return PlannedExercise(lift.exerciseId, sets, reps, rest, workingWeight(oneRepMax, reps))
+            return PlannedExercise(lift.exerciseId, sets, reps, rest, workingWeight(oneRepMax, reps, formula = formula))
         }
-        val total = oneRepMax / (1f + (reps + 2) / 30f)
+        val total = OneRepMax.weightForReps(oneRepMax, reps + 2, formula)
         return when {
             total >= bw -> {
                 val extra = OverloadMath.round(total - bw, 2.5f).takeIf { total - bw >= 2.5f }
                 PlannedExercise(lift.exerciseId, sets, reps, rest, extra)
             }
-            lift == Lift.PULLUP -> PlannedExercise(LATZUG.exerciseId, sets, reps, rest, workingWeight(oneRepMax * 0.85f, reps))
+            lift == Lift.PULLUP -> PlannedExercise(LATZUG.exerciseId, sets, reps, rest, workingWeight(oneRepMax * 0.85f, reps, formula = formula))
             else -> PlannedExercise(BANKDIPS.exerciseId, sets, reps.coerceAtLeast(10), rest, null)
         }
     }
 
-    /** Weight for [reps] with about two reps in reserve (inverse Epley). */
-    fun workingWeight(oneRepMax: Float, reps: Int, step: Float = stepFor(oneRepMax)): Float {
-        val raw = oneRepMax / (1f + (reps + 2) / 30f)
+    /** Weight for [reps] with about two reps in reserve (inverse selected 1RM equation). */
+    fun workingWeight(oneRepMax: Float, reps: Int, step: Float = stepFor(oneRepMax), formula: OneRepMaxFormula = OneRepMaxFormula.EPLEY): Float {
+        val raw = OneRepMax.weightForReps(oneRepMax, reps + 2, formula)
+        if (raw <= 0f) return 0f
         return OverloadMath.round(raw, step)
     }
 
@@ -172,7 +197,7 @@ object GymPlanBuilder {
     /** Accessory: base lift and share of its 1RM (per dumbbell where it applies). */
     private data class Accessory(val exerciseId: String, val base: Lift?, val ratio: Float, val timed: Boolean = false)
 
-    private val SCHRAEGBANK = Accessory("ex-schraegbank", Lift.BENCH, 0.32f)
+    private val SCHRAEGBANK = Accessory("ex-schraegbank", Lift.BENCH, BenchStrength.INCLINE_DUMBBELL_RATIO)
     private val TRIZEPS = Accessory("ex-trizepsdruecken", Lift.BENCH, 0.35f)
     private val BANKDIPS = Accessory("ex-g-bankdips", null, 0f)
     private val BIZEPS = Accessory("ex-bizepscurl", Lift.ROW, 0.2f)
@@ -188,6 +213,27 @@ object GymPlanBuilder {
     private sealed interface Slot
     private data class Main(val lift: Lift) : Slot
     private data class Acc(val accessory: Accessory) : Slot
+
+    private fun customSlots(title: String, index: Int): List<Slot> {
+        val name = title.lowercase()
+        return when {
+            "brust" in name || "chest" in name ->
+                listOf(Main(Lift.BENCH), Acc(SCHRAEGBANK), Main(Lift.DIPS), Acc(TRIZEPS), Main(Lift.LATERAL))
+            "rück" in name || "back" in name || "pull" in name ->
+                listOf(Main(Lift.DEADLIFT), Main(Lift.PULLUP), Main(Lift.ROW), Acc(FACEPULL), Acc(BIZEPS))
+            "arm" in name || "bizeps" in name || "trizeps" in name ->
+                listOf(Acc(BIZEPS), Acc(TRIZEPS), Main(Lift.DIPS), Main(Lift.PULLUP), Main(Lift.LATERAL))
+            "bein" in name || "leg" in name ->
+                listOf(Main(Lift.SQUAT), Acc(RDL), Acc(BEINPRESSE), Acc(BEINBEUGER), Acc(WADEN))
+            "schulter" in name || "shoulder" in name || "push" in name ->
+                listOf(Main(Lift.OHP), Main(Lift.BENCH), Acc(SCHRAEGBANK), Main(Lift.LATERAL), Acc(TRIZEPS))
+            else -> if (index % 2 == 0) {
+                listOf(Main(Lift.SQUAT), Main(Lift.BENCH), Main(Lift.ROW), Main(Lift.LATERAL), Acc(PLANK))
+            } else {
+                listOf(Main(Lift.DEADLIFT), Main(Lift.OHP), Main(Lift.PULLUP), Main(Lift.DIPS), Acc(AUSFALL))
+            }
+        }
+    }
 
     fun build(input: Input): Plan {
         val (orm, estimated) = oneRepMaxes(input)
@@ -208,6 +254,11 @@ object GymPlanBuilder {
                 "Pull" to listOf(Main(Lift.DEADLIFT), pull, Main(Lift.ROW), Acc(FACEPULL), Acc(BIZEPS)),
                 "Beine" to listOf(Main(Lift.SQUAT), Acc(RDL), Acc(BEINPRESSE), Acc(BEINBEUGER), Acc(WADEN)),
             )
+            Split.CUSTOM -> input.customRoutineTitles
+                .map(String::trim)
+                .filter(String::isNotEmpty)
+                .ifEmpty { listOf("Training A", "Training B") }
+                .mapIndexed { index, title -> title to customSlots(title, index) }
         }
         val bw = bodyweight(input)
         val goal = input.goal
@@ -218,9 +269,17 @@ object GymPlanBuilder {
                 title = title,
                 exercises = slots.map { slot ->
                     when (slot) {
-                        is Main -> mainExercise(slot.lift, orm.getValue(slot.lift), bw, goal, mainSets, accSets)
+                        is Main -> mainExercise(slot.lift, orm.getValue(slot.lift), bw, goal, mainSets, accSets, input.formula)
                         is Acc -> {
                             val a = slot.accessory
+                            // Entered incline performance wins over the generic bench-derived accessory load.
+                            val accessoryMax = if (a == SCHRAEGBANK) {
+                                when {
+                                    Lift.INCLINE_DUMBBELL !in estimated -> orm.getValue(Lift.INCLINE_DUMBBELL)
+                                    Lift.INCLINE_BENCH !in estimated -> orm.getValue(Lift.INCLINE_BENCH) * BenchStrength.DUMBBELL_PER_HAND_RATIO
+                                    else -> orm.getValue(Lift.BENCH) * a.ratio
+                                }
+                            } else a.base?.let { orm.getValue(it) * a.ratio }
                             PlannedExercise(
                                 exerciseId = a.exerciseId,
                                 sets = accSets,
@@ -229,7 +288,7 @@ object GymPlanBuilder {
                                     else -> goal.accReps
                                 },
                                 restSec = goal.accRestSec,
-                                startWeightKg = a.base?.let { workingWeight(orm.getValue(it) * a.ratio, goal.accReps) },
+                                startWeightKg = accessoryMax?.let { workingWeight(it, goal.accReps, formula = input.formula) },
                             )
                         }
                     }
@@ -242,6 +301,7 @@ object GymPlanBuilder {
             routines = routines,
             oneRepMax = orm,
             estimated = estimated,
+            benchEstimate = benchEstimate(input),
         )
     }
 }

@@ -331,7 +331,9 @@ fun TenetApp(
                             onOpenRunPlan = { id -> navController.navigate(RunPlanDetailRoute(id)) },
                             onOpenGymPlan = { id -> navController.navigate(GymPlanDetailRoute(id)) },
                             onOpenProgression = { page -> navController.navigate(ProgressionRoute(page)) },
-                            onOpenSetup = { discipline -> navController.navigate(SportSetupRoute(discipline)) },
+                            onOpenSetup = { discipline, useHistory ->
+                                navController.navigate(SportSetupRoute(discipline, useHistory))
+                            },
                             onOpenRunWorkout = { id -> navController.navigate(RunWorkoutRoute(id)) },
                             onOpenGymSummary = { id -> navController.navigate(WorkoutSummaryRoute(id)) },
                             onOpenGymHistory = { navController.navigate(WorkoutHistoryRoute) },
@@ -477,10 +479,11 @@ fun TenetApp(
                 composable<SportSetupRoute> { entry ->
  AreaTheme(AppArea.SPORT) {
                     val done = { navController.popBackStack(); Unit }
-                    when (entry.toRoute<SportSetupRoute>().discipline) {
+                    val setupRoute = entry.toRoute<SportSetupRoute>()
+                    when (setupRoute.discipline) {
                         "RUNNING" -> RunSetupScreen(onDone = done)
                         "CALISTHENICS" -> CaliSetupScreen(onDone = done)
-                        else -> GymSetupScreen(onDone = done)
+                        else -> GymSetupScreen(onDone = done, useTrainingHistory = setupRoute.useTrainingHistory)
                     }
                 }
 }
@@ -631,12 +634,11 @@ fun TenetApp(
                     val route = entry.toRoute<AddFoodRoute>()
                     AddFoodScreen(
                         onBack = { navController.popBackStack() },
-                        onLogged = {
-                            navController.navigate(NutritionRoute) {
-                                popUpTo<NutritionRoute> { inclusive = true }
-                                launchSingleTop = true
-                            }
-                        },
+                        // Return to the page that opened food logging. Forcing a
+                        // new NutritionRoute here can leave two top-level routes
+                        // in the stack (Today -> AddFood -> Nutrition) and break
+                        // later tab switches back to Today.
+                        onLogged = { navController.popBackStack() },
                         initialMeal = route.meal,
                         date = route.date,
                     )

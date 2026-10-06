@@ -495,7 +495,7 @@ internal fun DreamsPage(state: JournalUiState, actions: EntryActions) {
             return@LazyColumn
         }
         state.sleepByDate[LocalDate.now().toString()]?.let { night ->
-            item(key = "last-night") { LastNightCard(night) }
+            item(key = "last-night") { SleepNightCard(night) }
         }
         item(key = "patterns") { DreamPatternsCard(state) }
         items(state.dreams, key = { it.id }) { dream ->
@@ -539,14 +539,17 @@ internal fun DreamsPage(state: JournalUiState, actions: EntryActions) {
 
 /** Last night from Health Connect: duration, times and sleep phases as a bar. */
 @Composable
-private fun LastNightCard(night: app.tenet.android.core.common.SleepNight) {
+internal fun SleepNightCard(
+    night: app.tenet.android.core.common.SleepNight,
+    title: String = "Letzte Nacht",
+) {
     val zone = java.time.ZoneId.systemDefault()
     val fmt = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
     val colors = MaterialTheme.colorScheme
     Card(colors = CardDefaults.cardColors(containerColor = colors.secondaryContainer), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Letzte Nacht", style = MaterialTheme.typography.titleMedium, color = colors.onSecondaryContainer, modifier = Modifier.weight(1f))
+                Text(title, style = MaterialTheme.typography.titleMedium, color = colors.onSecondaryContainer, modifier = Modifier.weight(1f))
                 Text(
                     night.start.atZone(zone).format(fmt) + " – " + night.end.atZone(zone).format(fmt),
                     style = MaterialTheme.typography.labelLarge,
@@ -594,7 +597,7 @@ private fun DreamPatternsCard(state: JournalUiState) {
             }
             Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
                 Stat("$total", "Träume")
-                Stat("${if (total == 0) 0 else lucid * 100 / total} %", "luzid")
+                Stat("${if (total == 0) 0 else lucid * 100 / total} %", "Luzid")
                 Stat("$nightmares", "Albträume")
             }
             val months = state.dreamMonths.takeLast(6)

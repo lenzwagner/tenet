@@ -77,7 +77,7 @@ fun GymPage(
     onOpenLibrary: () -> Unit = {},
     onOpenRoutineEditor: () -> Unit = {},
     onOpenPlan: (String) -> Unit = {},
-    onOpenSetup: () -> Unit = {},
+    onOpenSetup: (useTrainingHistory: Boolean) -> Unit = {},
     onOpenSummary: (String) -> Unit = {},
     onOpenHistory: () -> Unit = {},
     viewModel: GymViewModel = hiltViewModel(),
@@ -92,6 +92,27 @@ fun GymPage(
     // discards the active session.
     val hasActiveSession = overview.activeSession != null
     var showDiscardDialog by remember { mutableStateOf(false) }
+    var showPlanSourceDialog by remember { mutableStateOf(false) }
+
+    if (showPlanSourceDialog) {
+        AlertDialog(
+            onDismissRequest = { showPlanSourceDialog = false },
+            title = { Text("Split wechseln") },
+            text = { Text("Wie sollen Startgewichte und Kraftwerte für neuen Plan bestimmt werden?") },
+            confirmButton = {
+                Button(onClick = {
+                    showPlanSourceDialog = false
+                    onOpenSetup(true)
+                }) { Text("Bisherige Trainings verwenden") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showPlanSourceDialog = false
+                    onOpenSetup(false)
+                }) { Text("Komplett neues Setup") }
+            },
+        )
+    }
 
     if (showDiscardDialog) {
         AlertDialog(
@@ -145,7 +166,7 @@ fun GymPage(
                         title = "Richte dein Gym-Training ein",
                         body = "Ziel, Trainingstage, Split und deine aktuellen Kraftwerte – daraus erstellt Tenet " +
                             "deinen Plan mit passenden Startgewichten.",
-                        onSetup = onOpenSetup,
+                        onSetup = { onOpenSetup(false) },
                         onSkip = { setupViewModel.skip("GYM") },
                     )
                 }
@@ -165,7 +186,7 @@ fun GymPage(
                     onEdit = onOpenRoutineEditor,
                     onOpenLibrary = onOpenLibrary,
                     onOpenPlan = { overview.plan?.id?.let(onOpenPlan) },
-                    onSetup = onOpenSetup,
+                    onSetup = { showPlanSourceDialog = true },
                 )
             }
             item { SessionsCard(overview, onOpenSession = onOpenSummary, onOpenHistory = onOpenHistory) }
@@ -188,6 +209,9 @@ fun GymPage(
             item {
                 BodyMetricCard(
                     metrics = progressState.bodyMetrics,
+                    metricsLoaded = progressState.bodyMetricsLoaded,
+                    lastPromptDate = progressState.lastWeightPromptDate,
+                    onWeeklyPromptDismiss = viewModel::dismissWeeklyWeightPrompt,
                     onSave = viewModel::saveBodyMetric,
                 )
             }
@@ -327,8 +351,16 @@ private fun RoutineCard(
                         )
                     }
                 }
-                TooltipIconButton(Icons.Outlined.RestartAlt, "Plan neu einrichten", onSetup)
                 TextButton(shapes = ButtonDefaults.shapes(), onClick = onEdit) { Text("Bearbeiten") }
+            }
+            OutlinedButton(
+                shapes = ButtonDefaults.shapes(),
+                onClick = onSetup,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Outlined.RestartAlt, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                Text("Split wechseln oder erstellen")
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilledTonalButton(

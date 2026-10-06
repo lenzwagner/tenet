@@ -20,8 +20,10 @@ import app.tenet.android.core.data.health.HealthSyncWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.LocalDate
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -42,13 +44,55 @@ class SettingsViewModel @Inject constructor(
     // ---- AI assistant (NVIDIA NIM) ------------------------------------------
 
     val aiConfig: StateFlow<AiAssistant.Config> = ai.config
+    private val _availableModels = MutableStateFlow(
+        (AiAssistant.DEFAULT_MODELS + AiAssistant.ModelChoice(ai.config.value.model)).distinctBy { it.id },
+    )
+    val availableModels: StateFlow<List<AiAssistant.ModelChoice>> = _availableModels.asStateFlow()
+
+    init {
+        refreshAiModels()
+    }
+
     fun setAiEnabled(enabled: Boolean) = ai.setEnabled(enabled)
-    fun setAiKey(key: String) = ai.setApiKey(key)
-    fun setAiModel(model: String) = ai.setModel(model)
+    fun setAiKey(key: String) {
+        ai.setApiKey(key)
+        refreshAiModels()
+    }
+    fun setAiModel(model: String) {
+        ai.setModel(model)
+        _availableModels.value = (_availableModels.value + AiAssistant.ModelChoice(model))
+            .distinctBy { it.id }
+            .sortedBy { it.id }
+    }
 
     /** Round trip; returns null on success, else the error text. */
     fun testAi(onResult: (String?) -> Unit) {
         viewModelScope.launch { onResult(if (ai.test()) null else (ai.lastError ?: "Keine Antwort")) }
+    }
+
+    fun refreshAiModels() {
+        viewModelScope.launch {
+            val models = ai.fetchModels()
+            _availableModels.value = ((models.ifEmpty { AiAssistant.DEFAULT_MODELS }) + AiAssistant.ModelChoice(ai.config.value.model))
+                .distinctBy { it.id }
+                .sortedBy { it.id }
+        }
+    }
+
+    /** Tests the selected model and returns its NIM model id, or an error. */
+    fun testAiModel(onResult: (String?, String?) -> Unit) {
+        viewModelScope.launch {
+            val model = ai.testModel()
+            onResult(model, if (model == null) ai.lastError ?: "Keine Antwort" else null)
+        }
+    }
+
+    /** Tests a catalog entry without changing the saved model selection. */
+    fun testAiModel(modelId: String, onResult: (String?, String?) -> Unit) {
+        viewModelScope.launch {
+            val model = ai.testModel(modelId)
+            onResult(model, if (model == null) ai.lastError ?: "Keine Antwort" else null)
+        }
     }
 
     // ---- Health Connect -------------------------------------------------

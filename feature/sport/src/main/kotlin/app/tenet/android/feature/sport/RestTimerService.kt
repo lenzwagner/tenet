@@ -87,6 +87,7 @@ class RestTimerService : Service() {
     }
 
     override fun onDestroy() {
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         scope.cancel()
         _state.value = null
         super.onDestroy()
@@ -385,6 +386,9 @@ class RestTimerService : Service() {
         /** Removes the notification (session finished or discarded). */
         fun cancel(context: Context) {
             context.stopService(Intent(context, RestTimerService::class.java))
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.cancel(NOTIF_ID)
+            manager.cancel(NOTIF_DONE_ID)
             _state.value = null
         }
 

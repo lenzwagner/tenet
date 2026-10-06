@@ -56,4 +56,6 @@ data class UserSettings(
     val todayCardOrder: List<String> = emptyList(),
     /** Card ids hidden on "Heute". */
     val todayHiddenCards: Set<String> = emptySet(),
+    /** ISO date on which weekly weight question was last answered or dismissed. */
+    val lastWeightPromptDate: String? = null,
 )

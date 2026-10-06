@@ -3,6 +3,10 @@ package app.tenet.android.feature.sport.gym
 import app.tenet.android.core.database.entity.Discipline
 import app.tenet.android.core.common.OverloadMath
 import app.tenet.android.core.data.ai.AiFiller
+import android.os.SystemClock
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -117,8 +121,15 @@ class ActiveSessionViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(SessionUiState())
     val uiState: StateFlow<SessionUiState> = _uiState.asStateFlow()
 
-    /** Countdown state, sourced from the foreground timer service. */
-    val rest: StateFlow<RestUiState?> = RestTimerService.state
+    private val guided = MutableStateFlow(false)
+    private val localRest = MutableStateFlow<RestUiState?>(null)
+    private var localRestJob: Job? = null
+    private var localRestEndAt = 0L
+
+    /** Only guided training uses the foreground notification service. */
+    val rest: StateFlow<RestUiState?> = combine(guided, localRest, RestTimerService.state) { active, local, service ->
+        if (active) service else local
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /** Next open set with planned values and rest (training mode, notification). */
     val next: StateFlow<WorkoutGuide.Next?> = uiState
@@ -321,6 +332,19 @@ class ActiveSessionViewModel @Inject constructor(
         viewModelScope.launch { repository.upsertSet(updated) }
     }
 
+    fun deleteSet(sessionExerciseId: String, setId: String) {
+        viewModelScope.launch {
+            repository.deleteSet(sessionExerciseId, setId)
+            _uiState.update { state ->
+                state.copy(blocks = state.blocks.map { block ->
+                    if (block.sessionExerciseId == sessionExerciseId) {
+                        block.copy(rows = block.rows.filterNot { it.set.id == setId })
+                    } else block
+                })
+            }
+        }
+    }
+
     fun addSet(sessionExerciseId: String) {
         viewModelScope.launch {
             repository.addSet(sessionExerciseId)
@@ -340,6 +364,8 @@ class ActiveSessionViewModel @Inject constructor(
     fun endSession(notes: String = "", perceivedEffort: Int? = null) {
         val id = sessionId ?: return
         _endRequested.value = false
+        guided.value = false
+        clearLocalRest()
         RestTimerService.cancel(application)
         viewModelScope.launch {
             repository.finishSession(id, notes.trim(), perceivedEffort)
@@ -359,28 +385,68 @@ class ActiveSessionViewModel @Inject constructor(
 
     private fun startRest(totalSec: Int) {
         val id = sessionId ?: return
-        // Last set of the workout: no rest, the notification says "geschafft".
-        if (_uiState.value.blocks.all { b -> b.rows.all { it.set.completed } }) {
+        val finished = _uiState.value.blocks.all { b -> b.rows.all { it.set.completed } }
+        if (!guided.value) {
+            startLocalRest(if (finished) 0 else totalSec)
+        } else if (finished) {
+            RestTimerService.skip(application)
             RestTimerService.guide(application, id)
         } else {
             RestTimerService.start(application, totalSec, id)
         }
     }
 
+    private fun clearLocalRest() {
+        localRestJob?.cancel()
+        localRest.value = null
+        localRestEndAt = 0L
+    }
+
+    private fun startLocalRest(seconds: Int, total: Int = seconds) {
+        clearLocalRest()
+        if (seconds <= 0) return
+        localRestEndAt = SystemClock.elapsedRealtime() + seconds * 1000L
+        localRest.value = RestUiState(seconds, total)
+        localRestJob = viewModelScope.launch {
+            while (true) {
+                delay(250)
+                val left = ((localRestEndAt - SystemClock.elapsedRealtime() + 999) / 1000).toInt()
+                if (left <= 0) {
+                    localRest.value = null
+                    break
+                }
+                localRest.value = RestUiState(left, total)
+            }
+        }
+    }
+
     fun addRestSeconds(seconds: Int) {
-        if (rest.value == null) return
-        RestTimerService.add(application, seconds)
+        if (guided.value) {
+            RestTimerService.add(application, seconds)
+        } else {
+            val current = localRest.value ?: return
+            val left = ((localRestEndAt - SystemClock.elapsedRealtime() + 999) / 1000).toInt().coerceAtLeast(0)
+            startLocalRest(left + seconds, current.totalSec + seconds)
+        }
     }
 
-    /** Ends the rest early; the notification switches to the next set. */
     fun cancelRest() {
-        RestTimerService.skip(application)
+        if (guided.value) RestTimerService.skip(application) else clearLocalRest()
     }
 
-    /** Training mode opened: live notification with the next set. */
-    fun startGuide() {
+    /** Keeps a running pause when entering or leaving training mode. */
+    fun setTrainingMode(active: Boolean) {
         val id = sessionId ?: return
-        if (rest.value == null) RestTimerService.guide(application, id)
+        val current = if (guided.value) RestTimerService.state.value else localRest.value
+        guided.value = active
+        if (active) {
+            clearLocalRest()
+            if (current != null) RestTimerService.start(application, current.remainingSec, id)
+            else RestTimerService.guide(application, id)
+        } else {
+            RestTimerService.cancel(application)
+            if (current != null) startLocalRest(current.remainingSec, current.totalSec)
+        }
     }
 
     /** Training mode: logs the next set with the entered values and starts its rest. */

@@ -121,7 +121,11 @@ data class RunWorkoutRoute(val plannedId: String = "")
 
 /** First-run setup wizard of a discipline: GYM, CALISTHENICS or RUNNING. */
 @Serializable
-data class SportSetupRoute(val discipline: String = "GYM")
+data class SportSetupRoute(
+    val discipline: String = "GYM",
+    /** Gym only: seed strength values from completed training sets. */
+    val useTrainingHistory: Boolean = false,
+)
 
 /** Progression slides; [page] 0 = Gym, 1 = Calisthenics, 2 = Laufen. */
 @Serializable

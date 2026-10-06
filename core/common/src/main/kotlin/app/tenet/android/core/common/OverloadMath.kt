@@ -31,6 +31,8 @@ object OverloadMath {
         /** Heaviest weight of the last session (null on the first session). */
         val lastWeightKg: Float?,
         val step: Float,
+        /** Provenance of a cross-exercise estimate, never a performed result. */
+        val estimatedFrom: String? = null,
     ) {
         val deltaKg: Float get() = lastWeightKg?.let { weightKg - it } ?: 0f
     }
@@ -83,7 +85,8 @@ object OverloadMath {
 
     fun label(s: Suggestion): String = when (s.decision) {
         Decision.FIRST_TIME ->
-            if (s.weightKg > 0f) "Startwert aus der Einrichtung · etwa 2 Wdh Reserve" else "Erstes Mal – Startgewicht wählen"
+            s.estimatedFrom?.let { "$it · etwa 2 Wdh Reserve" }
+                ?: if (s.weightKg > 0f) "Startwert aus der Einrichtung · etwa 2 Wdh Reserve" else "Erstes Mal – Startgewicht wählen"
         Decision.INCREASE -> "+${fmt(s.deltaKg)} kg · Ziel beim letzten Mal geschafft"
         Decision.KEEP -> if ((s.lastWeightKg ?: 0f) <= 0f) "Eigengewicht · mehr Wiederholungen" else "Gewicht halten · Wiederholungen steigern"
         Decision.DELOAD -> "Deload −${deloadPct(s)} % · zweimal knapp verpasst"

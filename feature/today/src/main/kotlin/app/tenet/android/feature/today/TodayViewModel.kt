@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.mapLatest
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.tenet.android.core.common.BodyProfile
+import app.tenet.android.core.common.newUuid
 import app.tenet.android.core.common.StreakCalculator
 import app.tenet.android.core.common.TrainingDays
 import app.tenet.android.core.common.WeekMath
@@ -11,6 +12,7 @@ import app.tenet.android.core.data.EntryRepository
 import app.tenet.android.core.data.FoodRepository
 import app.tenet.android.core.data.NutritionTotals
 import app.tenet.android.core.data.WeekCalendarRepository
+import app.tenet.android.core.data.SportRepository
 import app.tenet.android.core.database.entity.DailyGoal
 import app.tenet.android.core.database.entity.Discipline
 import app.tenet.android.core.database.entity.Entry
@@ -27,6 +29,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -88,12 +91,42 @@ class TodayViewModel @Inject constructor(
     private val entryRepository: EntryRepository,
     private val foodRepository: FoodRepository,
     private val weekCalendarRepository: WeekCalendarRepository,
+    private val sportRepository: SportRepository,
     private val settingsRepository: UserSettingsRepository,
     private val weatherRepository: app.tenet.android.core.data.WeatherRepository,
 ) : ViewModel() {
 
     private val date = MutableStateFlow(LocalDate.now())
     private val weatherTick = MutableStateFlow(0)
+
+    val weeklyWeightPrompt: StateFlow<Boolean> = combine(
+        settingsRepository.settings,
+        sportRepository.observeBodyMetrics(),
+    ) { settings, metrics ->
+        val today = LocalDate.now()
+        val monday = WeekMath.weekStart(today)
+        val enteredThisWeek = metrics.lastOrNull()?.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+            ?.let { !it.isBefore(monday) } == true
+        today.dayOfWeek == java.time.DayOfWeek.MONDAY &&
+            settings.lastWeightPromptDate != today.toString() &&
+            !enteredThisWeek
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    fun dismissWeeklyWeightPrompt() {
+        viewModelScope.launch { settingsRepository.markWeightPromptHandled(LocalDate.now().toString()) }
+    }
+
+    fun saveWeeklyWeight(weight: Float) {
+        if (!weight.isFinite() || weight !in 20f..400f) return
+        viewModelScope.launch {
+            val today = LocalDate.now().toString()
+            sportRepository.saveBodyMetric(today, weight)
+            settingsRepository.settings.first().profile?.let {
+                settingsRepository.setProfile(it.copy(weightKg = weight))
+            }
+            settingsRepository.markWeightPromptHandled(today)
+        }
+    }
 
     /** Weather of the selected day (last 7 days + today); null without location/network. */
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -251,6 +284,26 @@ class TodayViewModel @Inject constructor(
 
     fun saveProfile(profile: BodyProfile) {
         viewModelScope.launch { settingsRepository.setProfile(profile) }
+    }
+
+    /** Records an explicit no-dream day without creating dream metadata/statistics. */
+    fun markNoDream(entryDate: String) {
+        viewModelScope.launch {
+            val now = System.currentTimeMillis()
+            entryRepository.save(
+                Entry(
+                    id = newUuid(),
+                    type = EntryType.DREAM,
+                    title = "Kein Traum",
+                    body = "",
+                    createdAt = now,
+                    updatedAt = now,
+                    entryDate = entryDate,
+                ),
+                diaryMeta = null,
+                dreamMeta = null,
+            )
+        }
     }
 
     fun setGoal(kcal: Float, protein: Float, carbs: Float, fat: Float) {

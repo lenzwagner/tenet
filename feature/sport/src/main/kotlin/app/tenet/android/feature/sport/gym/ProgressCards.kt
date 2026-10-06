@@ -335,9 +335,51 @@ fun VolumeHistoryCard(
 @Composable
 fun BodyMetricCard(
     metrics: List<BodyMetric>,
+    metricsLoaded: Boolean = true,
+    lastPromptDate: String? = null,
+    onWeeklyPromptDismiss: () -> Unit = {},
     onSave: (weight: Float?, bodyFat: Float?, measurements: Map<String, Float>) -> Unit,
 ) {
     var dialogOpen by remember { mutableStateOf(false) }
+    var weeklyQuestionOpen by remember { mutableStateOf(false) }
+    var weeklyQuestionHandled by remember { mutableStateOf(false) }
+    val today = java.time.LocalDate.now()
+    LaunchedEffect(metricsLoaded, metrics, today) {
+        val enteredThisWeek = metrics.lastOrNull()?.date?.parseIso()?.let {
+            !it.isBefore(app.tenet.android.core.common.WeekMath.weekStart(today))
+        } == true
+        if (metricsLoaded && today.dayOfWeek == java.time.DayOfWeek.MONDAY && !enteredThisWeek &&
+            lastPromptDate != today.toString() && !weeklyQuestionHandled
+        ) {
+            weeklyQuestionOpen = true
+        }
+    }
+
+    if (weeklyQuestionOpen) {
+        AlertDialog(
+            onDismissRequest = {
+                weeklyQuestionOpen = false
+                weeklyQuestionHandled = true
+                onWeeklyPromptDismiss()
+            },
+            title = { Text("Gewicht aktualisieren?") },
+            text = { Text("Montags kannst du dein aktuelles Gewicht erfassen. Verlauf erscheint hier in Karte „Körper“.") },
+            confirmButton = {
+                Button(onClick = {
+                    weeklyQuestionOpen = false
+                    weeklyQuestionHandled = true
+                    dialogOpen = true
+                }) { Text("Eintragen") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    weeklyQuestionOpen = false
+                    weeklyQuestionHandled = true
+                    onWeeklyPromptDismiss()
+                }) { Text("Diese Woche nicht") }
+            },
+        )
+    }
 
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

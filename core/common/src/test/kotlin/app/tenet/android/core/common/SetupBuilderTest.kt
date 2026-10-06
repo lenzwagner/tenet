@@ -28,6 +28,26 @@ class SetupBuilderTest {
     }
 
     @Test
+    fun customFourRoutineSplit_withSixTrainingDays_keepsFourRoutineCycle() {
+        val plan = GymPlanBuilder.build(
+            GymPlanBuilder.Input(
+                goal = Goal.HYPERTROPHY,
+                level = Level.INTERMEDIATE,
+                split = Split.CUSTOM,
+                days = listOf(1, 2, 3, 4, 5, 6),
+                bodyweightKg = 80f,
+                customRoutineTitles = listOf("Brust", "Rücken", "Arme", "Beine"),
+            ),
+        )
+
+        assertEquals(listOf("Brust", "Rücken", "Arme", "Beine"), plan.routines.map { it.title })
+        assertTrue(plan.routines[0].exercises.any { it.exerciseId == "ex-bankdruecken" })
+        assertTrue(plan.routines[1].exercises.any { it.exerciseId == "ex-rudern" })
+        assertTrue(plan.routines[2].exercises.any { it.exerciseId == "ex-bizepscurl" })
+        assertTrue(plan.routines[3].exercises.any { it.exerciseId == "ex-kniebeugen" })
+    }
+
+    @Test
     fun build_ppl_usesEnteredLiftsAndEstimatesTheRest() {
         val plan = GymPlanBuilder.build(
             GymPlanBuilder.Input(

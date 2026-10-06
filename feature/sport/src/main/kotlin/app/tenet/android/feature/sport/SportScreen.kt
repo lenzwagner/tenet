@@ -79,7 +79,7 @@ fun SportScreen(
     onOpenGymPlan: (planId: String) -> Unit = {},
     onOpenProgression: (page: Int) -> Unit = {},
     /** Opens the first-run setup of a discipline (GYM, CALISTHENICS, RUNNING). */
-    onOpenSetup: (discipline: String) -> Unit = {},
+    onOpenSetup: (discipline: String, useTrainingHistory: Boolean) -> Unit = { _, _ -> },
     onOpenRunWorkout: (plannedId: String) -> Unit = {},
     onOpenGymSummary: (sessionId: String) -> Unit = {},
     onOpenGymHistory: () -> Unit = {},
@@ -134,7 +134,7 @@ fun SportScreen(
                         onOpenLibrary = onOpenLibrary,
                         onOpenRoutineEditor = onOpenRoutineEditor,
                         onOpenPlan = onOpenGymPlan,
-                        onOpenSetup = { onOpenSetup("GYM") },
+                        onOpenSetup = { useHistory -> onOpenSetup("GYM", useHistory) },
                         onOpenSummary = onOpenGymSummary,
                         onOpenHistory = onOpenGymHistory,
                     )
@@ -142,7 +142,7 @@ fun SportScreen(
                         onOpenSkillSession = onOpenSkillSession,
                         onOpenSession = onOpenSession,
                         onOpenWorkout = onOpenWorkout,
-                        onOpenSetup = { onOpenSetup("CALISTHENICS") },
+                        onOpenSetup = { onOpenSetup("CALISTHENICS", false) },
                         onOpenExercise = onOpenExercise,
                         onOpenSummary = onOpenGymSummary,
                         onOpenPlan = onOpenCaliPlan,
@@ -151,7 +151,7 @@ fun SportScreen(
                         onStartRun = onStartRun,
                         onOpenRun = onOpenRun,
                         onOpenPlan = onOpenRunPlan,
-                        onOpenSetup = { onOpenSetup("RUNNING") },
+                        onOpenSetup = { onOpenSetup("RUNNING", false) },
                         onOpenWorkout = onOpenRunWorkout,
                     )
                 }

@@ -51,6 +51,7 @@ import androidx.compose.material.icons.outlined.SelfImprovement
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -64,6 +65,8 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
@@ -93,6 +96,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -141,6 +146,37 @@ fun TodayScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val profile by viewModel.profile.collectAsStateWithLifecycle()
+    val showWeeklyWeightPrompt by viewModel.weeklyWeightPrompt.collectAsStateWithLifecycle()
+    var weeklyWeight by rememberSaveable { mutableStateOf("") }
+    if (showWeeklyWeightPrompt) {
+        val parsedWeight = weeklyWeight.replace(',', '.').toFloatOrNull()
+        AlertDialog(
+            onDismissRequest = viewModel::dismissWeeklyWeightPrompt,
+            title = { Text("Gewicht aktualisieren?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Wöchentlicher Eintrag für Gewichtsverlauf. Chart: Sport → Gym → Körper.")
+                    OutlinedTextField(
+                        value = weeklyWeight,
+                        onValueChange = { weeklyWeight = it },
+                        label = { Text("Gewicht (kg)") },
+                        placeholder = { profile?.let { Text(it.weightKg.toString().replace('.', ',')) } },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    enabled = parsedWeight != null && parsedWeight in 20f..400f,
+                    onClick = { parsedWeight?.let(viewModel::saveWeeklyWeight) },
+                ) { Text("Speichern") }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissWeeklyWeightPrompt) { Text("Diese Woche nicht") }
+            },
+        )
+    }
     LifecycleResumeEffect(Unit) {
         viewModel.refreshToday()
         onPauseOrDispose {}
@@ -259,6 +295,7 @@ fun TodayScreen(
                                 isToday = state.isToday,
                                 onTell = { onNewEntry(EntryType.DREAM, iso, true) },
                                 onWrite = { onNewEntry(EntryType.DREAM, iso, false) },
+                                onNoDream = { viewModel.markNoDream(iso) },
                                 onOpen = onOpenEntry,
                                 locked = journalLocked,
                             ) }
@@ -426,6 +463,7 @@ private fun DreamCard(
     isToday: Boolean,
     onTell: () -> Unit,
     onWrite: () -> Unit,
+    onNoDream: () -> Unit,
     onOpen: (Entry) -> Unit,
     locked: Boolean = false,
 ) {
@@ -470,6 +508,13 @@ private fun DreamCard(
                         Text("Erzählen")
                     }
                     FilledTonalButton(onClick = onWrite, shapes = ButtonDefaults.shapes()) { Text("Schreiben") }
+                }
+                OutlinedButton(
+                    onClick = onNoDream,
+                    shapes = ButtonDefaults.shapes(),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Kein Traum")
                 }
             }
         }

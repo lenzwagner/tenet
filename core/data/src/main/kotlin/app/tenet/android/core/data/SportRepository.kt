@@ -9,6 +9,7 @@ import app.tenet.android.core.common.GymPlanStats
 import app.tenet.android.core.common.GymPlanBuilder
 import app.tenet.android.core.common.OverloadMath
 import app.tenet.android.core.common.OneRepMax
+import app.tenet.android.core.common.BenchStrength
 import app.tenet.android.core.common.OneRepMaxFormula
 import app.tenet.android.core.common.ProgressMath
 import app.tenet.android.core.common.newUuid
@@ -240,6 +241,26 @@ class SportRepository @Inject constructor(
             .sortedByDescending { it.oneRepMax }
             .take(5)
 
+    /** Best completed work set for each setup lift, used when rebuilding a plan from training history. */
+    suspend fun setupLiftsFromHistory(
+        formula: OneRepMaxFormula = OneRepMaxFormula.EPLEY,
+    ): Map<GymPlanBuilder.Lift, GymPlanBuilder.LiftInput> {
+        val sets = dao.completedSetsWithExercise(Discipline.GYM)
+        return GymPlanBuilder.Lift.entries.mapNotNull { lift ->
+            sets.filter {
+                it.exerciseId == lift.exerciseId &&
+                    it.reps in 1..30 &&
+                    (it.weight > 0f || (lift.load == GymPlanBuilder.Load.BODYWEIGHT_PLUS && it.weight >= 0f))
+            }
+                .maxWithOrNull(
+                    compareBy<app.tenet.android.core.database.dao.SportDao.NamedSet> {
+                        OneRepMax.oneRepMax(it.weight, it.reps, formula)
+                    }.thenBy { it.reps },
+                )
+                ?.let { lift to GymPlanBuilder.LiftInput(it.weight, it.reps) }
+        }.toMap()
+    }
+
     // ---- Setup ---------------------------------------------------------
 
     /**
@@ -360,18 +381,10 @@ class SportRepository @Inject constructor(
                 val exercise = exercisesByIds[se.exerciseId]
                 val measure = exercise?.measureType
                 // Progressive overload: start with the proposed weight.
-                val proposal = OverloadMath.suggest(
-                    history(se.exerciseId, sessionId),
-                    target?.targetReps ?: 8,
-                    exercise?.primaryMuscles.orEmpty(),
-                    target.rule(),
-                )
-                // First time: the start weight from the setup, if any.
-                val weight = if (proposal.decision == OverloadMath.Decision.FIRST_TIME) {
-                    target?.startWeightKg ?: proposal.weightKg
-                } else {
-                    proposal.weightKg
-                }
+                val weight = suggestWeight(
+                    se.exerciseId, sessionId, target?.targetReps ?: 8,
+                    exercise?.primaryMuscles.orEmpty(), target,
+                ).weightKg
                 repeat(target?.targetSets ?: 3) { index ->
                     initialSets += SetEntry(
                         id = newUuid(),
@@ -399,7 +412,7 @@ class SportRepository @Inject constructor(
         } else {
             now
         }
-        dao.endSession(sessionId, end)
+        if (session != null) dao.finishCompletedSession(sessionId, end, session.notes, session.perceivedEffort)
         healthWriter.writeWorkout(sessionId)
     }
 
@@ -454,36 +467,51 @@ class SportRepository @Inject constructor(
                         row.set.sortOrder to "${if (w % 1f == 0f) w.toInt().toString() else w.toString().replace('.', ',')}×${row.set.reps}"
                     },
                 sets = dao.setsOnce(se.id),
-                suggestion = OverloadMath.suggest(
-                    history,
-                    target?.targetReps ?: 8,
-                    exercises[se.exerciseId]?.primaryMuscles.orEmpty(),
-                    target.rule(),
-                ).let { s ->
-                    // No history yet: show the start weight from the setup.
-                    val start = target?.startWeightKg
-                    if (s.decision == OverloadMath.Decision.FIRST_TIME && start != null) s.copy(weightKg = start) else s
-                },
+                suggestion = suggestWeight(
+                    se.exerciseId, sessionId, target?.targetReps ?: 8,
+                    exercises[se.exerciseId]?.primaryMuscles.orEmpty(), target,
+                ),
                 lastE1rm = e1rms.firstOrNull()?.takeIf { it > 0f },
                 bestE1rm = e1rms.maxOrNull()?.takeIf { it > 0f },
             )
         }
     }
 
+    /** Own history wins. Recent bench variants supply only a labelled first-use estimate. */
+    private suspend fun suggestWeight(
+        exerciseId: String,
+        sessionId: String,
+        reps: Int,
+        muscles: String,
+        target: RoutineExercise? = null,
+    ): OverloadMath.Suggestion {
+        val own = OverloadMath.suggest(history(exerciseId, sessionId), reps, muscles, target.rule())
+        if (own.decision != OverloadMath.Decision.FIRST_TIME) return own
+        val variant = BenchStrength.variant(exerciseId)
+        val transfer = if (variant == null) null else {
+            val performances = BenchStrength.Variant.entries.filter { it != variant }.flatMap { source ->
+                dao.previousSets(source.exerciseId, sessionId).map { row ->
+                    BenchStrength.Performance(
+                        source, row.set.weight, row.set.reps, row.sessionId, row.startedAt,
+                        row.set.completed, row.set.type == SetType.WARMUP,
+                    )
+                }
+            }
+            BenchStrength.fromHistory(variant, performances, System.currentTimeMillis())
+        }
+        return BenchStrength.applyToSuggestion(own, transfer, reps, target?.startWeightKg)
+    }
+
     /** Completed working sets per earlier session of an exercise, newest first. */
     private suspend fun history(exerciseId: String, currentSessionId: String): List<List<OverloadMath.WorkSet>> =
         workSets(dao.previousSets(exerciseId, currentSessionId))
 
-    /**
-     * Working sets per past session, newest first. In sessions where nothing
-     * at all was ticked off, every set with a weight counts (the user logs
-     * without ticking); otherwise unticked sets were skipped.
-     */
+    /** Completed working sets only; prefilled or unticked values are not performance. */
     private fun workSets(rows: List<SportDao.PreviousSetRow>): List<List<OverloadMath.WorkSet>> =
         rows.groupBy { it.sessionId }.values.map { session ->
             session
                 .filter { it.set.type != SetType.WARMUP && it.set.reps > 0 }
-                .filter { if (it.sessionHasCompleted) it.set.completed else it.set.weight > 0f }
+                .filter { it.set.completed && it.set.weight.isFinite() && it.set.weight >= 0f }
                 .map { OverloadMath.WorkSet(it.set.weight, it.set.reps) }
         }
 
@@ -518,6 +546,9 @@ class SportRepository @Inject constructor(
         }
 
     suspend fun upsertSet(set: SetEntry) = dao.upsertSet(set)
+
+    suspend fun deleteSet(sessionExerciseId: String, setId: String) =
+        dao.deleteSet(sessionExerciseId, setId)
 
     /** Session as seen by the guided mode and the live notification. */
     suspend fun guide(sessionId: String): List<Pair<SessionBlock, app.tenet.android.core.common.WorkoutGuide.GuideBlock>> =
@@ -602,11 +633,7 @@ class SportRepository @Inject constructor(
 
     /** Writes notes and perceived effort when the session is finished. */
     suspend fun finishSession(sessionId: String, notes: String, perceivedEffort: Int?) {
-        val session = dao.sessionOnce(sessionId) ?: return
-        if (session.endedAt == null) {
-            dao.endSession(sessionId, System.currentTimeMillis())
-        }
-        dao.updateSessionSummary(sessionId, notes, perceivedEffort)
+        dao.finishCompletedSession(sessionId, System.currentTimeMillis(), notes, perceivedEffort)
     }
 
     // ---- Exercise library ----------------------------------------------
@@ -750,7 +777,7 @@ class SportRepository @Inject constructor(
         count: Int,
         reps: Int,
     ): List<SetEntry> {
-        val weight = OverloadMath.suggest(history(exercise.id, sessionId), reps, exercise.primaryMuscles).weightKg
+        val weight = suggestWeight(exercise.id, sessionId, reps, exercise.primaryMuscles).weightKg
         val timed = exercise.measureType == MeasureType.DURATION || exercise.measureType == MeasureType.HOLD
         return List(count) { index ->
             SetEntry(

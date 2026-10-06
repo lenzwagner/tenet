@@ -26,3 +26,7 @@ app/google-services.json
 
 # Generated
 graphify-out/
+
+# Local scratch output
+.build/
+/outputs/

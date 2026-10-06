@@ -4,6 +4,7 @@ import app.tenet.android.core.data.ai.AiFiller
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.tenet.android.core.common.newUuid
+import app.tenet.android.core.common.SleepNight
 import app.tenet.android.core.data.EntryRepository
 import app.tenet.android.core.data.FoodRepository
 import app.tenet.android.core.data.WeekCalendarRepository
@@ -83,6 +84,7 @@ class EntryEditorViewModel @Inject constructor(
     private val foodRepository: FoodRepository,
     private val weekCalendarRepository: WeekCalendarRepository,
     private val aiFiller: AiFiller,
+    private val healthConnect: app.tenet.android.core.data.health.HealthConnectRepository,
 ) : ViewModel() {
 
     // ---- AI fill-in (NVIDIA NIM) ------------------------------------------
@@ -124,7 +126,7 @@ class EntryEditorViewModel @Inject constructor(
                         "Klarheit".takeIf { f.clarity != null },
                         "Emotionen".takeIf { f.emotions.isNotEmpty() },
                         "Symbole".takeIf { f.symbols.isNotEmpty() },
-                        "luzid".takeIf { f.lucid == true },
+                        "Luzid".takeIf { f.lucid == true },
                         "Albtraum".takeIf { f.nightmare == true },
                     )
                 }
@@ -178,6 +180,9 @@ class EntryEditorViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(EntryEditorState())
     val state: StateFlow<EntryEditorState> = _state.asStateFlow()
+
+    private val _sleepNight = MutableStateFlow<SleepNight?>(null)
+    val sleepNight: StateFlow<SleepNight?> = _sleepNight.asStateFlow()
 
     private val _saved = Channel<Unit>(Channel.BUFFERED)
     val saved = _saved.receiveAsFlow()
@@ -249,6 +254,7 @@ class EntryEditorViewModel @Inject constructor(
                 title = title,
                 entryDate = date.ifBlank { LocalDate.now().toString() },
             )
+            refreshSleepForDream()
             return
         }
         viewModelScope.launch {
@@ -287,6 +293,24 @@ class EntryEditorViewModel @Inject constructor(
                 tags = tags.filter { it.kind == TagKind.GENERAL }.map { it.name },
                 attachments = attachments.map { AttachmentUi(it.id, it.uri, it.mimeType) },
             )
+            refreshSleepForDream()
+        }
+    }
+
+    /** Loads Health Connect sleep for the dream's wake-up day. */
+    private fun refreshSleepForDream() {
+        val snapshot = _state.value
+        _sleepNight.value = null
+        if (snapshot.type != EntryType.DREAM) return
+        val day = runCatching { LocalDate.parse(snapshot.entryDate) }.getOrNull() ?: return
+        viewModelScope.launch {
+            val from = day.minusDays(1)
+                .atStartOfDay(java.time.ZoneId.systemDefault())
+                .toInstant()
+            val night = runCatching { healthConnect.sleepNights(from)[day] }.getOrNull()
+            if (_state.value.type == EntryType.DREAM && _state.value.entryDate == snapshot.entryDate) {
+                _sleepNight.value = night
+            }
         }
     }
 

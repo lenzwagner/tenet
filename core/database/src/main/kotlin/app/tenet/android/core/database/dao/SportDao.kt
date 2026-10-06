@@ -3,6 +3,7 @@ package app.tenet.android.core.database.dao
 import androidx.room.Dao
 import androidx.room.Embedded
 import androidx.room.Insert
+import androidx.room.Transaction
 import androidx.room.Query
 import androidx.room.Upsert
 import app.tenet.android.core.database.entity.BodyMetric
@@ -366,6 +367,24 @@ interface SportDao {
     )
     suspend fun deleteSetsOfSession(sessionId: String)
 
+    @Query(
+        """
+        DELETE FROM SetEntry
+        WHERE completed = 0
+          AND sessionExerciseId IN (SELECT id FROM SessionExercise WHERE sessionId = :sessionId)
+        """,
+    )
+    suspend fun deleteIncompleteSetsOfSession(sessionId: String)
+
+    /** Finishing a workout keeps only sets explicitly marked as completed. */
+    @Transaction
+    suspend fun finishCompletedSession(sessionId: String, endedAt: Long, notes: String, effort: Int?) {
+        val session = sessionOnce(sessionId) ?: return
+        deleteIncompleteSetsOfSession(sessionId)
+        endSession(sessionId, session.endedAt ?: endedAt)
+        updateSessionSummary(sessionId, notes, effort)
+    }
+
     @Query("DELETE FROM SessionExercise WHERE sessionId = :sessionId")
     suspend fun deleteSessionExercises(sessionId: String)
 
@@ -393,6 +412,9 @@ interface SportDao {
     @Upsert
     suspend fun upsertSet(set: SetEntry)
 
+    @Query("DELETE FROM SetEntry WHERE id = :setId AND sessionExerciseId = :sessionExerciseId")
+    suspend fun deleteSet(sessionExerciseId: String, setId: String)
+
     @Insert
     suspend fun insertSets(sets: List<SetEntry>)
 
@@ -406,11 +428,13 @@ interface SportDao {
         val sessionId: String,
         /** Whether anything at all was ticked off in that session. */
         val sessionHasCompleted: Boolean,
+        val startedAt: Long,
     )
 
     @Query(
         """
         SELECT SetEntry.*, SessionExercise.sessionId AS sessionId,
+               (SELECT startedAt FROM WorkoutSession WHERE id = SessionExercise.sessionId) AS startedAt,
                EXISTS(
                    SELECT 1 FROM SetEntry s2
                    INNER JOIN SessionExercise x2 ON s2.sessionExerciseId = x2.id
@@ -448,12 +472,11 @@ interface SportDao {
     )
     suspend fun sessionVolumes(discipline: Discipline): List<SessionVolume>
 
-    data class NamedSet(val name: String, val weight: Float, val reps: Int)
+    data class NamedSet(val exerciseId: String, val name: String, val weight: Float, val reps: Int)
 
     @Query(
         """
-        SELECT Exercise.name AS name, SetEntry.weight AS weight, SetEntry.reps AS reps,
-               SetEntry.completed AS completed
+        SELECT Exercise.id AS exerciseId, Exercise.name AS name, SetEntry.weight AS weight, SetEntry.reps AS reps
         FROM SetEntry
         INNER JOIN SessionExercise ON SetEntry.sessionExerciseId = SessionExercise.id
         INNER JOIN Exercise ON SessionExercise.exerciseId = Exercise.id
