@@ -124,12 +124,12 @@ internal fun ModulesStep(step: Int, steps: Int, enabled: Set<AppModule>, onToggl
         onPrimary = onNext,
         primaryEnabled = enabled.isNotEmpty(),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+        Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
             AppModule.entries.forEachIndexed { i, m ->
                 val on = m in enabled
                 SegmentedListItem(
                     onClick = { onToggle(m, !on) },
-                    shapes = ListItemDefaults.segmentedShapes(i, AppModule.entries.size),
+                    shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(i, AppModule.entries.size),
                     colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                     leadingContent = { SettingsIcon(m.icon) },
                     supportingContent = { Text(m.why()) },
@@ -188,12 +188,12 @@ internal fun ProfileStep(step: Int, steps: Int, initial: BodyProfile?, onSave: (
                 weight = (it * 2).roundToInt() / 2f
             }
             Text("Wie aktiv bist du im Alltag?", style = MaterialTheme.typography.titleSmall)
-            Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+            Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
                 ActivityLevel.entries.forEachIndexed { i, a ->
                     SegmentedListItem(
                         selected = a == activity,
                         onClick = { activity = a },
-                        shapes = ListItemDefaults.segmentedShapes(i, ActivityLevel.entries.size),
+                        shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(i, ActivityLevel.entries.size),
                         colors = ListItemDefaults.segmentedColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainer,
                             selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,

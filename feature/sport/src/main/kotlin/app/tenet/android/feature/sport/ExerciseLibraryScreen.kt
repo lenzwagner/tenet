@@ -137,13 +137,13 @@ fun ExerciseLibraryScreen(
     ExpandedFullScreenSearchBar(state = searchState, inputField = inputField) {
         LazyColumn(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+            verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap),
             modifier = Modifier.fillMaxSize(),
         ) {
             itemsIndexed(state.filtered, key = { _, it -> it.id }) { index, exercise ->
                 ExerciseRow(
                     exercise = exercise,
-                    shapes = ListItemDefaults.segmentedShapes(index, state.filtered.size),
+                    shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, state.filtered.size),
                     onEdit = {
                         scope.launch { searchState.animateToCollapsed() }
                         editing = exercise
@@ -237,13 +237,13 @@ fun ExerciseLibraryScreen(
                         top = 8.dp,
                         bottom = 96.dp,
                     ),
-                    verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+                    verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap),
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     itemsIndexed(filtered, key = { _, it -> it.id }) { index, exercise ->
                         ExerciseRow(
                             exercise = exercise,
-                            shapes = ListItemDefaults.segmentedShapes(index, filtered.size),
+                            shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, filtered.size),
                             onEdit = { editing = exercise },
                             onDelete = { pendingDelete = exercise },
                             onOpen = { onOpenExercise(exercise.id) },

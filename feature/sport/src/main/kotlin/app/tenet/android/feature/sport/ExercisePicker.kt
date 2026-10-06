@@ -75,7 +75,8 @@ internal fun ExercisePickerSheet(
         .toList()
         .sortedBy { (p, _) -> p?.ordinal ?: Int.MAX_VALUE }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberSheetState(skipPartiallyExpanded = true)) {
+    // Opens at half height like an iOS sheet; pull up for the whole list.
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberSheetState(skipPartiallyExpanded = false)) {
         Column(Modifier.fillMaxHeight(0.92f).navigationBarsPadding()) {
             Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 16.dp))
             OutlinedTextField(
@@ -147,7 +148,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.exerciseGroup(
         item(key = "$key-${ex.id}") {
             SegmentedListItem(
                 onClick = { onPick(ex) },
-                shapes = ListItemDefaults.segmentedShapes(index, list.size),
+                shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, list.size),
                 colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                 leadingContent = { ExerciseThumb(ex.id) },
                 supportingContent = {
@@ -157,7 +158,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.exerciseGroup(
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
-                modifier = Modifier.padding(bottom = ListItemDefaults.SegmentedGap),
+                modifier = Modifier.padding(bottom = app.tenet.android.core.designsystem.theme.tenetSegmentedGap),
             ) { Text(ex.name) }
         }
     }

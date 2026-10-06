@@ -84,6 +84,7 @@ fun JournalScreen(
 
     val actions = EntryActions(
         open = { onOpenEditor(it.type, it.id) },
+        create = { type, start -> onNewEntry(type, start) },
         delete = { entry ->
             haptics.performHapticFeedback(HapticFeedbackType.Confirm)
             viewModel.hide(entry.id)
@@ -164,6 +165,8 @@ fun JournalScreen(
 /** Callbacks every entry card offers. */
 internal class EntryActions(
     val open: (Entry) -> Unit,
+    /** New entry of a type, with a start action (START_DICTATE …) or "". */
+    val create: (EntryType, String) -> Unit = { _, _ -> },
     val delete: (Entry) -> Unit,
     val togglePin: (Entry) -> Unit,
     val toggleCheck: (Entry, Int) -> Unit,

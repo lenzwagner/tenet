@@ -306,7 +306,7 @@ private fun PermissionsPage(settingsViewModel: SettingsViewModel, onDone: () -> 
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(24.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+        Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
             RUNTIME_PERMS.forEachIndexed { i, perm ->
                 PermRow(perm.icon, perm.title, perm.why, states[i], i, rows) { runtime.launch(perm.permissions.toTypedArray()) }
             }
@@ -347,7 +347,7 @@ private fun PermissionsPage(settingsViewModel: SettingsViewModel, onDone: () -> 
 private fun PermRow(icon: ImageVector, title: String, why: String, granted: Boolean, index: Int, count: Int, onAllow: () -> Unit) {
     SegmentedListItem(
         onClick = { if (!granted) onAllow() },
-        shapes = ListItemDefaults.segmentedShapes(index, count),
+        shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, count),
         colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
         leadingContent = { SettingsIcon(icon) },
         supportingContent = { Text(why) },

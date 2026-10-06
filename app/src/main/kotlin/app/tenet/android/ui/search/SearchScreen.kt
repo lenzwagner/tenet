@@ -131,7 +131,7 @@ fun SearchScreen(
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+                verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap),
             ) {
                 EntryType.entries.forEach { type ->
                     val hits = if (hideEntries) emptyList() else results.entries.filter { it.type == type }
@@ -192,7 +192,7 @@ private fun <T> LazyListScope.group(
         SegmentedListItem(
             colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
             onClick = { onClick(item) },
-            shapes = ListItemDefaults.segmentedShapes(index, items.size),
+            shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, items.size),
             leadingContent = { ShapeIcon(icon(item)) },
             supportingContent = {
                 Text(supporting(item), maxLines = 2, overflow = TextOverflow.Ellipsis)

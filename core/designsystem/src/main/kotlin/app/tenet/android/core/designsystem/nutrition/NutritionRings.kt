@@ -1,5 +1,8 @@
 package app.tenet.android.core.designsystem.nutrition
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
@@ -201,8 +204,46 @@ fun ActivityRings(
         LaunchedEffect(ring.progress) { anim.animateTo(ring.progress, spec) }
         anim
     }
+    // Closing a ring (crossing 100 % while watching, not on first show): the
+    // rings give a short beat with a glow of that ring's color and a haptic tick,
+    // like the Apple Watch rings.
+    val pulse = remember { Animatable(0f) }
+    var glowColor by remember { androidx.compose.runtime.mutableStateOf(Color.Transparent) }
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val previous = remember { androidx.compose.runtime.mutableStateOf<List<Float>?>(null) }
+    val progresses = rings.map { it.progress }
+    LaunchedEffect(progresses) {
+        val before = previous.value
+        previous.value = progresses
+        if (before == null || before.size != progresses.size) return@LaunchedEffect
+        val closed = progresses.indices.firstOrNull { before[it] < 1f && progresses[it] >= 1f } ?: return@LaunchedEffect
+        glowColor = rings[closed].color
+        // Let the ring run up first, then beat.
+        kotlinx.coroutines.delay(450)
+        haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.Confirm)
+        pulse.snapTo(0f)
+        pulse.animateTo(1f, androidx.compose.animation.core.tween(160))
+        pulse.animateTo(0f, androidx.compose.animation.core.spring(dampingRatio = 0.45f, stiffness = 300f))
+    }
 
-    Canvas(modifier) {
+    Canvas(
+        modifier.graphicsLayer {
+            val k = 1f + 0.06f * pulse.value
+            scaleX = k
+            scaleY = k
+        },
+    ) {
+        if (pulse.value > 0.01f) {
+            drawCircle(
+                brush = Brush.radialGradient(
+                    0.55f to glowColor.copy(alpha = 0.28f * pulse.value),
+                    1f to Color.Transparent,
+                    center = center,
+                    radius = size.minDimension / 2f,
+                ),
+                radius = size.minDimension / 2f,
+            )
+        }
         val stroke = strokeWidth.toPx()
         val step = stroke + gap.toPx()
         rings.forEachIndexed { index, ring ->

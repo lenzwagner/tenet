@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.calisthenics
 
+import androidx.compose.runtime.derivedStateOf
 import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.material.icons.outlined.MilitaryTech
 import androidx.compose.ui.graphics.graphicsLayer
@@ -145,6 +146,7 @@ fun CalisthenicsPage(
                         showDiscardDialog = false
                         // The live workout notification goes with the session.
                         app.tenet.android.feature.sport.RestTimerService.cancel(context)
+                        SkillLiveNotification.cancel(context)
                         viewModel.discardActiveSession()
                     },
                 ) { Text("Verwerfen") }
@@ -257,7 +259,7 @@ fun CalisthenicsPage(
                     )
                 }
             }
-            item {
+            item(key = "today") {
                 TodayCard(
                     uiState,
                     onTrainingDays = viewModel::setTrainingDays,
@@ -284,11 +286,21 @@ fun CalisthenicsPage(
         // Gestures live in the innermost node: as children of the FAB's own
         // clickable they win arbitration (long press must not be cancelled by
         // a consuming parent detector).
-        FloatingActionButton(
-            onClick = { if (!showDiscardDialog) viewModel.startOrResume() },
+        // The today card has its own start button: the FAB only appears once that
+        // card is scrolled away (or while a session runs – long press discards it).
+        val todayCardVisible by remember {
+            derivedStateOf { listState.layoutInfo.visibleItemsInfo.any { it.key == "today" } }
+        }
+        androidx.compose.animation.AnimatedVisibility(
+            visible = hasActiveSession || !todayCardVisible,
+            enter = androidx.compose.animation.scaleIn() + androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.scaleOut() + androidx.compose.animation.fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = 16.dp, bottom = TenetDimens.bottomTabBarPadding + 16.dp),
+        ) {
+        FloatingActionButton(
+            onClick = { if (!showDiscardDialog) viewModel.startOrResume() },
         ) {
             Box(
                 modifier = Modifier
@@ -313,6 +325,7 @@ fun CalisthenicsPage(
                     },
                 )
             }
+        }
         }
     }
 }

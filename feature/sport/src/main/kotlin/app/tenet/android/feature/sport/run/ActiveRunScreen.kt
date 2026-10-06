@@ -250,12 +250,12 @@ private fun SetupContent(
                 }
             }
         }
-        Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+        Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
             SegmentedListItem(
                 colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                 checked = voice,
                 onCheckedChange = onVoice,
-                shapes = ListItemDefaults.segmentedShapes(0, 2),
+                shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(0, 2),
                 leadingContent = { Icon(Icons.Outlined.RecordVoiceOver, contentDescription = null) },
                 supportingContent = { Text("Kilometer-Ansagen und Intervall-Kommandos") },
                 trailingContent = { TenetSwitch(checked = voice, onCheckedChange = null) },
@@ -264,7 +264,7 @@ private fun SetupContent(
                 colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                 checked = autoPause,
                 onCheckedChange = onAutoPause,
-                shapes = ListItemDefaults.segmentedShapes(1, 2),
+                shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(1, 2),
                 leadingContent = { Icon(Icons.Outlined.Timer, contentDescription = null) },
                 supportingContent = { Text("Pausiert automatisch, wenn du stehen bleibst") },
                 trailingContent = { TenetSwitch(checked = autoPause, onCheckedChange = null) },

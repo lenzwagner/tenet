@@ -598,12 +598,12 @@ private fun EditorScaffold(
 
             if (backlinks.isNotEmpty()) {
                 SectionHeader("Verlinkt von · ${backlinks.size}")
-                Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+                Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
                     backlinks.forEachIndexed { index, entry ->
                         SegmentedListItem(
                             colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                             onClick = { onOpenEntry(entry.id, entry.type) },
-                            shapes = ListItemDefaults.segmentedShapes(index, backlinks.size),
+                            shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, backlinks.size),
                             leadingContent = { Icon(Icons.Outlined.Link, contentDescription = null) },
                             supportingContent = { Text(formatDate(entry.entryDate)) },
                         ) { Text(entry.title.ifBlank { "Ohne Titel" }, maxLines = 1, overflow = TextOverflow.Ellipsis) }
@@ -907,13 +907,13 @@ private fun DreamSection(
             Triple("Albtraum", state.nightmare, viewModel::onNightmare),
             Triple("Wiederkehrend", state.recurring, viewModel::onRecurring),
         )
-        Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+        Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
             options.forEachIndexed { index, (label, checked, onChange) ->
                 SegmentedListItem(
                     colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                     checked = checked,
                     onCheckedChange = onChange,
-                    shapes = ListItemDefaults.segmentedShapes(index, options.size),
+                    shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, options.size),
                     trailingContent = { TenetSwitch(checked = checked, onCheckedChange = null) },
                 ) { Text(label) }
             }

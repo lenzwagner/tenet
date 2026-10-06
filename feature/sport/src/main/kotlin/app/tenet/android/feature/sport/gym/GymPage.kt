@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.gym
 
+import androidx.compose.runtime.derivedStateOf
 import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.material3.Surface
 import androidx.compose.material.icons.outlined.AccessibilityNew
@@ -172,7 +173,7 @@ fun GymPage(
                     )
                 }
             }
-            item {
+            item(key = "today") {
                 TodayCard(
                     overview,
                     onStart = { viewModel.startWorkout() },
@@ -221,11 +222,21 @@ fun GymPage(
         // Gestures live in the innermost node: as children of the FAB's own
         // clickable they win arbitration (long press must not be cancelled by
         // a consuming parent detector).
-        FloatingActionButton(
-            onClick = { if (!showDiscardDialog) viewModel.startWorkout() },
+        // The today card has its own start button: the FAB only appears once that
+        // card is scrolled away (or while a session runs – long press discards it).
+        val todayCardVisible by remember {
+            derivedStateOf { listState.layoutInfo.visibleItemsInfo.any { it.key == "today" } }
+        }
+        androidx.compose.animation.AnimatedVisibility(
+            visible = hasActiveSession || !todayCardVisible,
+            enter = androidx.compose.animation.scaleIn() + androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.scaleOut() + androidx.compose.animation.fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = 16.dp, bottom = TenetDimens.bottomTabBarPadding + 16.dp),
+        ) {
+        FloatingActionButton(
+            onClick = { if (!showDiscardDialog) viewModel.startWorkout() },
         ) {
             Box(
                 modifier = Modifier
@@ -250,6 +261,7 @@ fun GymPage(
                     },
                 )
             }
+        }
         }
     }
 }
@@ -429,13 +441,13 @@ private fun SessionsCard(overview: GymOverview, onOpenSession: (String) -> Unit,
                 return@Column
             }
             val recent = overview.sessions.take(5)
-            Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+            Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
                 recent.forEachIndexed { i, session ->
                     val minutes = session.endedAt?.let { (it - session.startedAt) / 60_000L } ?: 0L
                     val volume = overview.volumesBySession[session.id] ?: 0f
                     SegmentedListItem(
                         onClick = { onOpenSession(session.id) },
-                        shapes = ListItemDefaults.segmentedShapes(i, recent.size),
+                        shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(i, recent.size),
                         colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surface),
                         supportingContent = { Text(formatDate(session.startedAt)) },
                         trailingContent = {

@@ -184,6 +184,8 @@ internal fun NotesPage(state: JournalUiState, actions: EntryActions) {
                     else -> "Noch keine Notizen"
                 },
                 body = "Markdown, Checklisten, Bilder und [[Verlinkungen]] werden unterstützt.",
+                actionLabel = if (folderFilter == null && tagFilter == null) "Erste Notiz schreiben" else null,
+                onAction = { actions.create(EntryType.NOTE, "") },
                 modifier = Modifier.fillMaxSize().wrapContentHeight(),
             )
 
@@ -279,6 +281,8 @@ internal fun DiaryPage(state: JournalUiState, actions: EntryActions, onNewDiaryO
                     icon = Icons.Outlined.AutoStories,
                     title = "Noch keine Tagebucheinträge",
                     body = "Stimmung, Energie, Schlaf und ein Impuls pro Tag.",
+                    actionLabel = "Tag festhalten",
+                    onAction = { actions.create(EntryType.DIARY, "") },
                 )
             }
         } else {
@@ -494,6 +498,8 @@ internal fun DreamsPage(state: JournalUiState, actions: EntryActions) {
                     icon = Icons.Outlined.NightsStay,
                     title = "Noch keine Träume aufgeschrieben",
                     body = "Morgens per Sprache festhalten, Symbole und Emotionen markieren.",
+                    actionLabel = "Traum erzählen",
+                    onAction = { actions.create(EntryType.DREAM, START_DICTATE) },
                 )
             }
             return@LazyColumn

@@ -218,7 +218,7 @@ fun RecipeEditorScreen(
                 ) { Text(it, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(12.dp)) }
             }
             SectionHeader("Zutaten · ${state.ingredients.size}")
-            Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+            Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
                 state.ingredients.forEachIndexed { index, item ->
                     val unmatched = item.foodId == null && item.kcalPer100 == 0f
                     SegmentedListItem(
@@ -228,7 +228,7 @@ fun RecipeEditorScreen(
                             viewModel.onPickerQuery(item.displayName)
                             picker = true
                         },
-                        shapes = ListItemDefaults.segmentedShapes(index, state.ingredients.size),
+                        shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, state.ingredients.size),
                         supportingContent = {
                             if (unmatched) {
                                 Text("Keine Nährwerte – antippen zum Zuordnen", color = MaterialTheme.colorScheme.error)
@@ -391,7 +391,7 @@ private fun IngredientPickerSheet(
                 if (loading) TenetLoading()
                 LazyColumn(
                     Modifier.heightIn(max = 420.dp),
-                    verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+                    verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap),
                 ) {
                     itemsIndexed(results, key = { _, f -> f.id }) { index, f ->
                         SegmentedListItem(
@@ -400,7 +400,7 @@ private fun IngredientPickerSheet(
                                 chosen = f
                                 grams = f.servingSizeG?.fmt() ?: "100"
                             },
-                            shapes = ListItemDefaults.segmentedShapes(index, results.size),
+                            shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, results.size),
                             supportingContent = {
                                 Text(listOfNotNull(f.brand, "${f.kcalPer100.roundToInt()} kcal/100 g").joinToString(" · "))
                             },

@@ -145,6 +145,8 @@ fun RecipeBrowser(
     refreshing: Boolean,
     onRefresh: () -> Unit,
     contentPadding: PaddingValues,
+    /** Empty state: import a recipe from a link or text. */
+    onImport: (() -> Unit)? = null,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var favorites by rememberSaveable { mutableStateOf(false) }
@@ -171,6 +173,8 @@ fun RecipeBrowser(
                 } else {
                     "Leg ein Rezept an. Mit Google angemeldet (Einstellungen → Konto) kommen deine Saffron-Rezepte automatisch dazu."
                 },
+                actionLabel = if (onImport != null) "Rezept importieren" else null,
+                onAction = onImport,
                 modifier = Modifier.fillMaxSize().wrapContentHeight(),
             )
             return@PullToRefreshBox

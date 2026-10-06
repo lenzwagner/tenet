@@ -135,12 +135,12 @@ fun RunPlanDetailScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
                         s.done.forEachIndexed { i, d ->
                             SegmentedListItem(
                                 colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                                 onClick = { onOpenRun(d.run.session.id) },
-                                shapes = ListItemDefaults.segmentedShapes(i, s.done.size),
+                                shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(i, s.done.size),
                                 leadingContent = { Icon(Icons.AutoMirrored.Outlined.DirectionsRun, null, tint = MaterialTheme.colorScheme.primary) },
                                 supportingContent = { Text(d.unit.date.format(DAY)) },
                                 trailingContent = {
@@ -342,11 +342,11 @@ private fun PrognosisTrendCard(points: List<Pair<LocalDate, Int>>) {
 
 @Composable
 private fun UnitList(units: List<PlanUnitUi>) {
-    Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+    Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
         units.forEachIndexed { i, u ->
             SegmentedListItem(
                 onClick = {},
-                shapes = ListItemDefaults.segmentedShapes(i, units.size),
+                shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(i, units.size),
                 colors = if (u.isRace) {
                     ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
                 } else {

@@ -147,7 +147,7 @@ fun TenetApp(
 
     val topEntry by navController.currentBackStackEntryAsState()
     // A new-entry sheet floats above a page: tab bar and tab state follow that page.
-    val backStackEntry = if (topEntry?.destination?.hasRoute(NewEntryRoute::class) == true) {
+    val backStackEntry = if (topEntry?.destination?.let { it.hasRoute(NewEntryRoute::class) || it.hasRoute(AddFoodRoute::class) } == true) {
         navController.previousBackStackEntry
     } else {
         topEntry
@@ -631,19 +631,26 @@ fun TenetApp(
                     }
                 }
 }
-                composable<AddFoodRoute> { entry ->
+                // Food logging floats as a sheet over the page it came from (the
+                // rings stay visible behind it and fill up when it closes).
+                dialog<AddFoodRoute>(
+                    dialogProperties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+                ) { entry ->
  AreaTheme(AppArea.NUTRITION) {
                     val route = entry.toRoute<AddFoodRoute>()
+                    app.tenet.android.core.designsystem.component.FloatingSheet(onClosed = { navController.popBackStack() }) { close ->
                     AddFoodScreen(
-                        onBack = { navController.popBackStack() },
+                        sheet = true,
+                        onBack = close,
                         // Return to the page that opened food logging. Forcing a
                         // new NutritionRoute here can leave two top-level routes
                         // in the stack (Today -> AddFood -> Nutrition) and break
                         // later tab switches back to Today.
-                        onLogged = { navController.popBackStack() },
+                        onLogged = close,
                         initialMeal = route.meal,
                         date = route.date,
                     )
+                    }
                 }
 }
                 composable<RecipeDetailRoute> { entry ->

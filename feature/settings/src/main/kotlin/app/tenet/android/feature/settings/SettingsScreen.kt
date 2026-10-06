@@ -859,8 +859,8 @@ private fun formatSync(millis: Long): String =
 internal fun SettingsGroup(
     content: @Composable (@Composable (index: Int, count: Int) -> ListItemShapes) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
-        content { index, count -> ListItemDefaults.segmentedShapes(index, count) }
+    Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
+        content { index, count -> app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, count) }
     }
 }
 
@@ -971,14 +971,14 @@ private fun <T> ChoiceDialog(
         text = {
             Column(
                 modifier = Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+                verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap),
             ) {
                 options.forEachIndexed { index, option ->
                     SegmentedListItem(
                         colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                         selected = option == selected,
                         onClick = { onSelect(option) },
-                        shapes = ListItemDefaults.segmentedShapes(index, options.size),
+                        shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, options.size),
                         leadingContent = { RadioButton(selected = option == selected, onClick = null) },
                         supportingContent = { Text(description(option)) },
                     ) { Text(label(option)) }

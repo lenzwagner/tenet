@@ -368,7 +368,7 @@ class RestTimerService : Service() {
 
     companion object {
         /** Default importance (shown on top, expanded, with the input field) but silent. */
-        private const val CHANNEL_TIMER = "workout_live"
+        internal const val CHANNEL_TIMER = "workout_live"
         private const val OLD_CHANNEL_TIMER = "rest_timer"
         private const val CHANNEL_DONE = "rest_timer_done"
         private const val NOTIF_ID = 4711
@@ -442,7 +442,7 @@ class RestTimerService : Service() {
             _state.value = null
         }
 
-        private fun ensureChannel(context: Context, id: String) {
+        internal fun ensureChannel(context: Context, id: String) {
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             if (manager.getNotificationChannel(id) != null) return
             // The old low-importance channel sat folded under "Lautlos".

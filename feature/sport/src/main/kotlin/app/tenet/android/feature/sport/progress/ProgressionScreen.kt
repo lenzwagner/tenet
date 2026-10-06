@@ -449,11 +449,11 @@ private fun ProgressChart(s: Series, accent: Color, modifier: Modifier) {
 @Composable
 private fun OverviewList(series: List<Series>, selectedKey: String, onSelect: (String) -> Unit) {
     val sorted = series.sortedByDescending { it.improvementPercent ?: Int.MIN_VALUE }
-    Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+    Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
         sorted.forEachIndexed { i, s ->
             SegmentedListItem(
                 onClick = { onSelect(s.key) },
-                shapes = ListItemDefaults.segmentedShapes(i, sorted.size),
+                shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(i, sorted.size),
                 colors = if (s.key == selectedKey) {
                     ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
                 } else {

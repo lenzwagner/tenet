@@ -589,10 +589,10 @@ private fun SportCard(state: TodayUiState, onOpenSport: () -> Unit, onStartRun: 
             // A run planned for today can be started right here.
             val runToday = state.planned.firstOrNull { it.discipline == Discipline.RUNNING }?.takeIf { state.isToday }
             if (rows.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+                Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
                     rows.forEachIndexed { index, (discipline, title, status) ->
                         SegmentedListItem(
-                            shapes = ListItemDefaults.segmentedShapes(index, rows.size),
+                            shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, rows.size),
                             leadingContent = { Icon(discipline.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                             supportingContent = { Text(status) },
                         ) { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) }
@@ -768,11 +768,11 @@ private fun CardsSheet(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+            Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
                 items.forEachIndexed { index, card ->
                     val visible = card !in off
                     SegmentedListItem(
-                        shapes = ListItemDefaults.segmentedShapes(index, items.size),
+                        shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, items.size),
                         leadingContent = {
                             TenetSwitch(checked = visible, onCheckedChange = { if (it) off.remove(card) else off.add(card) })
                         },

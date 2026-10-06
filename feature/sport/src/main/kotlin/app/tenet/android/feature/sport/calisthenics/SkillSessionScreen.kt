@@ -225,7 +225,7 @@ fun SkillSessionScreen(
             }
             if (isHold) {
                 item {
-                    HoldTimerCard(targetSeconds = step.criterionValue)
+                    HoldTimerCard(targetSeconds = step.criterionValue, onHoldEnd = viewModel::setHoldEnd)
                 }
             }
             items(state.sets, key = { it.id }) { set ->
@@ -321,7 +321,7 @@ private fun CriterionCard(
  * (App_Konzept.md 5.2.2: "großer Hold-Timer … akustisches Signal").
  */
 @Composable
-private fun HoldTimerCard(targetSeconds: Int) {
+private fun HoldTimerCard(targetSeconds: Int, onHoldEnd: (Long?) -> Unit = {}) {
     var remaining by remember(targetSeconds) { mutableIntStateOf(targetSeconds) }
     var running by remember { mutableStateOf(false) }
     val tone = remember {
@@ -338,6 +338,10 @@ private fun HoldTimerCard(targetSeconds: Int) {
     // Start/stop with a volume key, so the phone can stay on the floor.
     VolumeKeyHandler { toggle() }
 
+    // Live notification: countdown chip while the hold runs.
+    LaunchedEffect(running) {
+        onHoldEnd(if (running) System.currentTimeMillis() + remaining * 1000L else null)
+    }
     LaunchedEffect(running) {
         if (running) {
             while (remaining > 0) {

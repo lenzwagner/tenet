@@ -1,5 +1,9 @@
 package app.tenet.android.feature.nutrition
 
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.WindowInsets
 import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Card
@@ -118,6 +122,8 @@ fun AddFoodScreen(
     onLogged: () -> Unit = {},
     initialMeal: String = "",
     date: String = "",
+    /** Shown as a floating sheet over the nutrition page (no status bar inset, sheet surface). */
+    sheet: Boolean = false,
     viewModel: AddFoodViewModel = hiltViewModel(),
 ) {
     // Synchronously, so meal and date are right on the very first frame.
@@ -185,9 +191,25 @@ fun AddFoodScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
+        containerColor = if (sheet) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.background,
+        contentWindowInsets = if (sheet) {
+            WindowInsets.navigationBars.union(WindowInsets.ime)
+        } else {
+            androidx.compose.material3.ScaffoldDefaults.contentWindowInsets
+        },
         topBar = {
             TopAppBar(
-                navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", onBack) },
+                windowInsets = if (sheet) WindowInsets(0, 0, 0, 0) else androidx.compose.material3.TopAppBarDefaults.windowInsets,
+                colors = if (sheet) {
+                    androidx.compose.material3.TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
+                } else {
+                    androidx.compose.material3.TopAppBarDefaults.topAppBarColors()
+                },
+                navigationIcon = {
+                    // In the sheet: close (down) instead of back.
+                    if (sheet) TooltipIconButton(Icons.Outlined.Close, "Schließen", onBack)
+                    else TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", onBack)
+                },
                 title = { Text("Hinzufügen") },
                 subtitle = { Text(viewModel.meal.label(mealNames) + " · " + formatDay(java.time.LocalDate.parse(viewModel.date))) },
                 actions = {
@@ -274,7 +296,7 @@ private fun SearchTab(state: AddFoodState, onSelect: (Food) -> Unit) {
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = ListPadding,
-        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+        verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap),
     ) {
         foodGroup("local", "Meine Lebensmittel", state.local, onSelect)
         item(key = "off-h") { SectionHeader("Open Food Facts", Modifier.padding(top = 12.dp)) }
@@ -299,7 +321,7 @@ private fun LazyListScope.foodGroup(key: String, title: String?, foods: List<Foo
     if (foods.isEmpty()) return
     if (title != null) item(key = "$key-h") { SectionHeader(title) }
     itemsIndexed(foods, key = { _, f -> "$key-${f.id}" }) { index, food ->
-        FoodRow(food, ListItemDefaults.segmentedShapes(index, foods.size)) { onSelect(food) }
+        FoodRow(food, app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, foods.size)) { onSelect(food) }
     }
 }
 
@@ -350,7 +372,7 @@ private fun FoodList(
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = ListPadding,
-        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+        verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap),
     ) { foodGroup("list", null, foods, onSelect) }
 }
 
@@ -363,13 +385,13 @@ private fun RecipeList(recipes: List<RecipeDetail>, onSelect: (RecipeDetail) -> 
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = ListPadding,
-        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+        verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap),
     ) {
         itemsIndexed(recipes, key = { _, r -> r.recipe.id }) { index, detail ->
             SegmentedListItem(
                 colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                 onClick = { onSelect(detail) },
-                shapes = ListItemDefaults.segmentedShapes(index, recipes.size),
+                shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, recipes.size),
                 leadingContent = { ShapeIcon(Icons.Outlined.Restaurant) },
                 supportingContent = {
                     Text("${detail.perServing.kcal.roundToInt()} kcal · E ${detail.perServing.protein.roundToInt()} g pro Portion")
@@ -540,12 +562,12 @@ private fun VoiceMealSheet(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+            Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
                 items.forEachIndexed { index, item ->
                     SegmentedListItem(
                         onClick = { onToggle(item.id) },
                         enabled = item.food != null,
-                        shapes = ListItemDefaults.segmentedShapes(index, items.size),
+                        shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, items.size),
                         colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                         leadingContent = { Checkbox(checked = item.include, onCheckedChange = { onToggle(item.id) }, enabled = item.food != null) },
                         supportingContent = {

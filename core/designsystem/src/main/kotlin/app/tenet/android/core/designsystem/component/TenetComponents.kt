@@ -107,25 +107,39 @@ fun EmptyState(
     title: String,
     modifier: Modifier = Modifier,
     body: String? = null,
+    /** Optional next step, e.g. "Erste Notiz schreiben". */
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
 ) {
+    val clear = app.tenet.android.core.designsystem.theme.isClearStyle
     Column(
         modifier = modifier.fillMaxWidth().padding(vertical = 32.dp, horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(if (clear) 8.dp else 12.dp),
     ) {
-        Surface(
-            shape = breathingMorphShape(MaterialShapes.Cookie9Sided, MaterialShapes.SoftBurst, periodMs = 3_200),
-            color = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            modifier = Modifier.size(88.dp),
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(icon, contentDescription = null, modifier = Modifier.size(36.dp))
+        if (clear) {
+            // iOS-style: a plain, large grey symbol instead of a shaped badge.
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+                modifier = Modifier.size(52.dp).padding(bottom = 4.dp),
+            )
+        } else {
+            Surface(
+                shape = breathingMorphShape(MaterialShapes.Cookie9Sided, MaterialShapes.SoftBurst, periodMs = 3_200),
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(88.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(icon, contentDescription = null, modifier = Modifier.size(36.dp))
+                }
             }
         }
         Text(
             text = title,
-            style = MaterialTheme.typography.titleMedium,
+            style = if (clear) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
             textAlign = TextAlign.Center,
         )
         if (body != null) {
@@ -135,6 +149,13 @@ fun EmptyState(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
+        }
+        if (actionLabel != null && onAction != null) {
+            androidx.compose.material3.Button(
+                onClick = onAction,
+                shapes = androidx.compose.material3.ButtonDefaults.shapes(),
+                modifier = Modifier.padding(top = 8.dp),
+            ) { Text(actionLabel) }
         }
     }
 }
@@ -223,9 +244,9 @@ fun SegmentedRows(
     onClick: ((index: Int) -> Unit)? = null,
     row: @Composable androidx.compose.foundation.layout.RowScope.(index: Int) -> Unit,
 ) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(androidx.compose.material3.ListItemDefaults.SegmentedGap)) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
         repeat(count) { index ->
-            val shape = androidx.compose.material3.ListItemDefaults.segmentedShapes(index, count).shape
+            val shape = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, count).shape
             val content: @Composable () -> Unit = {
                 androidx.compose.foundation.layout.Row(
                     Modifier.padding(horizontal = 16.dp, vertical = 12.dp),

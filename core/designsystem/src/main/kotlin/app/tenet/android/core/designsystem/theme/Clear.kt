@@ -213,3 +213,29 @@ fun tenetListColors(): androidx.compose.material3.ListItemColors {
         androidx.compose.material3.ListItemDefaults.segmentedColors(containerColor = c.surfaceContainer)
     }
 }
+
+/**
+ * Space between rows of a list group. "Klar": a hairline, through which the
+ * page background shows as a separator line – the rows read as one grouped
+ * box like on iOS. Expressive: M3's small gap.
+ */
+val tenetSegmentedGap: androidx.compose.ui.unit.Dp
+    @Composable @ReadOnlyComposable get() =
+        if (isClearStyle) androidx.compose.ui.unit.Dp(0.5f)
+        else androidx.compose.material3.ListItemDefaults.SegmentedGap
+
+/**
+ * Row shapes of a list group. "Klar": only the outer corners of the group are
+ * rounded and rows do not change shape when pressed (iOS grouped list);
+ * Expressive: M3's segmented shapes with their press morph.
+ */
+@Composable
+fun tenetSegmentedShapes(index: Int, count: Int): androidx.compose.material3.ListItemShapes {
+    if (!isClearStyle) return androidx.compose.material3.ListItemDefaults.segmentedShapes(index, count)
+    val r = androidx.compose.ui.unit.Dp(14f)
+    val zero = androidx.compose.ui.unit.Dp(0f)
+    val top = if (index == 0) r else zero
+    val bottom = if (index == count - 1) r else zero
+    val shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = top, topEnd = top, bottomStart = bottom, bottomEnd = bottom)
+    return androidx.compose.material3.ListItemShapes(shape, shape, shape, shape, shape, shape)
+}

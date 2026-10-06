@@ -474,20 +474,20 @@ fun RecipeDetailScreen(
                 }
             }
             if (d.ingredientLines.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+                Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
                     d.ingredientLines.forEachIndexed { index, line ->
                         SegmentedListItem(
                             colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
-                            shapes = ListItemDefaults.segmentedShapes(index, d.ingredientLines.size),
+                            shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, d.ingredientLines.size),
                         ) { Text(IngredientScaler.scale(line, factor.toDouble())) }
                     }
                 }
             }
-            Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+            Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
                 d.ingredients.forEachIndexed { index, item ->
                     SegmentedListItem(
                         colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
-                        shapes = ListItemDefaults.segmentedShapes(index, d.ingredients.size),
+                        shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, d.ingredients.size),
                         trailingContent = {
                             Text("${(item.grams * factor).roundToInt()} g", style = MaterialTheme.typography.labelLarge)
                         },

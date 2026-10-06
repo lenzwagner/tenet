@@ -72,7 +72,9 @@ Im Emulator nicht möglich.
 - [ ] Eigener Signaturschlüssel statt Debug-Keystore. Wechsel = einmal neu installieren, dabei gehen die Daten verloren.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.8)
+## Zuletzt erledigt (0.5.0 – 1.0.0.9)
+
+- 1.0.0.9: Listen als iOS-Gruppen (Haarlinie statt Lücke, nur außen gerundet), Leerzustände mit schlichtem Symbol und Knopf („Erste Notiz schreiben“, „Tag festhalten“, „Traum erzählen“, „Rezept importieren“), Play-Knopf bei Gym/Calisthenics erst wenn die Heute-Karte weggescrollt ist, „Hinzufügen“ (Ernährung) als Sheet über der Seite, „Übung tauschen“ öffnet halbhoch, Kalorienringe: Impuls mit Glanz und Haptik beim Schließen eines Rings, Calisthenics-Session als Live-Mitteilung (Satz x/y, Fortschritt, Hold-Countdown als Statusleisten-Chip, „Satz fertig“)
 
 - 1.0.0.8: Foto-Header auch im Stil „Klar“ wieder da (statt großer Titel)
 

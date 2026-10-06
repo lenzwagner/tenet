@@ -60,7 +60,7 @@ fun WorkoutHistoryScreen(
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+            verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap),
         ) {
             months.forEach { (month, sessions) ->
                 item(key = "m-$month") {
@@ -77,7 +77,7 @@ fun WorkoutHistoryScreen(
                         val volume = overview.volumesBySession[session.id] ?: 0f
                         SegmentedListItem(
                             onClick = { onOpenSession(session.id) },
-                            shapes = ListItemDefaults.segmentedShapes(i, sessions.size),
+                            shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(i, sessions.size),
                             colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                             supportingContent = { Text(Instant.ofEpochMilli(session.startedAt).atZone(zone).format(DAY)) },
                             trailingContent = {

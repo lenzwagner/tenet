@@ -223,11 +223,11 @@ internal fun PlanWeekCard(weeks: List<PlanWeekUi>, currentWeek: Int, onOpen: (St
                     style = MaterialTheme.typography.labelLarge,
                 )
             }
-            Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+            Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
                 week.units.forEachIndexed { i, unit ->
                     SegmentedListItem(
                         onClick = { onOpen(unit.id) },
-                        shapes = ListItemDefaults.segmentedShapes(i, week.units.size),
+                        shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(i, week.units.size),
                         colors = ListItemDefaults.segmentedColors(
                             containerColor = if (unit.status == UnitStatus.TODAY) MaterialTheme.colorScheme.secondaryContainer
                             else MaterialTheme.colorScheme.surface,

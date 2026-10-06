@@ -614,11 +614,11 @@ private fun BatchImport(s: RecipeImportState, vm: RecipeImportViewModel, clip: S
                 progress = { done.toFloat() / s.batchItems.size },
                 modifier = Modifier.fillMaxWidth(),
             )
-            Column(verticalArrangement = Arrangement.spacedBy(androidx.compose.material3.ListItemDefaults.SegmentedGap)) {
+            Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
                 s.batchItems.forEachIndexed { i, item ->
                     androidx.compose.material3.SegmentedListItem(
                         onClick = { item.recipeId?.let(onOpen) },
-                        shapes = androidx.compose.material3.ListItemDefaults.segmentedShapes(i, s.batchItems.size),
+                        shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(i, s.batchItems.size),
                         colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                         leadingContent = {
                             when (item.status) {

@@ -38,7 +38,15 @@ data class SkillSessionUiState(
 @HiltViewModel
 class SkillSessionViewModel @Inject constructor(
     private val repository: SkillRepository,
+    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
 ) : ViewModel() {
+
+    /** System time the running hold ends (Hold-Timer), for the live notification. */
+    private val holdEndsAt = MutableStateFlow<Long?>(null)
+
+    fun setHoldEnd(endsAt: Long?) {
+        holdEndsAt.value = endsAt
+    }
 
     private val sessionId = MutableStateFlow<String?>(null)
 
@@ -95,6 +103,30 @@ class SkillSessionViewModel @Inject constructor(
         viewModelScope.launch { repository.deleteFormVideo(video) }
     }
 
+    init {
+        // Live notification follows the sets and the hold timer while the session runs.
+        viewModelScope.launch {
+            kotlinx.coroutines.flow.combine(uiState, holdEndsAt) { state, hold -> state to hold }.collect { (state, hold) ->
+                val info = state.info ?: return@collect
+                val id = state.sessionId ?: return@collect
+                if (finished) return@collect
+                app.tenet.android.feature.sport.calisthenics.SkillLiveNotification.show(
+                    context,
+                    app.tenet.android.feature.sport.calisthenics.SkillLiveNotification.Snapshot(
+                        sessionId = id,
+                        title = "${info.skill.name} · ${info.step.label}",
+                        isHold = info.step.criterionType == app.tenet.android.core.database.entity.CriterionType.HOLD,
+                        target = info.step.criterionValue,
+                        sets = state.sets,
+                        holdEndsAt = hold,
+                    ),
+                )
+            }
+        }
+    }
+
+    private var finished = false
+
     private val _achievementEvents = Channel<String>(Channel.BUFFERED)
     val achievementEvents = _achievementEvents.receiveAsFlow()
 
@@ -147,7 +179,9 @@ class SkillSessionViewModel @Inject constructor(
     fun finish() {
         val id = uiState.value.sessionId ?: return
         viewModelScope.launch {
+            finished = true
             repository.endSession(id)
+            app.tenet.android.feature.sport.calisthenics.SkillLiveNotification.cancel(context)
             _finishedEvents.send(Unit)
         }
     }

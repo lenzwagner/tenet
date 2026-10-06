@@ -30,6 +30,11 @@
                 android:value="Shows the active workout: rest countdown between sets and logging the next set from the notification." />
         </service>
 
+        <!-- "Satz fertig" from the calisthenics live notification. -->
+        <receiver
+            android:name="app.tenet.android.feature.sport.calisthenics.SkillSetDoneReceiver"
+            android:exported="false" />
+
         <!-- Keeps GPS recording alive while the screen is off. -->
         <service
             android:name="app.tenet.android.feature.sport.run.RunTrackingService"

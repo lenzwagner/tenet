@@ -245,6 +245,7 @@ fun NutritionScreen(
                         refreshing = refreshing,
                         onRefresh = viewModel::refreshRecipes,
                         contentPadding = PagePadding,
+                        onImport = onImportRecipe,
                     )
                 }
             }
@@ -274,7 +275,7 @@ private fun TrackerPage(
         state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PagePadding,
-        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+        verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap),
     ) {
         item(key = "day") {
             DaySwitcher(
@@ -521,13 +522,13 @@ private fun MealCard(
                 Spacer(Modifier.height(10.dp))
                 Column(
                     Modifier.padding(end = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+                    verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap),
                 ) {
                     logs.forEachIndexed { index, log ->
                         key(log.id) {
                             FoodLogRow(
                                 log = log,
-                                shapes = ListItemDefaults.segmentedShapes(index, logs.size),
+                                shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, logs.size),
                                 onDelete = { onDelete(log) },
                             )
                         }

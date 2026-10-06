@@ -203,7 +203,7 @@ fun ExerciseDetailScreen(
                 item(key = "s-${s.sessionId}") {
                     SegmentedListItem(
                         onClick = { onOpenSession(s.sessionId) },
-                        shapes = ListItemDefaults.segmentedShapes(i, sessions.size),
+                        shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(i, sessions.size),
                         colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                         supportingContent = {
                             Text(

@@ -136,7 +136,7 @@ fun MacroOptimizerScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+            verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap),
         ) {
             item(key = "scope") {
                 SegmentedSelector(
@@ -207,7 +207,7 @@ fun MacroOptimizerScreen(
                     SegmentedListItem(
                         onClick = {},
                         colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
-                        shapes = ListItemDefaults.segmentedShapes(index, plan.items.size),
+                        shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, plan.items.size),
                         supportingContent = {
                             Text(
                                 "${m.kcal.roundToInt()} kcal · E ${m.protein.roundToInt()} · K ${m.carbs.roundToInt()} · F ${m.fat.roundToInt()} g",
