@@ -14,7 +14,7 @@ import androidx.compose.runtime.remember
 @Composable
 fun rememberGrowIn(key: Any?): Float {
     val progress = remember(key) { Animatable(0f) }
-    val spec = MaterialTheme.motionScheme.slowSpatialSpec<Float>()
+    val spec = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
     LaunchedEffect(key) { progress.animateTo(1f, spec) }
     return progress.value
 }

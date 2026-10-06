@@ -38,9 +38,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -53,6 +53,32 @@ enum class HeaderImage(@DrawableRes internal val res: Int) {
     NUTRITION(R.drawable.header_naehrung),
     JOURNAL(R.drawable.header_journal),
     SETTINGS(R.drawable.header_settings),
+}
+
+/**
+ * Decoded header photos, kept for the whole process: `painterResource`
+ * decoded the 1080 × 720 JPEG on the main thread every time a tab was
+ * composed again. [prewarm] decodes all five in the background at start.
+ */
+object HeaderImages {
+    private val cache = java.util.concurrent.ConcurrentHashMap<HeaderImage, androidx.compose.ui.graphics.ImageBitmap>()
+
+    fun get(context: android.content.Context, header: HeaderImage): androidx.compose.ui.graphics.ImageBitmap =
+        cache.getOrPut(header) { decode(context, header) }
+
+    /** Call off the main thread, e.g. right after launch. */
+    fun prewarm(context: android.content.Context) {
+        HeaderImage.entries.forEach { runCatching { get(context, it) } }
+    }
+
+    private fun decode(context: android.content.Context, header: HeaderImage): androidx.compose.ui.graphics.ImageBitmap {
+        val options = android.graphics.BitmapFactory.Options().apply {
+            // Opaque photos: GPU-backed bitmap, uploaded once instead of every draw.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) inPreferredConfig = android.graphics.Bitmap.Config.HARDWARE
+        }
+        val bitmap = android.graphics.BitmapFactory.decodeResource(context.resources, header.res, options)
+        return bitmap.asImageBitmap()
+    }
 }
 
 /**
@@ -147,8 +173,10 @@ fun PageHeader(
                 },
         ) {
             Box {
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val bitmap = androidx.compose.runtime.remember(header) { HeaderImages.get(context, header) }
                 Image(
-                    painter = painterResource(header.res),
+                    bitmap = bitmap,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier

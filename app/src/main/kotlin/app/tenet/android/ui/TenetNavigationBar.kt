@@ -150,6 +150,9 @@ private fun TabPill(
                             colorEffects(listOf(HazeColorEffect.tint(container.copy(alpha = 0.72f))))
                             blurRadius(24.dp)
                         },
+                        // Blur on a downscaled backdrop: under a 72 % tint the
+                        // difference is invisible, the GPU work per frame much lower.
+                        performanceMode = dev.chrisbanes.haze.HazePerformanceMode.Performance,
                     )
                 } else {
                     Modifier

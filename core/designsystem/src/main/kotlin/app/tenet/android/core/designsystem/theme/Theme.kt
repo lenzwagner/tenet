@@ -115,6 +115,10 @@ fun TenetTheme(
     colorStyle: ColorStyle = ColorStyle.DEFAULT,
     /** Only primary and secondary: tertiary roles take the secondary ones, no area colors. */
     twoTone: Boolean = false,
+    /** Pure black surfaces in dark mode (whole app or dream pages only). */
+    amoledMode: app.tenet.android.core.common.AmoledMode = app.tenet.android.core.common.AmoledMode.OFF,
+    /** Serif reading font for diary and dreams. */
+    journalSerif: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -139,7 +143,7 @@ fun TenetTheme(
         else -> remember(colorStyle) { if (colorStyle == ColorStyle.TONAL) LightColorScheme else schemeFor(DefaultSeed, null, false, colorStyle) }
     }
 
-    val finalScheme = if (!twoTone) colorScheme else remember(colorScheme) {
+    val toned = if (!twoTone) colorScheme else remember(colorScheme) {
         colorScheme.copy(
             tertiary = colorScheme.secondary,
             onTertiary = colorScheme.onSecondary,
@@ -147,7 +151,14 @@ fun TenetTheme(
             onTertiaryContainer = colorScheme.onSecondaryContainer,
         )
     }
-    androidx.compose.runtime.CompositionLocalProvider(LocalColorStyle provides colorStyle, LocalTwoTone provides twoTone) {
+    val amoledApp = darkTheme && amoledMode == app.tenet.android.core.common.AmoledMode.APP
+    val finalScheme = if (amoledApp) remember(toned) { toned.amoled() } else toned
+    androidx.compose.runtime.CompositionLocalProvider(
+        LocalColorStyle provides colorStyle,
+        LocalTwoTone provides twoTone,
+        LocalAmoledDreams provides (darkTheme && amoledMode == app.tenet.android.core.common.AmoledMode.DREAMS),
+        LocalJournalSerif provides journalSerif,
+    ) {
         MaterialExpressiveTheme(
             colorScheme = finalScheme,
             motionScheme = MotionScheme.expressive(),

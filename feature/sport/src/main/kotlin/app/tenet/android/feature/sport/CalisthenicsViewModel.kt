@@ -102,6 +102,16 @@ class CalisthenicsViewModel @Inject constructor(
         combine(overview, selectedSkillId) { ov, selected -> buildState(ov, selected) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CalisthenicsUiState())
 
+    /** Form videos of the selected skill, newest first (local only). */
+    val formVideos: StateFlow<List<app.tenet.android.core.database.entity.FormVideo>> =
+        combine(repository.allFormVideos(), uiState) { videos, state ->
+            videos.filter { it.skillId == state.selectedSkillId }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun deleteFormVideo(video: app.tenet.android.core.database.entity.FormVideo) {
+        viewModelScope.launch { repository.deleteFormVideo(video) }
+    }
+
     private fun buildState(ov: CalisthenicsOverview, selected: String?): CalisthenicsUiState {
         val skill = ov.skills.firstOrNull { it.id == selected } ?: ov.skills.firstOrNull()
         val steps = ov.steps

@@ -94,6 +94,26 @@ class SkillRepository @Inject constructor(
     private val sportDao: SportDao,
     private val healthWriter: app.tenet.android.core.data.health.HealthWriter,
 ) {
+    // ---- Form videos (local only) -----------------------------------------
+
+    fun formVideosOfSkill(skillId: String): Flow<List<app.tenet.android.core.database.entity.FormVideo>> =
+        skillDao.observeFormVideosOfSkill(skillId)
+
+    fun formVideosOfSession(sessionId: String): Flow<List<app.tenet.android.core.database.entity.FormVideo>> =
+        skillDao.observeFormVideosOfSession(sessionId)
+
+    fun allFormVideos(): Flow<List<app.tenet.android.core.database.entity.FormVideo>> = skillDao.observeAllFormVideos()
+
+    suspend fun addFormVideo(video: app.tenet.android.core.database.entity.FormVideo) = skillDao.insertFormVideo(video)
+
+    /** Removes the row and the video file. */
+    suspend fun deleteFormVideo(video: app.tenet.android.core.database.entity.FormVideo) {
+        skillDao.deleteFormVideo(video.id)
+        if (video.uri.startsWith("file://") && "/files/$FORM_VIDEO_DIR/" in video.uri) {
+            runCatching { java.io.File(java.net.URI(video.uri)).delete() }
+        }
+    }
+
     // ---- Seed -----------------------------------------------------------
 
     /**
@@ -773,8 +793,11 @@ class SkillRepository @Inject constructor(
         RoutineExercise(WORKOUT_ID, "ex-cs-hollow", sortOrder = 3, targetSets = 3, targetReps = 20, restSec = 60),
     )
 
-    private companion object {
-        const val PLAN_ID = "cs-plan-default"
-        const val WORKOUT_ID = "cs-workout-default"
+    companion object {
+        private const val PLAN_ID = "cs-plan-default"
+        private const val WORKOUT_ID = "cs-workout-default"
+
+        /** Folder in the app's files dir for form videos; matches the FileProvider paths. */
+        const val FORM_VIDEO_DIR = "form_videos"
     }
 }

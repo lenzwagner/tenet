@@ -41,6 +41,8 @@ class UserSettingsRepository @Inject constructor(
             // Default: the whole app in primary + secondary only.
             twoTone = prefs[KEY_TWO_TONE] ?: true,
             glassBar = prefs[KEY_GLASS_BAR] ?: true,
+            amoledMode = app.tenet.android.core.common.AmoledMode.fromName(prefs[KEY_AMOLED]),
+            journalSerif = prefs[KEY_JOURNAL_SERIF] ?: false,
             enabledModules = prefs[KEY_MODULES]
                 ?.mapNotNull { runCatching { AppModule.valueOf(it) }.getOrNull() }
                 ?.toSet()
@@ -179,6 +181,14 @@ class UserSettingsRepository @Inject constructor(
         context.tenetDataStore.edit { it[KEY_LAST_WEIGHT_PROMPT_DATE] = date }
     }
 
+    suspend fun setAmoledMode(mode: app.tenet.android.core.common.AmoledMode) {
+        context.tenetDataStore.edit { it[KEY_AMOLED] = mode.name }
+    }
+
+    suspend fun setJournalSerif(enabled: Boolean) {
+        context.tenetDataStore.edit { it[KEY_JOURNAL_SERIF] = enabled }
+    }
+
     suspend fun setGlassBar(enabled: Boolean) {
         context.tenetDataStore.edit { it[KEY_GLASS_BAR] = enabled }
     }
@@ -196,6 +206,8 @@ class UserSettingsRepository @Inject constructor(
         val KEY_COLOR_STYLE = stringPreferencesKey("color_style")
         val KEY_TWO_TONE = booleanPreferencesKey("two_tone")
         val KEY_GLASS_BAR = booleanPreferencesKey("glass_bar")
+        val KEY_AMOLED = stringPreferencesKey("amoled_mode")
+        val KEY_JOURNAL_SERIF = booleanPreferencesKey("journal_serif")
         val KEY_MODULES = stringSetPreferencesKey("enabled_modules")
         val KEY_ONE_REP_MAX_FORMULA = stringPreferencesKey("one_rep_max_formula")
         val KEY_PACE_METHOD = stringPreferencesKey("pace_method")

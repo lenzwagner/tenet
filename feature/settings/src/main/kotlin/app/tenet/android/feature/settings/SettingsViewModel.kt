@@ -210,6 +210,14 @@ class SettingsViewModel @Inject constructor(
         setGoal(m.kcal, m.protein, m.carbs, m.fat)
     }
 
+    fun setAmoledMode(mode: app.tenet.android.core.common.AmoledMode) {
+        viewModelScope.launch { repository.setAmoledMode(mode) }
+    }
+
+    fun setJournalSerif(enabled: Boolean) {
+        viewModelScope.launch { repository.setJournalSerif(enabled) }
+    }
+
     fun setGlassBar(enabled: Boolean) {
         viewModelScope.launch { repository.setGlassBar(enabled) }
     }

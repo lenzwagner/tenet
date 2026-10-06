@@ -153,6 +153,7 @@ fun SettingsScreen(
     var goalSheetOpen by remember { mutableStateOf(false) }
     var formulaDialogVisible by remember { mutableStateOf(false) }
     var paceDialogVisible by remember { mutableStateOf(false) }
+    var amoledDialogVisible by remember { mutableStateOf(false) }
     var colorSheet by remember { mutableStateOf<ColorSlot?>(null) }
     var timePickerVisible by remember { mutableStateOf(false) }
     var trainingTimeVisible by remember { mutableStateOf(false) }
@@ -245,15 +246,30 @@ fun SettingsScreen(
                 item {
                     SettingsGroup {
                         SwitchItem(
-                            shapes = it(0, 2),
+                            shapes = it(0, 4),
                             icon = Icons.Outlined.Palette,
                             title = "Dynamic Color",
                             supporting = "Farben aus dem Wallpaper übernehmen (Android 12+)",
                             checked = settings.dynamicColor,
                             onCheckedChange = viewModel::setDynamicColor,
                         )
+                        NavItem(
+                            shapes = it(1, 4),
+                            icon = Icons.Outlined.DarkMode,
+                            title = "AMOLED-Schwarz",
+                            supporting = "${settings.amoledMode.label} · nur im dunklen Modus",
+                            onClick = { amoledDialogVisible = true },
+                        )
                         SwitchItem(
-                            shapes = it(1, 2),
+                            shapes = it(2, 4),
+                            icon = Icons.Outlined.AutoStories,
+                            title = "Serifenschrift im Journal",
+                            supporting = "Tagebuch und Träume in Newsreader, ruhiger zu lesen",
+                            checked = settings.journalSerif,
+                            onCheckedChange = viewModel::setJournalSerif,
+                        )
+                        SwitchItem(
+                            shapes = it(3, 4),
                             icon = Icons.Outlined.BlurOn,
                             title = "Glas-Leiste",
                             supporting = "Transluzente Navigationsleiste mit Unschärfe",
@@ -531,6 +547,22 @@ fun SettingsScreen(
                 }
             },
         ) { TimePicker(state = pickerState) }
+    }
+
+    if (amoledDialogVisible) {
+        ChoiceDialog(
+            title = "AMOLED-Schwarz",
+            icon = Icons.Outlined.DarkMode,
+            options = app.tenet.android.core.common.AmoledMode.entries,
+            selected = settings.amoledMode,
+            label = { it.label },
+            description = { it.description },
+            onSelect = {
+                viewModel.setAmoledMode(it)
+                amoledDialogVisible = false
+            },
+            onDismiss = { amoledDialogVisible = false },
+        )
     }
 
     if (paceDialogVisible) {

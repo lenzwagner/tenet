@@ -1,5 +1,8 @@
 package app.tenet.android.feature.journal
 
+import app.tenet.android.core.database.entity.EntryType
+import app.tenet.android.core.designsystem.theme.JournalReading
+import app.tenet.android.core.designsystem.theme.LocalJournalSerif
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxHeight
 import app.tenet.android.core.designsystem.theme.harmonized
@@ -688,6 +691,8 @@ internal fun EntryCard(
     var menu by remember { mutableStateOf(false) }
     val preview = remember(entry.body) { markdownPlain(entry.body) }
     val checklist = remember(entry.body) { checklistProgress(entry.body) }
+    // Diary and dreams in the serif reading font if set; notes stay in the UI font.
+    val serif = entry.type != EntryType.NOTE && LocalJournalSerif.current
 
     Card(
         colors = CardDefaults.cardColors(containerColor = noteContainer(entry.color)),
@@ -777,21 +782,25 @@ internal fun EntryCard(
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     if (entry.title.isNotBlank()) {
-                        Text(entry.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        JournalReading(enabled = serif) {
+                            Text(entry.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
                     }
                     if (preview.isNotBlank()) {
                         // Rendered Markdown (headings, lists, tappable checkboxes) as preview.
                         // In fixed tiles it takes the space left and is cut there, so tags never are.
                         val lines = if (fixedHeight && tags.isNotEmpty()) (previewLines - 1).coerceAtLeast(1) else previewLines
                         Box(if (fixedHeight) Modifier.weight(1f, fill = false).clipToBounds() else Modifier) {
-                            MarkdownView(
-                                body = entry.body,
-                                onToggleCheck = { line -> actions.toggleCheck(entry, line) },
-                                onLink = { actions.open(entry) },
-                                compact = true,
-                                maxBlocks = lines,
-                                maxLines = lines,
-                            )
+                            JournalReading(enabled = serif) {
+                                MarkdownView(
+                                    body = entry.body,
+                                    onToggleCheck = { line -> actions.toggleCheck(entry, line) },
+                                    onLink = { actions.open(entry) },
+                                    compact = true,
+                                    maxBlocks = lines,
+                                    maxLines = lines,
+                                )
+                            }
                         }
                     }
                     extra?.invoke()

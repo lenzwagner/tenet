@@ -73,7 +73,7 @@ fun IntroAnimation(onDone: () -> Unit) {
     suspend fun leave() {
         if (leaving) return
         leaving = true
-        exit.animateTo(1f, tween(420))
+        exit.animateTo(1f, tween(260))
         onDone()
     }
 
@@ -82,24 +82,24 @@ fun IntroAnimation(onDone: () -> Unit) {
             onDone()
             return@LaunchedEffect
         }
-        launch { glow.animateTo(1f, tween(700)) }
-        stem.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = 170f))
+        launch { glow.animateTo(1f, tween(450)) }
+        stem.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = 320f))
     }
     LaunchedEffect(Unit) {
-        delay(380)
-        bar.animateTo(1f, spring(dampingRatio = 0.55f, stiffness = 190f))
+        delay(220)
+        bar.animateTo(1f, spring(dampingRatio = 0.55f, stiffness = 360f))
     }
     LaunchedEffect(Unit) {
-        delay(820)
+        delay(480)
         // Dot pops, the whole mark gives a small beat with it.
         launch { pulse.animateTo(1.07f, tween(110)); pulse.animateTo(1f, spring(dampingRatio = 0.4f, stiffness = 400f)) }
         dot.animateTo(1f, spring(dampingRatio = 0.35f, stiffness = 500f))
     }
     LaunchedEffect(Unit) {
-        delay(950)
-        launch { shine.animateTo(1f, tween(520)) }
-        word.animateTo(1f, tween(420))
-        delay(520)
+        delay(560)
+        launch { shine.animateTo(1f, tween(380)) }
+        word.animateTo(1f, tween(300))
+        delay(240)
         leave()
     }
 

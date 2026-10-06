@@ -25,6 +25,8 @@ Im Emulator nicht möglich.
 - [ ] Health Connect: Trainings und Gewicht schreiben, Gewicht aus Waage/Fitbit lesen. Vorher in Einstellungen → Health Connect → „Berechtigungen“ die neuen Rechte erlauben
 - [ ] Schlaf bei den Träumen mit echter Uhr/Schlaf-App prüfen (Emulator hat keine Schlafdaten)
 - [ ] Pace-Ansagen bei lockeren/langen Läufen (zu schnell / passt / langsamer, Halbzeit, Ziel)
+- [ ] Update auf die Version mit SQLCipher: die vorhandene Datenbank wird beim ersten Start einmalig verschlüsselt (im Emulator mit 1.0.0.5-Daten geprüft). Vorher am Handy mit Google anmelden und synchronisieren, falls etwas schiefgeht
+- [ ] Formvideo mit echter Kamera aufnehmen (Satz-Knopf in der Skill-Session), Vergleich zweier Videos, ½ Tempo
 - [ ] KI per Sprache: Mahlzeit diktieren (Ernährung → Hinzufügen → Mikrofon), Lauf nachtragen (Diktieren), Gym-Sätze (Mikrofon in der Session), Traum/Tagebuch nach „Erzählen“
 
 ## Heute
@@ -34,7 +36,6 @@ Im Emulator nicht möglich.
 ## Sport · Calisthenics
 
 - [ ] Fotos für Skill-Stufen (Front Lever, Planche, L-Sit, Hollow Body, freier Handstand) – in free-exercise-db nicht enthalten
-- [ ] Formvideos pro Versuch (Konzept: v2)
 
 ## Sport · Laufen
 
@@ -47,11 +48,9 @@ Im Emulator nicht möglich.
 
 ## Journal · Tagebuch
 
-- [ ] Serifenschrift als Leseschrift (einstellbar)
 
 ## Journal · Träume
 
-- [ ] AMOLED-Schwarz als Option (nicht erzwungen)
 - [ ] Widget „Traum notieren“ (Shortcut gibt es)
 
 ## Ernährung · Tracker
@@ -60,7 +59,6 @@ Im Emulator nicht möglich.
 
 ## Ernährung · Rezepte
 
-- [ ] Makro-Optimierer (Konzept: Profi-Feature, OR-Tools CP-SAT)
 
 
 ## KI-Ausfüllhilfe (NVIDIA NIM)
@@ -69,11 +67,14 @@ Im Emulator nicht möglich.
 
 ## Technik
 
+- [ ] APK ist durch SQLCipher von 9,7 auf 18,5 MB gewachsen (native Bibliothek für 4 Architekturen). Mit `abiFilters += "arm64-v8a"` wäre sie wieder kleiner, läuft dann aber nur noch auf 64-Bit-ARM (alle aktuellen Handys, Emulator auf dem Mac auch)
+
 - [ ] Eigener Signaturschlüssel statt Debug-Keystore. Wechsel = einmal neu installieren, dabei gehen die Daten verloren.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
-- [ ] Datenbank-Verschlüsselung (SQLCipher). Erst sinnvoll zusammen mit einem Backup.
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.5)
+## Zuletzt erledigt (0.5.0 – 1.0.0.6)
+
+- 1.0.0.6: Tempo: SQLCipher mit Rohschlüssel statt PBKDF2 (Kaltstart im Emulator ~2 s → ~0,6 s, vorher ~1 s Schlüsselableitung auf dem Main-Thread), Baseline Profile für Start und alle Tabs (`:baselineprofile`, neu erzeugen mit `ANDROID_SERIAL=… ./gradlew :app:generateReleaseBaselineProfile` – deinstalliert die App auf dem Testgerät!), Header-Fotos einmal im Hintergrund dekodiert statt bei jedem Tab-Wechsel, Glas-Leiste rechnet Blur in reduzierter Auflösung, Intro ~2,3 s → ~1,3 s, Seitenübergänge 300 → 250 ms, Sheets und Diagramme schneller; Datenbank mit SQLCipher verschlüsselt (Schlüssel im Android Keystore, nicht im Auto-Backup; alte Klartext-DB wird einmalig umgewandelt, nicht lesbare DB wird beiseitegelegt statt abzustürzen); Makro-Optimierer (Ernährung → „Was passt noch zu meinen Zielen?“: Rest von heute oder ganzer Tag aus Rezepten mit Nährwerten, Favoriten, zuletzt Gegessenem und Grundlebensmitteln, eigene lokale Suche statt OR-Tools, „Anderer Vorschlag“, Gerichte ausschließen, alles in eine Mahlzeit eintragen); Formvideos in der Skill-Session (System-Kamera, max. 30 s, nur lokal, pro Satz oder Session, Verlauf beim Skill, zwei Videos nebeneinander vergleichen, ½ Tempo); AMOLED-Schwarz (Aus / Nur Träume / Ganze App, nur im dunklen Modus); Serifenschrift Newsreader für Tagebuch und Träume (Editor und Karten)
 
 - 1.0.0.5: Laufplan: nachgetragene oder importierte Läufe zählen für die Einheit am selben Tag oder für eine verpasste Einheit bis zu 2 Tage davor (übersprungene nie), Plan-Detail zählt wie die Wochenansicht; Satztabelle zeigt „22,5“ statt „22.5“; Live-Mitteilung liest Tabellenänderungen nach; Mitteilungs-Knöpfe (+30 s, Überspringen, Eintragen) funktionieren auch nach Neustart des Prozesses (Pause und Session werden gesichert)
 

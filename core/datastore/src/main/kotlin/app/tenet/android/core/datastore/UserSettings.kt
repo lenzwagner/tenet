@@ -20,6 +20,10 @@ data class UserSettings(
     val colorStyle: app.tenet.android.core.common.ColorStyle = app.tenet.android.core.common.ColorStyle.DEFAULT,
     /** Only primary + secondary: no own color per area, no tertiary accents. */
     val twoTone: Boolean = true,
+    /** Pure black surfaces in dark mode: off, dream pages only, or the whole app. */
+    val amoledMode: app.tenet.android.core.common.AmoledMode = app.tenet.android.core.common.AmoledMode.OFF,
+    /** Serif reading font (Newsreader) for diary and dream text. */
+    val journalSerif: Boolean = false,
     /** Glassmorphism tab bar; false = opaque bar (fallback / accessibility). */
     val glassBar: Boolean = true,
     val enabledModules: Set<AppModule> = AppModule.entries.toSet(),

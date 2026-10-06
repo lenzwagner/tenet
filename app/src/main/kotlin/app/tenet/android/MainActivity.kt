@@ -114,6 +114,13 @@ class MainActivity : FragmentActivity() {
             window.isNavigationBarContrastEnforced = false
         }
 
+        // Header photos of the tabs, decoded off the main thread before they are shown.
+        if (savedInstanceState == null) {
+            lifecycleScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+                app.tenet.android.core.designsystem.header.HeaderImages.prewarm(applicationContext)
+            }
+        }
+
         readOpenRequest(intent)
         // Entries left hidden by an undo snackbar that never finished.
         if (savedInstanceState == null) lifecycleScope.launch { entryRepository.purgeHidden() }
@@ -160,6 +167,8 @@ class MainActivity : FragmentActivity() {
                 secondaryColor = settings.secondaryColor?.let { Color(it) },
                 colorStyle = settings.colorStyle,
                 twoTone = settings.twoTone,
+                amoledMode = settings.amoledMode,
+                journalSerif = settings.journalSerif,
             ) {
                 when {
                     // Stored settings not read yet: plain surface instead of a wrong screen.

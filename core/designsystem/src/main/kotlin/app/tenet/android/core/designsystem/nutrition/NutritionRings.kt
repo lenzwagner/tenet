@@ -195,7 +195,7 @@ fun ActivityRings(
     strokeWidth: Dp = 15.dp,
     gap: Dp = 3.dp,
 ) {
-    val spec = MaterialTheme.motionScheme.slowSpatialSpec<Float>()
+    val spec = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
     val animated = rings.map { ring ->
         val anim = remember { Animatable(0f) }
         LaunchedEffect(ring.progress) { anim.animateTo(ring.progress, spec) }

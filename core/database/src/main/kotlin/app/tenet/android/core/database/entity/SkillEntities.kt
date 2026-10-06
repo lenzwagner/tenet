@@ -82,3 +82,26 @@ data class SkillStepAchievement(
     val sessionId: String,
     val achievedAt: Long,
 )
+
+/**
+ * Short form video of one attempt (App_Konzept.md 5.2.2 "Formvideos"),
+ * stored only on this device (app files, not synced) and attached to the
+ * session, so the technique of a skill can be compared over weeks.
+ */
+@Entity(
+    tableName = "FormVideo",
+    indices = [Index("skillId"), Index("sessionId")],
+)
+data class FormVideo(
+    @PrimaryKey val id: String,
+    val skillId: String,
+    /** Step trained when recorded, e.g. "Advanced Tuck". */
+    val stepId: String,
+    val sessionId: String,
+    /** The set the attempt belongs to, if recorded from a set row. */
+    val setId: String? = null,
+    /** file:// URI inside the app's files dir. */
+    val uri: String,
+    val createdAt: Long,
+    val durationMs: Long? = null,
+)

@@ -36,4 +36,6 @@ include(
     ":feature:settings",
     // Emulator-only test tool (Health Connect sample runs), not shipped.
     ":tools:hcseed",
+    // Generates the app's Baseline Profile on a device/emulator (startup speed).
+    ":baselineprofile",
 )

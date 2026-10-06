@@ -163,6 +163,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.tenet.android.core.database.entity.EntryType
+import app.tenet.android.core.designsystem.theme.JournalReading
+import app.tenet.android.core.designsystem.theme.LocalJournalSerif
+import app.tenet.android.core.designsystem.theme.DreamAmoledScope
 import app.tenet.android.core.designsystem.component.SectionHeader
 import app.tenet.android.core.designsystem.component.TenetLoading
 import app.tenet.android.core.designsystem.component.TenetSwitch
@@ -205,7 +208,7 @@ fun EntryEditorScreen(
     fun leave() {
         if (!sheet) return onBack()
         scope.launch {
-            sheetOffset.animateTo(1f, tween(220, easing = FastOutLinearInEasing))
+            sheetOffset.animateTo(1f, tween(180, easing = FastOutLinearInEasing))
             onBack()
         }
     }
@@ -222,8 +225,27 @@ fun EntryEditorScreen(
     // ^ immediate: text fields must see their own edits in the same frame,
     // otherwise fast typing can drop characters.
 
+    // Dreams are often written at night: pure black there if set (dark mode only).
+    if (initialType == EntryType.DREAM) {
+        DreamAmoledScope { EditorContent(sheet, sheetOffset, state, viewModel, ::leave, onOpenEntry, autoDictate, startAction) }
+    } else {
+        EditorContent(sheet, sheetOffset, state, viewModel, ::leave, onOpenEntry, autoDictate, startAction)
+    }
+}
+
+@Composable
+private fun EditorContent(
+    sheet: Boolean,
+    sheetOffset: Animatable<Float, AnimationVector1D>,
+    state: EntryEditorState,
+    viewModel: EntryEditorViewModel,
+    leave: () -> Unit,
+    onOpenEntry: (String, EntryType) -> Unit,
+    autoDictate: Boolean,
+    startAction: String,
+) {
     if (!sheet) {
-        EditorScaffold(state, viewModel, onBack, onOpenEntry, autoDictate, startAction)
+        EditorScaffold(state, viewModel, leave, onOpenEntry, autoDictate, startAction)
         return
     }
     // Swipe down, back or a tap next to the sheet: keep what was written, drop an empty entry.
@@ -254,7 +276,7 @@ private fun EditorSheetFrame(
         window?.setWindowAnimations(0)
     }
     val scope = rememberCoroutineScope()
-    LaunchedEffect(Unit) { offset.animateTo(0f, spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)) }
+    LaunchedEffect(Unit) { offset.animateTo(0f, spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMedium)) }
     LaunchedEffect(Unit) { snapshotFlow { 1f - offset.value }.collect { backdrop?.floatValue = it } }
     DisposableEffect(Unit) { onDispose { backdrop?.floatValue = 0f } }
     BackHandler { onClose() }
@@ -504,25 +526,27 @@ private fun EditorScaffold(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // Title like Google Keep: large text, no box.
-            BasicTextField(
-                value = state.title,
-                onValueChange = viewModel::onTitle,
-                singleLine = false,
-                maxLines = 3,
-                textStyle = MaterialTheme.typography.headlineSmall.copy(color = MaterialTheme.colorScheme.onSurface),
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                decorationBox = { inner ->
-                    if (state.title.isEmpty()) {
-                        Text(
-                            if (state.type == EntryType.NOTE) "Titel" else "Titel (optional)",
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        )
-                    }
-                    inner()
-                },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
-            )
+            JournalReading(enabled = state.type != EntryType.NOTE && LocalJournalSerif.current) {
+                BasicTextField(
+                    value = state.title,
+                    onValueChange = viewModel::onTitle,
+                    singleLine = false,
+                    maxLines = 3,
+                    textStyle = MaterialTheme.typography.headlineSmall.copy(color = MaterialTheme.colorScheme.onSurface),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    decorationBox = { inner ->
+                        if (state.title.isEmpty()) {
+                            Text(
+                                if (state.type == EntryType.NOTE) "Titel" else "Titel (optional)",
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            )
+                        }
+                        inner()
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+                )
+            }
 
             when (state.type) {
                 EntryType.DIARY -> DiarySection(state, viewModel, dayContext) { prompt ->
@@ -534,14 +558,16 @@ private fun EditorScaffold(
                 EntryType.NOTE -> Unit
             }
 
-            BodyEditor(
-                body = state.body,
-                onBody = viewModel::onBody,
-                onLink = viewModel::openLink,
-                label = if (state.type == EntryType.DREAM) "Erinnerung" else "Eintrag",
-                bridge = formatBridge,
-                startChecklist = startAction == START_LIST,
-            )
+            JournalReading(enabled = state.type != EntryType.NOTE && LocalJournalSerif.current) {
+                BodyEditor(
+                    body = state.body,
+                    onBody = viewModel::onBody,
+                    onLink = viewModel::openLink,
+                    label = if (state.type == EntryType.DREAM) "Erinnerung" else "Eintrag",
+                    bridge = formatBridge,
+                    startChecklist = startAction == START_LIST,
+                )
+            }
 
             TagEditor(
                 label = "Tag",

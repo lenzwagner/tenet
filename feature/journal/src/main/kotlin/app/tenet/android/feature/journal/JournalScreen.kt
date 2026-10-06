@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
+import app.tenet.android.core.designsystem.theme.DreamAmoledScope
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
@@ -151,7 +152,9 @@ fun JournalScreen(
                 when (segmentToEntryType(page)) {
                     EntryType.NOTE -> NotesPage(uiState, actions)
                     EntryType.DIARY -> DiaryPage(uiState, actions, onNewDiaryOn)
-                    EntryType.DREAM -> DreamsPage(uiState, actions)
+                    EntryType.DREAM -> DreamAmoledScope(Modifier.fillMaxSize(), paintBackground = true) {
+                        DreamsPage(uiState, actions)
+                    }
                 }
             }
         }

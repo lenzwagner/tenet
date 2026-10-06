@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Files the camera app may write into: form videos (SkillRepository.FORM_VIDEO_DIR). -->
+<paths>
+    <files-path name="form_videos" path="form_videos/" />
+</paths>

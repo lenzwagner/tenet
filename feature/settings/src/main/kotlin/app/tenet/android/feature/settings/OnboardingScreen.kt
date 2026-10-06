@@ -100,7 +100,7 @@ fun OnboardingScreen(
         AnimatedContent(
             targetState = page,
             transitionSpec = {
-                (slideInHorizontally(tween(400)) { it / 3 } + fadeIn(tween(400))) togetherWith
+                (slideInHorizontally(tween(300)) { it / 3 } + fadeIn(tween(300))) togetherWith
                     (slideOutHorizontally(tween(300)) { -it / 3 } + fadeOut(tween(200)))
             },
             label = "onboarding",

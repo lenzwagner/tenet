@@ -64,6 +64,37 @@ class SkillSessionViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SkillSessionUiState())
 
+    /** Form videos recorded in this session (local only). */
+    val videos: StateFlow<List<app.tenet.android.core.database.entity.FormVideo>> = sessionId
+        .filterNotNull()
+        .flatMapLatest { repository.formVideosOfSession(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Stores a just recorded video for the current step (optionally for one set). */
+    fun addVideo(uri: String, durationMs: Long?, setId: String?) {
+        val state = uiState.value
+        val info = state.info ?: return
+        val session = state.sessionId ?: return
+        viewModelScope.launch {
+            repository.addFormVideo(
+                app.tenet.android.core.database.entity.FormVideo(
+                    id = app.tenet.android.core.common.newUuid(),
+                    skillId = info.skill.id,
+                    stepId = info.step.id,
+                    sessionId = session,
+                    setId = setId,
+                    uri = uri,
+                    createdAt = System.currentTimeMillis(),
+                    durationMs = durationMs,
+                ),
+            )
+        }
+    }
+
+    fun deleteVideo(video: app.tenet.android.core.database.entity.FormVideo) {
+        viewModelScope.launch { repository.deleteFormVideo(video) }
+    }
+
     private val _achievementEvents = Channel<String>(Channel.BUFFERED)
     val achievementEvents = _achievementEvents.receiveAsFlow()
 

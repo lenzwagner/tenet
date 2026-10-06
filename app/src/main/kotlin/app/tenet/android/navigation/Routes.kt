@@ -72,6 +72,9 @@ data class AddFoodRoute(
 
 @Serializable data class CookingRoute(val recipeId: String, val servings: Int)
 
+/** Makro-Optimierer for [date] (ISO; empty = today). */
+@Serializable data class MacroOptimizerRoute(val date: String = "")
+
 @Serializable
 data class ActiveSessionRoute(
     val sessionId: String = "",

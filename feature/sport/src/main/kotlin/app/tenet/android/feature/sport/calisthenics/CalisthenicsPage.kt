@@ -105,6 +105,7 @@ fun CalisthenicsPage(
     setupViewModel: SportSetupViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val formVideos by viewModel.formVideos.collectAsStateWithLifecycle()
     val setupDone by setupViewModel.done.collectAsStateWithLifecycle()
     val overview = uiState.overview
 
@@ -268,6 +269,8 @@ fun CalisthenicsPage(
                     onSelectSkill = viewModel::selectSkill,
                     onPromoteRequest = { showPromotionDialog = true },
                     onOpenExercise = onOpenExercise,
+                    formVideos = formVideos,
+                    onDeleteVideo = viewModel::deleteFormVideo,
                 )
             }
             item { PlanCard(overview, onSetup = onOpenSetup, onOpenPlan = onOpenPlan, onOpenExercise = onOpenExercise) }
@@ -410,6 +413,8 @@ private fun SkillTreeCard(
     onSelectSkill: (String) -> Unit,
     onPromoteRequest: () -> Unit,
     onOpenExercise: (String) -> Unit,
+    formVideos: List<app.tenet.android.core.database.entity.FormVideo> = emptyList(),
+    onDeleteVideo: (app.tenet.android.core.database.entity.FormVideo) -> Unit = {},
 ) {
     val overview = uiState.overview
     Card(Modifier.fillMaxWidth()) {
@@ -461,6 +466,17 @@ private fun SkillTreeCard(
             }
 
             uiState.ladder.forEach { row -> LadderRow(row, onClick = { onOpenExercise(row.step.exerciseId) }) }
+
+            // Technique over the weeks: tap to play, "Vergleichen" for two side by side.
+            if (formVideos.isNotEmpty()) {
+                val stepLabels = overview.steps.associate { it.id to it.label }
+                Text("Formvideos", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
+                FormVideoStrip(
+                    videos = formVideos,
+                    caption = { v -> formatVideoDate(v) + (stepLabels[v.stepId]?.let { " · $it" } ?: "") },
+                    onDelete = onDeleteVideo,
+                )
+            }
         }
     }
 }

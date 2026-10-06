@@ -50,6 +50,7 @@ import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridS
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
@@ -146,6 +147,8 @@ fun NutritionScreen(
     onNewRecipe: () -> Unit = {},
     onImportRecipe: () -> Unit = {},
     onSearch: () -> Unit = {},
+    /** Makro-Optimierer for the shown day (ISO date). */
+    onOptimize: (String) -> Unit = {},
     viewModel: NutritionViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -229,6 +232,7 @@ fun NutritionScreen(
                         onAddFood = onAddFood,
                         onEditGoal = { goalSheetOpen = true },
                         onDay = viewModel::goTo,
+                        onOptimize = { onOptimize(state.date.toString()) },
                     )
                 } else {
                     val refreshing by viewModel.refreshing.collectAsStateWithLifecycle()
@@ -258,6 +262,7 @@ private fun TrackerPage(
     onAddFood: (MealType?, String) -> Unit,
     onEditGoal: () -> Unit,
     onDay: (LocalDate) -> Unit,
+    onOptimize: () -> Unit,
 ) {
     val listState = rememberReselectListState()
     val snackbar = LocalAppSnackbar.current
@@ -295,6 +300,15 @@ private fun TrackerPage(
                     modifier = Modifier.padding(16.dp),
                 )
             }
+        }
+        item(key = "optimize") {
+            // Makro-Optimierer: suggestions for what is left of the day's goal.
+            AssistChip(
+                onClick = onOptimize,
+                label = { Text(if (state.isToday) "Was passt noch zu meinen Zielen?" else "Tag planen") },
+                leadingIcon = { Icon(Icons.Outlined.AutoAwesome, contentDescription = null) },
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
         }
         item(key = "water") {
             WaterCard(

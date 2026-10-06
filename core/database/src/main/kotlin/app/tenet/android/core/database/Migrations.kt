@@ -6,6 +6,26 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 /** v8 -> v9: training weekdays on plans (Ruhetage on "Heute"). */
 /** v11: goal time and taper flag of running plans. */
 /** v14: planned units can be skipped (running plan, Runna-style). */
+/** v20: local form videos per calisthenics attempt (not synced, see SyncTriggers). */
+val MIGRATION_19_20 = object : Migration(19, 20) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `FormVideo` (" +
+                "`id` TEXT NOT NULL, " +
+                "`skillId` TEXT NOT NULL, " +
+                "`stepId` TEXT NOT NULL, " +
+                "`sessionId` TEXT NOT NULL, " +
+                "`setId` TEXT, " +
+                "`uri` TEXT NOT NULL, " +
+                "`createdAt` INTEGER NOT NULL, " +
+                "`durationMs` INTEGER, " +
+                "PRIMARY KEY(`id`))",
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_FormVideo_skillId` ON `FormVideo` (`skillId`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_FormVideo_sessionId` ON `FormVideo` (`sessionId`)")
+    }
+}
+
 /** v19: supersets for a single session. */
 val MIGRATION_18_19 = object : Migration(18, 19) {
     override fun migrate(db: SupportSQLiteDatabase) {

@@ -16,6 +16,8 @@ plugins {
     alias(libs.plugins.serialization) apply false
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.hilt) apply false
+    alias(libs.plugins.android.test) apply false
+    alias(libs.plugins.baselineprofile) apply false
 }
 
 // Material 3 Expressive (FloatingToolbar, ButtonGroup, LoadingIndicator, …) is

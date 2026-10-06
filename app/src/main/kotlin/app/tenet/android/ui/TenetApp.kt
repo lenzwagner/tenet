@@ -61,6 +61,7 @@ import androidx.compose.ui.platform.LocalContext
 import app.tenet.android.ui.lock.JournalLockGate
 import app.tenet.android.ui.lock.JournalLock
 import app.tenet.android.navigation.CookingRoute
+import app.tenet.android.navigation.MacroOptimizerRoute
 import app.tenet.android.navigation.RecipeDetailRoute
 import app.tenet.android.navigation.RecipeEditorRoute
 import app.tenet.android.navigation.RecipeTextEditRoute
@@ -556,6 +557,7 @@ fun TenetApp(
                             onOpenRecipe = { navController.navigate(RecipeDetailRoute(it)) },
                             onNewRecipe = { navController.navigate(RecipeEditorRoute()) },
                             onImportRecipe = { navController.navigate(RecipeImportRoute()) },
+                            onOptimize = { date -> navController.navigate(MacroOptimizerRoute(date)) },
                         )
                     }
                 }
@@ -698,6 +700,14 @@ fun TenetApp(
                     )
                 }
 }
+                composable<MacroOptimizerRoute> { entry ->
+ AreaTheme(AppArea.NUTRITION) {
+                    app.tenet.android.feature.nutrition.optimizer.MacroOptimizerScreen(
+                        date = entry.toRoute<MacroOptimizerRoute>().date,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+}
                 composable<CookingRoute> { entry ->
  AreaTheme(AppArea.NUTRITION) {
                     val route = entry.toRoute<CookingRoute>()
@@ -747,8 +757,8 @@ private fun TabContent(
 
 /** Duration of the back animation (fast, like system back). */
 /** Material shared axis X timing: 300 ms, outgoing fades in the first 90 ms. */
-private const val AXIS_MS = 300
-private const val AXIS_FADE_OUT_MS = 90
+private const val AXIS_MS = 250
+private const val AXIS_FADE_OUT_MS = 75
 
 /** Incoming page: drifts in by ~8 % of the width and fades in after the old one is gone. */
 private fun sharedAxisIn(forward: Boolean): EnterTransition =

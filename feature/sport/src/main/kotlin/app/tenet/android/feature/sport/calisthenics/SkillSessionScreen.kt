@@ -1,5 +1,10 @@
 package app.tenet.android.feature.sport.calisthenics
 
+import androidx.compose.material.icons.outlined.Videocam
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.material.icons.outlined.History
 import app.tenet.android.core.designsystem.component.CompactNumberField
 import androidx.compose.runtime.setValue
@@ -81,8 +86,16 @@ fun SkillSessionScreen(
     LaunchedEffect(sessionId) { viewModel.load(sessionId) }
 
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val videos by viewModel.videos.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showEndDialog by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    // Form video for a set (or the session): the set it belongs to while the camera is open.
+    var videoSetId by remember { mutableStateOf<String?>(null) }
+    val recordVideo = rememberFormVideoRecorder(
+        onRecorded = { uri, duration -> viewModel.addVideo(uri, duration, videoSetId) },
+        onUnavailable = { scope.launch { snackbarHostState.showSnackbar("Keine Kamera-App für Videos gefunden") } },
+    )
 
     LaunchedEffect(Unit) {
         viewModel.achievementEvents.collect { message ->
@@ -141,6 +154,12 @@ fun SkillSessionScreen(
                     }
                 },
                 actions = {
+                    if (state.info != null) {
+                        TooltipIconButton(Icons.Outlined.Videocam, "Formvideo aufnehmen", {
+                            videoSetId = null
+                            recordVideo()
+                        })
+                    }
                     state.info?.let { info ->
                         TooltipIconButton(Icons.Outlined.History, "Verlauf & Rekorde: ${info.exercise.name}", { onOpenExercise(info.exercise.id) })
                     }
@@ -217,6 +236,11 @@ fun SkillSessionScreen(
                     onSeconds = { viewModel.setSeconds(set, it) },
                     onReps = { viewModel.setReps(set, it) },
                     onCycleQuality = { viewModel.cycleQuality(set) },
+                    videoCount = videos.count { it.setId == set.id },
+                    onRecordVideo = {
+                        videoSetId = set.id
+                        recordVideo()
+                    },
                 )
             }
             item {
@@ -228,6 +252,26 @@ fun SkillSessionScreen(
                     Icon(Icons.Outlined.Add, contentDescription = null)
                     Spacer(Modifier.width(6.dp))
                     Text("Satz hinzufügen")
+                }
+            }
+            if (videos.isNotEmpty()) {
+                item(key = "videos") {
+                    val setNumbers = state.sets.associate { it.id to it.sortOrder + 1 }
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Formvideos", style = MaterialTheme.typography.titleMedium)
+                            FormVideoStrip(
+                                videos = videos.sortedByDescending { it.createdAt },
+                                caption = { v -> v.setId?.let { id -> setNumbers[id]?.let { "Satz $it" } } ?: "Ohne Satz" },
+                                onDelete = viewModel::deleteVideo,
+                            )
+                            Text(
+                                "Nur auf diesem Gerät gespeichert. Ältere Videos findest du beim Skill.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -361,6 +405,8 @@ private fun SetRow(
     onSeconds: (Int) -> Unit,
     onReps: (Int) -> Unit,
     onCycleQuality: () -> Unit,
+    videoCount: Int = 0,
+    onRecordVideo: () -> Unit = {},
 ) {
     Card(Modifier.fillMaxWidth()) {
         Row(
@@ -387,6 +433,9 @@ private fun SetRow(
             Spacer(Modifier.width(8.dp))
             QualityChip(quality = set.formQuality, onClick = onCycleQuality)
             Spacer(Modifier.weight(1f))
+            BadgedBox(badge = { if (videoCount > 0) Badge { Text("$videoCount") } }) {
+                TooltipIconButton(Icons.Outlined.Videocam, "Video von Satz $index aufnehmen", onRecordVideo)
+            }
             FilledIconToggleButton(
                 checked = set.completed,
                 onCheckedChange = { onComplete(it) },

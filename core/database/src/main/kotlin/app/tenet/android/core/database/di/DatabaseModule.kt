@@ -8,6 +8,7 @@ import app.tenet.android.core.database.MIGRATION_14_15
 import app.tenet.android.core.database.MIGRATION_15_16
 import app.tenet.android.core.database.MIGRATION_17_18
 import app.tenet.android.core.database.MIGRATION_18_19
+import app.tenet.android.core.database.MIGRATION_19_20
 import app.tenet.android.core.database.MIGRATION_16_17
 import app.tenet.android.core.database.MIGRATION_9_10
 import android.content.Context
@@ -37,10 +38,18 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
 
+    private const val DB_NAME = "tenet.db"
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): TenetDatabase =
-        Room.databaseBuilder(context, TenetDatabase::class.java, "tenet.db")
+        Room.databaseBuilder(context, TenetDatabase::class.java, DB_NAME)
+            // Encrypted with SQLCipher; an old plaintext file is converted once (see DatabaseEncryption).
+            .openHelperFactory(
+                net.zetetic.database.sqlcipher.SupportOpenHelperFactory(
+                    app.tenet.android.core.database.DatabaseEncryption.prepare(context, DB_NAME),
+                ),
+            )
             .addMigrations(
                 MIGRATION_1_2,
                 MIGRATION_2_3,
@@ -60,6 +69,7 @@ object DatabaseModule {
                 MIGRATION_16_17,
                 MIGRATION_17_18,
                 MIGRATION_18_19,
+                MIGRATION_19_20,
             )
             // Change log for the Google/Firebase sync (see SyncTriggers).
             .addCallback(object : androidx.room.RoomDatabase.Callback() {

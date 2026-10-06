@@ -12,8 +12,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  */
 object SyncTriggers {
 
-    /** Room internals, FTS shadow tables and the sync tables themselves. */
-    private val SKIP = setOf("android_metadata", "room_master_table", "sqlite_sequence", "SyncChange", "SyncControl")
+    /**
+     * Room internals, FTS shadow tables, the sync tables themselves and
+     * device-local data (form videos point to files on this phone only).
+     */
+    private val SKIP = setOf("android_metadata", "room_master_table", "sqlite_sequence", "SyncChange", "SyncControl", "FormVideo")
 
     /**
      * Synced as one document per run together with its RunSession, so no

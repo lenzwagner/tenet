@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.baselineprofile)
 }
 
 // Google-Anmeldung + Sync: needs app/google-services.json from the Firebase
@@ -20,8 +21,8 @@ android {
         applicationId = "app.tenet.android"
         minSdk = 26
         targetSdk = 37
-        versionCode = 60
-        versionName = "1.0.0.5"
+        versionCode = 61
+        versionName = "1.0.0.6"
     }
 
     buildTypes {
@@ -76,6 +77,10 @@ dependencies {
 
     implementation(libs.haze)
     implementation(libs.haze.blur)
+
+    // Installs the Baseline Profile (src/release/generated/baselineProfiles) on sideloaded APKs too.
+    implementation(libs.androidx.profileinstaller)
+    baselineProfile(project(":baselineprofile"))
 
     implementation(libs.androidx.biometric)
     implementation(libs.hilt.android)

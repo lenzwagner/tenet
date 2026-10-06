@@ -72,8 +72,10 @@ import app.tenet.android.core.database.entity.RunTrackPoint
         WaterLog::class,
         // Note folders + full-text search (v10)
         app.tenet.android.core.database.entity.EntryFts::class,
+        // Form videos (v20, local only)
+        app.tenet.android.core.database.entity.FormVideo::class,
     ],
-    version = 19,
+    version = 20,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

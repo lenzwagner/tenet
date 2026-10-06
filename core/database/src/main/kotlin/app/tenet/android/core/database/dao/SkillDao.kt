@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Upsert
+import app.tenet.android.core.database.entity.FormVideo
 import app.tenet.android.core.database.entity.SetEntry
 import app.tenet.android.core.database.entity.Skill
 import app.tenet.android.core.database.entity.SkillProgress
@@ -14,6 +15,23 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SkillDao {
+
+    // ---- Form videos (local only) --------------------------------------
+
+    @Insert
+    suspend fun insertFormVideo(video: FormVideo)
+
+    @Query("DELETE FROM FormVideo WHERE id = :id")
+    suspend fun deleteFormVideo(id: String)
+
+    @Query("SELECT * FROM FormVideo WHERE skillId = :skillId ORDER BY createdAt DESC")
+    fun observeFormVideosOfSkill(skillId: String): Flow<List<FormVideo>>
+
+    @Query("SELECT * FROM FormVideo WHERE sessionId = :sessionId ORDER BY createdAt")
+    fun observeFormVideosOfSession(sessionId: String): Flow<List<FormVideo>>
+
+    @Query("SELECT * FROM FormVideo ORDER BY createdAt DESC")
+    fun observeAllFormVideos(): Flow<List<FormVideo>>
 
     // ---- Skill tree -----------------------------------------------------
 

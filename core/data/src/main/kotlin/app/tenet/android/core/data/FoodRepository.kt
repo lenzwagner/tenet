@@ -77,6 +77,16 @@ class FoodRepository @Inject constructor(
         return remote
     }
 
+    /**
+     * Built-in basic foods that make sense as a portion of their own (no
+     * cooking fats, sweeteners or drinks); candidates for the Makro-Optimierer.
+     */
+    suspend fun basicFoods(): List<Food> {
+        ensureSeeded()
+        val skip = setOf("Butter", "Olivenöl", "Honig", "Cola", "Bier", "Orangensaft", "Gouda")
+        return SeedFoods.filter { it.name !in skip }
+    }
+
     fun observeFavorites(): Flow<List<Food>> = foodDao.observeFavorites()
 
     fun observeRecent(): Flow<List<Food>> = foodDao.observeRecent()
