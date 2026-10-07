@@ -172,7 +172,8 @@ fun Modifier.pageWash(header: HeaderImage, progress: () -> Float): Modifier = co
                     endY = washPx,
                 ),
                 size = area,
-                alpha = alpha,
+                // Always fully opaque: only the colour gets calmer, the fade into the
+                // page must stay complete or the colour's edge shows as a line.
             )
         }
     }

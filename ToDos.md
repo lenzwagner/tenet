@@ -72,7 +72,9 @@ Im Emulator nicht möglich.
 - [ ] Eigener Signaturschlüssel statt Debug-Keystore. Wechsel = einmal neu installieren, dabei gehen die Daten verloren.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.13)
+## Zuletzt erledigt (0.5.0 – 1.0.0.14)
+
+- 1.0.0.14: Farbverlauf läuft auch gescrollt ganz weich aus (vorher harte Kante hinter den Karten)
 
 - 1.0.0.13: Farbverlauf oben bleibt beim Scrollen sichtbar (hinter Titelleiste und Bereichs-Umschalter), keine Trennlinie mehr unter der Titelleiste
 
