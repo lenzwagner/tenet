@@ -48,10 +48,10 @@ class CompanionAgent @Inject constructor(
 
     val aiEnabled: Boolean get() = ai.config.value.usable
 
-    suspend fun handle(text: String): Reply {
+    suspend fun handle(text: String, name: String = "Tenny"): Reply {
         if (text.isBlank()) return Reply("Sag mir, was ich tun soll.")
         if (!aiEnabled) return offline(text)
-        val answer = ai.json(SYSTEM + "\n\nKONTEXT\n" + context(), text, maxTokens = 900)
+        val answer = ai.json(SYSTEM.replace("\"Tenny\"", "\"$name\"") + "\n\nKONTEXT\n" + context(), text, maxTokens = 900)
             ?: return offline(text).let { it.copy(text = "KI gerade nicht erreichbar. " + it.text) }
         val done = mutableListOf<String>()
         var navigate: Destination? = null

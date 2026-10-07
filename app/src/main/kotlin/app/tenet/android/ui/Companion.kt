@@ -100,11 +100,11 @@ class CompanionViewModel @Inject constructor(private val agent: CompanionAgent) 
     val navigate = _navigate.receiveAsFlow()
 
     /** Runs in the background: the page stays where it is. */
-    fun send(text: String) {
+    fun send(text: String, name: String) {
         if (text.isBlank() || _busy.value) return
         _busy.value = true
         viewModelScope.launch {
-            val r = runCatching { agent.handle(text) }.getOrElse { CompanionAgent.Reply("Ups, das ging schief: ${it.message}") }
+            val r = runCatching { agent.handle(text, name) }.getOrElse { CompanionAgent.Reply("Ups, das ging schief: ${it.message}") }
             _reply.value = r.text
             _busy.value = false
             r.navigate?.let { _navigate.send(it) }
@@ -122,6 +122,7 @@ class CompanionViewModel @Inject constructor(private val agent: CompanionAgent) 
 @Composable
 fun CompanionOverlay(
     visible: Boolean,
+    kind: app.tenet.android.core.designsystem.component.CompanionKind,
     onNavigate: (CompanionAgent.Destination) -> Unit,
     viewModel: CompanionViewModel = hiltViewModel(),
 ) {
@@ -164,13 +165,14 @@ fun CompanionOverlay(
             exit = fadeOut() + scaleOut(targetScale = 0.4f),
             modifier = Modifier.offset { IntOffset((pos.value.x * maxX).roundToInt(), (pos.value.y * maxY).roundToInt()) },
         ) {
-            Creature(
+            app.tenet.android.core.designsystem.component.CompanionCreature(
+                kind = kind,
                 walking = walking || dragging,
                 thinking = busy,
                 facingLeft = facingLeft,
                 modifier = Modifier
                     .size(CreatureSize)
-                    .semantics { contentDescription = "Tenny – antippen zum Sprechen, ziehen zum Verschieben" }
+                    .semantics { contentDescription = "${kind.label} – antippen zum Sprechen, ziehen zum Verschieben" }
                     .pointerInput(maxX, maxY) {
                         detectDragGestures(
                             onDragStart = { dragging = true },
@@ -200,9 +202,10 @@ fun CompanionOverlay(
             modifier = Modifier.align(Alignment.BottomCenter).imePadding().navigationBarsPadding(),
         ) {
             ChatPanel(
+                name = kind.label,
                 busy = busy,
                 reply = reply,
-                onSend = viewModel::send,
+                onSend = { viewModel.send(it, kind.label) },
                 onClose = {
                     chatOpen = false
                     viewModel.clearReply()
@@ -215,9 +218,9 @@ fun CompanionOverlay(
 private val CreatureSize = 64.dp
 
 @Composable
-private fun ChatPanel(busy: Boolean, reply: String?, onSend: (String) -> Unit, onClose: () -> Unit) {
+private fun ChatPanel(name: String, busy: Boolean, reply: String?, onSend: (String) -> Unit, onClose: () -> Unit) {
     var text by remember { mutableStateOf("") }
-    val dictation = rememberDictation("Was soll Tenny tun?") { onSend(it) }
+    val dictation = rememberDictation("Was soll $name tun?") { onSend(it) }
     val submit = {
         if (text.isNotBlank()) {
             onSend(text.trim())
@@ -232,7 +235,7 @@ private fun ChatPanel(busy: Boolean, reply: String?, onSend: (String) -> Unit, o
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Tenny", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                Text(name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                 if (busy) LoadingIndicator(Modifier.size(32.dp))
                 IconButton(onClick = onClose, shapes = IconButtonDefaults.shapes()) {
                     Icon(Icons.Outlined.Close, contentDescription = "Schließen")
@@ -248,7 +251,7 @@ private fun ChatPanel(busy: Boolean, reply: String?, onSend: (String) -> Unit, o
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it },
-                    placeholder = { Text("Nachricht an Tenny") },
+                    placeholder = { Text("Nachricht an $name") },
                     singleLine = true,
                     shape = MaterialTheme.shapes.extraLarge,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
@@ -261,56 +264,6 @@ private fun ChatPanel(busy: Boolean, reply: String?, onSend: (String) -> Unit, o
                     } else {
                         Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = "Senden")
                     }
-                }
-            }
-        }
-    }
-}
-
-/** The creature: a soft cloud body with a screen face, blinking eyes and little feet. */
-@Composable
-private fun Creature(walking: Boolean, thinking: Boolean, facingLeft: Boolean, modifier: Modifier = Modifier) {
-    val t = rememberInfiniteTransition(label = "tenny")
-    val bob by t.animateFloat(0f, 1f, infiniteRepeatable(tween(if (walking) 360 else 2200, easing = LinearEasing)), label = "bob")
-    val blink by t.animateFloat(0f, 1f, infiniteRepeatable(tween(4200, easing = LinearEasing), RepeatMode.Restart), label = "blink")
-    val body = Color(0xFF6F7CF7)
-    val bodyDark = Color(0xFF4A55D6)
-    val screen = Color(0xFF1E2246)
-    val eye = Color(0xFF8FF3FF)
-    Canvas(modifier) {
-        val w = size.width
-        val h = size.height
-        val wave = sin(bob * 2 * Math.PI).toFloat()
-        val lift = if (walking) wave * h * 0.03f else wave * h * 0.02f
-        // Feet: alternate while walking.
-        val footY = h * 0.86f
-        val stepL = if (walking) wave * h * 0.05f else 0f
-        drawOval(bodyDark, Offset(w * 0.30f, footY - stepL), Size(w * 0.16f, h * 0.12f))
-        drawOval(bodyDark, Offset(w * 0.54f, footY + stepL), Size(w * 0.16f, h * 0.12f))
-        translate(top = lift) {
-            scale(if (facingLeft) -1f else 1f, 1f, pivot = Offset(w / 2, h / 2)) {
-                // Cloud body: overlapping circles.
-                drawCircle(body, w * 0.22f, Offset(w * 0.32f, h * 0.38f))
-                drawCircle(body, w * 0.24f, Offset(w * 0.56f, h * 0.32f))
-                drawCircle(body, w * 0.20f, Offset(w * 0.74f, h * 0.46f))
-                drawCircle(body, w * 0.20f, Offset(w * 0.26f, h * 0.56f))
-                drawRoundRect(body, Offset(w * 0.18f, h * 0.36f), Size(w * 0.66f, h * 0.44f), CornerRadius(w * 0.2f))
-                // Arms.
-                drawOval(bodyDark, Offset(w * 0.08f, h * 0.58f), Size(w * 0.12f, h * 0.16f))
-                drawOval(bodyDark, Offset(w * 0.80f, h * 0.58f), Size(w * 0.12f, h * 0.16f))
-                // Screen face.
-                drawRoundRect(screen, Offset(w * 0.30f, h * 0.36f), Size(w * 0.44f, h * 0.24f), CornerRadius(w * 0.08f))
-                if (thinking) {
-                    // Three dots, one lit after another.
-                    for (i in 0..2) {
-                        val on = ((bob * 3).toInt() % 3) == i
-                        drawCircle(eye.copy(alpha = if (on) 1f else 0.35f), w * 0.03f, Offset(w * (0.42f + i * 0.08f), h * 0.48f))
-                    }
-                } else {
-                    val closed = blink > 0.94f
-                    val eyeH = if (closed) h * 0.012f else h * 0.07f
-                    drawRoundRect(eye, Offset(w * 0.39f, h * 0.48f - eyeH / 2), Size(w * 0.07f, eyeH), CornerRadius(w * 0.03f))
-                    drawRoundRect(eye, Offset(w * 0.56f, h * 0.48f - eyeH / 2), Size(w * 0.07f, eyeH), CornerRadius(w * 0.03f))
                 }
             }
         }

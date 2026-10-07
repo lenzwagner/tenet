@@ -1,10 +1,10 @@
 # Tenet – offene ToDos
 
-Stand: 07.10.2026, Version 1.0.0.29 (auf `main` gepusht, APK `tenet-1.0.0.29-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 07.10.2026, Version 1.0.0.30 (auf `main` gepusht, APK `tenet-1.0.0.30-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Übergabe (Session 06.–07.10.2026)
 
-**Stand:** 1.0.0.6 – 1.0.0.29 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
+**Stand:** 1.0.0.6 – 1.0.0.30 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
 
 **Wichtig vor dem nächsten Update am Handy:**
 - Seit 1.0.0.6 ist die Datenbank mit SQLCipher verschlüsselt (Rohschlüssel, im Android Keystore gewrappt, `no_backup/db.key`). Die alte Klartext-DB wird beim ersten Start einmal umgewandelt. Im Emulator geprüft, mit echten Daten noch nicht → vorher mit Google anmelden und synchronisieren.
@@ -103,7 +103,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Alte APKs im Projektordner aufräumen (~40 Stück, je ~10–18 MB, enthalten den NIM-Schlüssel)
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.29)
+## Zuletzt erledigt (0.5.0 – 1.0.0.30)
+
+- 1.0.0.30: Fünf Begleiter zur Auswahl (Tenny Wolken-Roboter, Mio Kater, Foxi Fuchs, Pingu Pinguin, Glibber Schleim) – in den Einstellungen unter „Begleiter“ mit lebendiger Vorschau; jeder mit eigener Bewegung (Schwanz, Watscheln, Wackeln), Name auch im Chat und in der KI
 
 - 1.0.0.29: Begleiter „Tenny“ (Einstellungen → Darstellung, an/aus): animierte Figur läuft alle 1,5–4 min an einen neuen Platz, bleibt dort, lässt sich verschieben; Haus-Symbol im Kopf jeder Hauptseite schickt ihn bis zum nächsten App-Start weg (nochmal tippen holt ihn zurück); antippen öffnet eine Leiste für Text oder Sprache – per NVIDIA NIM trägt er Essen ein, Wasser, Gewicht, legt Notizen an oder ergänzt sie (z. B. Einkaufsliste), öffnet Bereiche und beantwortet Fragen zu Training, Ernährung, Gesundheit und Notizen (alles im Hintergrund, ohne Seitenwechsel); ohne KI versteht er einfache Essens-Sätze
 

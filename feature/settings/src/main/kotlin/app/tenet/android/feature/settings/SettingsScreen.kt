@@ -1,5 +1,7 @@
 package app.tenet.android.feature.settings
 
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.outlined.SmartToy
 import app.tenet.android.core.designsystem.header.pageWash
 import androidx.compose.material.icons.outlined.NetworkCheck
@@ -294,10 +296,18 @@ fun SettingsScreen(
                         SwitchItem(
                             shapes = shapes(0, 1),
                             icon = Icons.Outlined.SmartToy,
-                            title = "Begleiter Tenny",
+                            title = "Begleiter",
                             supporting = "Läuft durch die App; antippen und per Text oder Sprache Essen eintragen, Notizen ergänzen oder Fragen stellen (nutzt die KI)",
                             checked = settings.companion,
                             onCheckedChange = viewModel::setCompanion,
+                        )
+                    }
+                }
+                if (settings.companion) {
+                    item {
+                        CompanionPicker(
+                            selected = app.tenet.android.core.designsystem.component.CompanionKind.of(settings.companionKind),
+                            onSelect = { viewModel.setCompanionKind(it.name) },
                         )
                     }
                 }
@@ -1056,3 +1066,50 @@ private fun <T> ChoiceDialog(
 }
 
 private fun formatMinute(minuteOfDay: Int): String = "%02d:%02d".format(minuteOfDay / 60, minuteOfDay % 60)
+
+
+/** Companion choice: each one shown alive (walks in its card) with name and character. */
+@Composable
+private fun CompanionPicker(
+    selected: app.tenet.android.core.designsystem.component.CompanionKind,
+    onSelect: (app.tenet.android.core.designsystem.component.CompanionKind) -> Unit,
+) {
+    androidx.compose.foundation.lazy.LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
+    ) {
+        items(app.tenet.android.core.designsystem.component.CompanionKind.entries.size) { i ->
+            val kind = app.tenet.android.core.designsystem.component.CompanionKind.entries[i]
+            val isSelected = kind == selected
+            androidx.compose.material3.Surface(
+                onClick = { onSelect(kind) },
+                shape = MaterialTheme.shapes.extraLarge,
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                border = if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+                modifier = Modifier.width(116.dp),
+            ) {
+                Column(
+                    Modifier.padding(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    app.tenet.android.core.designsystem.component.CompanionCreature(
+                        kind = kind,
+                        walking = isSelected,
+                        thinking = false,
+                        facingLeft = false,
+                        modifier = Modifier.size(64.dp),
+                    )
+                    Text(kind.label, style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        kind.description,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        maxLines = 2,
+                    )
+                }
+            }
+        }
+    }
+}

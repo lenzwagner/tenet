@@ -231,6 +231,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { repository.setCompanion(enabled) }
     }
 
+    fun setCompanionKind(kind: String) {
+        viewModelScope.launch { repository.setCompanionKind(kind) }
+    }
+
     fun setModuleEnabled(module: AppModule, enabled: Boolean) {
         viewModelScope.launch { repository.setModuleEnabled(module, enabled) }
     }

@@ -815,6 +815,7 @@ fun TenetApp(
             if (settings.companion) {
                 CompanionOverlay(
                     visible = !companionHome,
+                    kind = app.tenet.android.core.designsystem.component.CompanionKind.of(settings.companionKind),
                     onNavigate = { dest ->
                         when (dest) {
                             app.tenet.android.core.data.companion.CompanionAgent.Destination.TODAY -> openTab(TopLevelTab.Today)

@@ -224,7 +224,7 @@ fun PageHeader(
                 ) {
                     Icon(
                         if (companion.visible) Icons.Outlined.Home else Icons.Filled.Home,
-                        contentDescription = if (companion.visible) "Tenny nach Hause schicken" else "Tenny zurückholen",
+                        contentDescription = if (companion.visible) "Begleiter nach Hause schicken" else "Begleiter zurückholen",
                         tint = MaterialTheme.colorScheme.onBackground,
                     )
                 }

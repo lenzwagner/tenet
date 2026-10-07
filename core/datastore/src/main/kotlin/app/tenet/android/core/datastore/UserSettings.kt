@@ -30,6 +30,8 @@ data class UserSettings(
     val glassBar: Boolean = true,
     /** Companion "Tenny" walking around the app (talk to it, let it log things). */
     val companion: Boolean = true,
+    /** Which companion (CompanionKind name). */
+    val companionKind: String = "TENNY",
     val enabledModules: Set<AppModule> = AppModule.entries.toSet(),
     /** 1RM estimation formula used for progress displays (App_Konzept.md 5.2.1). */
     val oneRepMaxFormula: OneRepMaxFormula = OneRepMaxFormula.EPLEY,
