@@ -72,7 +72,9 @@ Im Emulator nicht möglich.
 - [ ] Eigener Signaturschlüssel statt Debug-Keystore. Wechsel = einmal neu installieren, dabei gehen die Daten verloren.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.9)
+## Zuletzt erledigt (0.5.0 – 1.0.0.10)
+
+- 1.0.0.10: Laufplan-Einrichtung: Bestzeit und Zielzeit in drei Feldern (Std / Min / Sek, springt nach zwei Ziffern weiter) statt einem Feld ohne Doppelpunkt (aus 1:21:22 wurde 12122 Minuten); Tempo-Progression: die Trainings-Tempi werden Woche für Woche schneller, von der aktuellen Form zur Zielform (aus der Zielzeit, sonst ~1,5 % pro 4 Wochen, höchstens 10 %), Entlastungswochen halten das Tempo, Tapering-Wochen laufen auf Zielform; gilt auch für „Tempi an Form anpassen“; Vorschau zeigt Start- und End-Tempo; Wunschzeit mit Check beim Einrichten (realistisch / ehrgeizig / kaum zu schaffen + Vorschlag); Prognose heute und hochgerechnet auf den Wettkampftag auf der Laufen-Seite und im Plan, folgt jedem eingetragenen Lauf (Ziel-Bewertung im Plan jetzt gegen den Wettkampftag); Verpflegung je Lauf im Trainings-Detail: Kohlenhydrate vorher/unterwegs, Wasser vorher/unterwegs, Natrium bei > 2 h, nach Dauer, Art, Wettkampf und Körpergewicht
 
 - 1.0.0.9: Listen als iOS-Gruppen (Haarlinie statt Lücke, nur außen gerundet), Leerzustände mit schlichtem Symbol und Knopf („Erste Notiz schreiben“, „Tag festhalten“, „Traum erzählen“, „Rezept importieren“), Play-Knopf bei Gym/Calisthenics erst wenn die Heute-Karte weggescrollt ist, „Hinzufügen“ (Ernährung) als Sheet über der Seite, „Übung tauschen“ öffnet halbhoch, Kalorienringe: Impuls mit Glanz und Haptik beim Schließen eines Rings, Calisthenics-Session als Live-Mitteilung (Satz x/y, Fortschritt, Hold-Countdown als Statusleisten-Chip, „Satz fertig“)
 

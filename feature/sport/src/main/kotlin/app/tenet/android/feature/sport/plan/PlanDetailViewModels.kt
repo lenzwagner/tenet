@@ -138,7 +138,9 @@ class RunPlanDetailViewModel @Inject constructor(
         val racePassed = goalDate != null && goalDate.isBefore(today)
         val fit = if (racePassed) null else PlanFit.assess(
             targetSec = d.detail?.targetTimeSec,
-            predictedSec = raceDistance?.let { dist -> form?.time(dist) ?: RacePrediction.predict(runEfforts, dist, today, windowDays = 84)?.timeSec },
+            // Judge the goal against race day (today's form plus the training still ahead).
+            predictedSec = raceDistance?.let { dist -> form?.time(dist) ?: RacePrediction.predict(runEfforts, dist, today, windowDays = 84)?.timeSec }
+                ?.let { now -> RunPlanMath.expectedRaceDaySec(now, goal, (weeks - currentWeek).coerceAtLeast(0), d.detail?.taper == true) },
             anchor5kSec = d.detail?.current5kSec,
             form5kSec = form5k,
         )

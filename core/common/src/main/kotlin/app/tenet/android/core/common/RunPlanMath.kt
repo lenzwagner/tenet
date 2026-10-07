@@ -297,4 +297,90 @@ object RunPlanMath {
 
     /** Load of a build week ignoring its own unload dip (taper starts from the true peak). */
     private fun peakLoad(weekIndex: Int): Float = 1f + 0.08f * (weekIndex.coerceAtLeast(0) / 4)
+
+    // ---- Pace progression ---------------------------------------------------
+
+    /** Expected improvement without a goal time: 1.5 % per 4 build weeks, at most 6 %. */
+    private const val DEFAULT_GAIN_PER_CYCLE = 0.015
+    private const val MAX_DEFAULT_GAIN = 0.06
+
+    /** A goal time needing more than this over the plan is not trusted fully. */
+    private const val MAX_GAIN = 0.10
+
+    /**
+     * 5 km form the plan works toward [s]: the goal time converted to 5 km
+     * (Riegel), else a realistic gain over the build weeks. Never slower
+     * than the current form, never more than [MAX_GAIN] faster.
+     */
+    fun goal5kSec(current5kSec: Int, goal: RunGoal, targetTimeSec: Int?, totalWeeks: Int, taper: Boolean): Int {
+        val buildWeeks = (totalWeeks - if (taper) taperWeeks(goal) else 0).coerceAtLeast(1)
+        val distance = raceDistanceM(goal)
+        val wanted = if (targetTimeSec != null && distance != null) {
+            RacePrediction.riegel(distance, targetTimeSec, 5_000)
+        } else {
+            val gain = (DEFAULT_GAIN_PER_CYCLE * buildWeeks / 4.0).coerceAtMost(MAX_DEFAULT_GAIN)
+            (current5kSec * (1 - gain)).toInt()
+        }
+        val fastest = (current5kSec * (1 - MAX_GAIN)).toInt()
+        return wanted.coerceIn(fastest, current5kSec)
+    }
+
+    /**
+     * 5 km anchor for the paces of week [weekIndex]: moves step by step from
+     * the current form to [goal5kSec] over the build weeks, so tempo and
+     * interval paces get a little faster as fitness grows; unload weeks keep
+     * the previous week's paces, taper weeks (and the race) use the goal form.
+     */
+    fun anchor5kForWeek(current5kSec: Int, goal5kSec: Int, weekIndex: Int, totalWeeks: Int, goal: RunGoal, taper: Boolean): Int {
+        val buildWeeks = (totalWeeks - if (taper) taperWeeks(goal) else 0).coerceAtLeast(1)
+        if (weekIndex >= buildWeeks - 1) return goal5kSec
+        // An unload week (every fourth) does not add speed.
+        val effective = if ((weekIndex + 1) % 4 == 0) weekIndex - 1 else weekIndex
+        val fraction = effective.coerceAtLeast(0).toDouble() / (buildWeeks - 1).coerceAtLeast(1)
+        return (current5kSec + (goal5kSec - current5kSec) * fraction).toInt()
+    }
+
+    // ---- Goal time check ------------------------------------------------------
+
+    enum class GoalRealism { REALISTIC, AMBITIOUS, UNREALISTIC }
+
+    data class GoalCheck(
+        val realism: GoalRealism,
+        /** Race time with today's form (Riegel from the 5 km form). */
+        val predictedNowSec: Int,
+        /** Expected race time on race day after the remaining training. */
+        val expectedRaceDaySec: Int,
+        /** Fastest still plausible race time (strong training response). */
+        val stretchSec: Int,
+    )
+
+    /** Typical gain over [buildWeeks] of training: 1.5 % per 4 weeks, at most 6 %. */
+    fun expectedGain(buildWeeks: Int): Double = (DEFAULT_GAIN_PER_CYCLE * buildWeeks.coerceAtLeast(0) / 4.0).coerceAtMost(MAX_DEFAULT_GAIN)
+
+    /**
+     * Race time to expect on race day from today's prediction and the build
+     * weeks still ahead ([weeksLeft] incl. the taper weeks).
+     */
+    fun expectedRaceDaySec(predictedNowSec: Int, goal: RunGoal, weeksLeft: Int, taper: Boolean): Int {
+        val build = (weeksLeft - if (taper) taperWeeks(goal) else 0).coerceAtLeast(0)
+        return (predictedNowSec * (1 - expectedGain(build))).toInt()
+    }
+
+    /**
+     * Is [targetSec] for [goal] realistic in [totalWeeks] from a 5 km form of
+     * [current5kSec]? Realistic = at or above the expected race-day time;
+     * ambitious = up to [MAX_GAIN] faster than today; unrealistic = beyond.
+     */
+    fun checkGoal(current5kSec: Int, goal: RunGoal, targetSec: Int, totalWeeks: Int, taper: Boolean): GoalCheck? {
+        val distance = raceDistanceM(goal) ?: return null
+        val now = RacePrediction.riegel(5_000, current5kSec, distance)
+        val expected = expectedRaceDaySec(now, goal, totalWeeks, taper)
+        val stretch = (now * (1 - MAX_GAIN)).toInt()
+        val realism = when {
+            targetSec >= expected -> GoalRealism.REALISTIC
+            targetSec >= stretch -> GoalRealism.AMBITIOUS
+            else -> GoalRealism.UNREALISTIC
+        }
+        return GoalCheck(realism, now, expected, stretch)
+    }
 }

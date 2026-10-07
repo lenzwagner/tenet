@@ -149,13 +149,19 @@ class RunningRepository @Inject constructor(
 
         val weeks = RunPlanMath.weekCount(planStart, goalDate)
         val template = RunPlanMath.weeklyTemplate(runsPerWeek)
-        val anchor = current5kSec?.let { PaceAnchor(distanceM = 5000, timeSec = it) }
         val goalIsMarathon = goal == RunPlanMath.RunGoal.MARATHON
+        // Paces get faster over the plan: from today's form to the goal form.
+        val goal5k = current5kSec?.let { RunPlanMath.goal5kSec(it, goal, targetTimeSec, weeks, taper) }
 
         val planned = mutableListOf<PlannedWorkout>()
         val details = mutableListOf<RunPlanWorkout>()
         for (week in 0 until weeks) {
             val units = RunPlanMath.planWeek(goal, week, runsPerWeek, totalWeeks = weeks, taper = taper, days = days, volume = volume)
+            val anchor = if (current5kSec != null && goal5k != null) {
+                PaceAnchor(distanceM = 5000, timeSec = RunPlanMath.anchor5kForWeek(current5kSec, goal5k, week, weeks, goal, taper))
+            } else {
+                null
+            }
             template.forEachIndexed { order, _ ->
                 val unit = units[order]
                 val plannedId = newUuid()
@@ -236,13 +242,23 @@ class RunningRepository @Inject constructor(
 
         val start = LocalDate.parse(plan.startDate)
         val today = LocalDate.now()
-        val anchor = PaceAnchor(distanceM = 5000, timeSec = form5kSec)
         val method = PaceMethod.fromId(detail.paceMethodId)
         val goal = runCatching { RunPlanMath.RunGoal.valueOf(detail.goalId) }.getOrNull()
         val raceDistance = goal?.let { RunPlanMath.raceDistanceM(it) }
-        val updated = sportDao.workoutsOnce(planId).mapNotNull { w ->
+        // Progression again from the new form over the weeks that are left.
+        val workouts = sportDao.workoutsOnce(planId)
+        val totalWeeks = (workouts.maxOfOrNull { it.weekIndex ?: 0 } ?: 0) + 1
+        val currentWeek = (java.time.temporal.ChronoUnit.DAYS.between(start, today) / 7).toInt().coerceIn(0, totalWeeks - 1)
+        val remaining = totalWeeks - currentWeek
+        val goal5k = goal?.let { RunPlanMath.goal5kSec(form5kSec, it, target, remaining, detail.taper) } ?: form5kSec
+        val updated = workouts.mapNotNull { w ->
             val date = w.date?.let(LocalDate::parse) ?: start.plusDays((w.weekIndex ?: 0) * 7L + (w.dayIndex ?: 0))
             if (date.isBefore(today)) return@mapNotNull null
+            val weekFromNow = ((w.weekIndex ?: 0) - currentWeek).coerceAtLeast(0)
+            val anchor = PaceAnchor(
+                distanceM = 5000,
+                timeSec = if (goal != null) RunPlanMath.anchor5kForWeek(form5kSec, goal5k, weekFromNow, remaining, goal, detail.taper) else form5kSec,
+            )
             val rw = runDao.runPlanWorkoutOnce(w.id) ?: return@mapNotNull null
             val pace = when {
                 w.title.startsWith("Wettkampf") && raceDistance != null ->

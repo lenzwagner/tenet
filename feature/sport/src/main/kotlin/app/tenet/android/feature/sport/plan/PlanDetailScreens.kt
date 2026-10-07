@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.plan
 
+import app.tenet.android.core.common.RunPlanMath
 import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
@@ -217,8 +218,16 @@ private fun PrognosisCard(s: RunPlanUi) {
                         ?: "Noch keine Prognose – lauf 5 km oder mehr (GPS, nachgetragen oder Health Connect).",
                     style = MaterialTheme.typography.bodySmall,
                 )
+                // Prognosis follows every logged run; on race day the remaining training counts too.
+                val raceDay = p?.let { RunPlanMath.expectedRaceDaySec(it.timeSec, s.goal, (s.weeks - s.currentWeek).coerceAtLeast(0), s.taper) }
+                raceDay?.takeIf { it < p.timeSec }?.let {
+                    Text(
+                        "Am Wettkampftag erwartet ≈ ${hms(it)} (mit dem restlichen Training)",
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
                 s.targetTimeSec?.let { target ->
-                    val diff = p?.let { it.timeSec - target }
+                    val diff = (raceDay ?: p?.timeSec)?.let { it - target }
                     Surface(
                         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
                         shape = MaterialTheme.shapes.medium,
@@ -227,7 +236,7 @@ private fun PrognosisCard(s: RunPlanUi) {
                             Icon(Icons.Outlined.EmojiEvents, null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                "Zielzeit ${hms(target)}" + when {
+                                "Wunschzeit ${hms(target)}" + when {
                                     diff == null -> ""
                                     diff <= 0 -> " · auf Kurs (${hms(abs(diff))} Puffer)"
                                     else -> " · noch ${hms(diff)} schneller"

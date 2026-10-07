@@ -204,10 +204,10 @@ fun RunSetupScreen(onDone: () -> Unit, viewModel: RunSetupViewModel = hiltViewMo
                     title = { it.label },
                 )
                 if (s.recent != RecentRace.NONE) {
-                    NumberFieldText(
+                    DurationFields(
                         value = s.recentTime,
                         onValue = { viewModel.update { copy(recentTime = it) } },
-                        label = "Zeit (h:mm:ss oder mm:ss)",
+                        label = "Zeit",
                     )
                     s.form5kSec?.let { SetupHint("Entspricht etwa ${hms(it)} auf 5 km.") }
                 }
@@ -227,13 +227,12 @@ fun RunSetupScreen(onDone: () -> Unit, viewModel: RunSetupViewModel = hiltViewMo
             }
             4 -> {
                 if (race) {
-                    NumberFieldText(
+                    DurationFields(
                         value = s.targetTime,
                         onValue = { viewModel.update { copy(targetTime = it) } },
-                        label = "Zielzeit (optional, h:mm:ss)",
+                        label = "Wunschzeit (optional)",
                     )
-                    val prognosis = s.form5kSec?.let { f -> RacePrediction.riegel(5_000, f, RunPlanMath.raceDistanceM(s.goal)!!) }
-                    prognosis?.let { SetupHint("Prognose nach deiner Bestzeit: ${hms(it)}") }
+                    GoalCheckHint(s)
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("Tapering", style = MaterialTheme.typography.titleMedium)
@@ -248,6 +247,36 @@ fun RunSetupScreen(onDone: () -> Unit, viewModel: RunSetupViewModel = hiltViewMo
             else -> RunPlanPreview(s)
         }
     }
+}
+
+/** Is the wish time realistic with the current form and the weeks until the race? */
+@Composable
+private fun GoalCheckHint(s: RunSetupState) {
+    val weeks = RunPlanMath.weekCount(WeekMath.weekStart(LocalDate.now()), s.goalDate)
+    val form = s.form5kSec
+    val target = parseHms(s.targetTime)
+    if (form == null) {
+        SetupHint("Mit einer Bestzeit (vorheriger Schritt) prüft Tenet, ob deine Wunschzeit realistisch ist.")
+        return
+    }
+    val distance = RunPlanMath.raceDistanceM(s.goal) ?: return
+    val now = RacePrediction.riegel(5_000, form, distance)
+    val expected = RunPlanMath.expectedRaceDaySec(now, s.goal, weeks, s.taper)
+    if (target == null) {
+        SetupHint("Heute wären etwa ${hms(now)} drin, nach $weeks Wochen Training ≈ ${hms(expected)}.")
+        return
+    }
+    val check = RunPlanMath.checkGoal(form, s.goal, target, weeks, s.taper) ?: return
+    val (color, text) = when (check.realism) {
+        RunPlanMath.GoalRealism.REALISTIC ->
+            MaterialTheme.colorScheme.primary to "Realistisch: nach $weeks Wochen sind etwa ${hms(check.expectedRaceDaySec)} zu erwarten – ${hms(target)} ist gut machbar."
+        RunPlanMath.GoalRealism.AMBITIOUS ->
+            MaterialTheme.colorScheme.tertiary to "Ehrgeizig: erwartet sind etwa ${hms(check.expectedRaceDaySec)}. ${hms(target)} geht, wenn du fast jede Einheit läufst und gut auf das Training ansprichst."
+        RunPlanMath.GoalRealism.UNREALISTIC ->
+            MaterialTheme.colorScheme.error to "Kaum zu schaffen in $weeks Wochen: heute ≈ ${hms(check.predictedNowSec)}, erwartet ≈ ${hms(check.expectedRaceDaySec)}, " +
+                "selbst mit sehr gutem Verlauf eher ${hms(check.stretchSec)}. Vorschlag: ${hms(((check.expectedRaceDaySec + 59) / 60) * 60)}."
+    }
+    Text(text, style = MaterialTheme.typography.bodyMedium, color = color)
 }
 
 @Composable
@@ -281,26 +310,82 @@ private fun RunPlanPreview(s: RunSetupState) {
     } else {
         SetupHint("Lockerlauf ≈ ${pace(RunPaceMath.targetPaceSecPerKm(RunZone.EASY, anchor, app.tenet.android.core.common.PaceMethod.VDOT))}, Tempolauf ≈ ${pace(RunPaceMath.targetPaceSecPerKm(RunZone.TEMPO, anchor, app.tenet.android.core.common.PaceMethod.VDOT))}")
     }
+    // Progression: the paces move from today's form to the goal form.
+    s.form5kSec?.let { now ->
+        val race = RunPlanMath.raceDistanceM(s.goal) != null
+        val taper = s.taper && race
+        val goal5k = RunPlanMath.goal5kSec(now, s.goal, parseHms(s.targetTime), weeks, taper)
+        if (goal5k < now) {
+            val method = app.tenet.android.core.common.PaceMethod.VDOT
+            val start = pace(RunPaceMath.targetPaceSecPerKm(RunZone.TEMPO, PaceAnchor(5_000, now), method))
+            val end = pace(RunPaceMath.targetPaceSecPerKm(RunZone.TEMPO, PaceAnchor(5_000, goal5k), method))
+            SetupHint(
+                "Du wirst schneller: Tempolauf in Woche 1 ≈ $start, " +
+                    (if (taper) "vor dem Tapering" else "am Ende") + " ≈ $end. Die Tempi steigen Woche für Woche, Entlastungswochen halten sie.",
+            )
+        }
+    }
     if (s.taper && RunPlanMath.raceDistanceM(s.goal) != null) {
-        SetupHint("Die letzten ${RunPlanMath.taperWeeks(s.goal)} Woche(n) sind Tapering, am Ende steht der Wettkampf im Plan.")
+        SetupHint("Die letzten ${RunPlanMath.taperWeeks(s.goal)} Woche(n) sind Tapering: weniger Umfang, gleiches Tempo, am Ende steht der Wettkampf im Plan.")
+    }
+}
+
+/**
+ * A race time as three number fields (Std / Min / Sek): the number keypad
+ * has no colon, so "1 21 22" typed into one field became 12122 minutes.
+ * [value] stays "h:mm:ss" for [parseHms]; empty when all fields are empty.
+ */
+@Composable
+private fun DurationFields(value: String, onValue: (String) -> Unit, label: String) {
+    val parts = value.split(':')
+    val (h0, m0, s0) = when (parts.size) {
+        3 -> Triple(parts[0], parts[1], parts[2])
+        2 -> Triple("", parts[0], parts[1])
+        1 -> Triple("", parts[0], "")
+        else -> Triple("", "", "")
+    }
+    // Empty parts stay empty (shown as empty fields, read as 0 by parseHms).
+    fun emit(h: String, m: String, sec: String) {
+        if (h.isEmpty() && m.isEmpty() && sec.isEmpty()) onValue("") else onValue("$h:$m:$sec")
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            TimePartField(h0, "Std", max = 23, Modifier.weight(1f)) { emit(it, m0, s0) }
+            Text(":", style = MaterialTheme.typography.titleLarge)
+            TimePartField(m0, "Min", max = 59, Modifier.weight(1f)) { emit(h0, it, s0) }
+            Text(":", style = MaterialTheme.typography.titleLarge)
+            TimePartField(s0, "Sek", max = 59, Modifier.weight(1f)) { emit(h0, m0, it) }
+        }
     }
 }
 
 @Composable
-private fun NumberFieldText(value: String, onValue: (String) -> Unit, label: String) {
+private fun TimePartField(value: String, label: String, max: Int, modifier: Modifier, onValue: (String) -> Unit) {
+    val focus = androidx.compose.ui.platform.LocalFocusManager.current
     androidx.compose.material3.OutlinedTextField(
         value = value,
-        onValueChange = { v -> onValue(v.filter { it.isDigit() || it == ':' }.take(8)) },
+        onValueChange = { v ->
+            val digits = v.filter { it.isDigit() }.take(2)
+            // Out of range (e.g. 75 minutes) is capped instead of silently wrong.
+            onValue(digits.toIntOrNull()?.let { if (it > max) max.toString() else digits } ?: "")
+            // Two digits typed: on to the next field, like a time picker.
+            if (digits.length == 2 && value.length < 2) focus.moveFocus(androidx.compose.ui.focus.FocusDirection.Next)
+        },
         label = { Text(label) },
         singleLine = true,
-        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
-        modifier = Modifier.fillMaxWidth(),
+        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
+            imeAction = androidx.compose.ui.text.input.ImeAction.Next,
+        ),
+        textStyle = MaterialTheme.typography.titleMedium.copy(textAlign = androidx.compose.ui.text.style.TextAlign.Center),
+        modifier = modifier,
     )
 }
 
 /** "1:45:30", "45:30" or "45" (minutes) → seconds. */
 internal fun parseHms(text: String): Int? {
-    val parts = text.trim().split(':').map { it.toIntOrNull() ?: return null }
+    val parts = text.trim().split(':').map { if (it.isBlank()) 0 else it.trim().toIntOrNull() ?: return null }
     return when (parts.size) {
         1 -> parts[0] * 60
         2 -> parts[0] * 60 + parts[1]

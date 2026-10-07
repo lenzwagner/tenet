@@ -410,6 +410,27 @@ private fun PlanCard(state: RunningUiState, onCreatePlan: () -> Unit, onOpenPlan
                     MaterialTheme.colorScheme.primary
                 },
             )
+            // Live prognosis from the runs so far, projected to race day.
+            RunPlanMath.raceDistanceM(goal)?.let { distance ->
+                val now = state.form?.time(distance)
+                    ?: form5k?.let { app.tenet.android.core.common.RacePrediction.riegel(5_000, it, distance) }
+                if (now != null) {
+                    val raceDay = RunPlanMath.expectedRaceDaySec(now, goal, (state.weeks - state.currentWeek).coerceAtLeast(0), detail?.taper == true)
+                    val target = detail?.targetTimeSec
+                    Text(
+                        "Prognose heute ${formatTime(now)} · am Wettkampftag ≈ ${formatTime(raceDay)}",
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    if (target != null) {
+                        val diff = raceDay - target
+                        Text(
+                            "Wunschzeit ${formatTime(target)} · " + if (diff <= 0) "auf Kurs" else "noch ${formatTime(diff)} schneller nötig",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (diff <= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
+                        )
+                    }
+                }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(shapes = ButtonDefaults.shapes(), onClick = { onOpenPlan(plan.id) }, modifier = Modifier.weight(1f)) {
                     Text("Plan & Prognose")
@@ -541,8 +562,10 @@ private val dateFmt = DateTimeFormatter.ofPattern("dd.MM.yyyy", Locale.GERMAN)
 private fun formatPace(secPerKm: Int): String =
     "%d:%02d".format(secPerKm / 60, secPerKm % 60)
 
+/** "25:06", or with hours "1:55:28". */
 private fun formatTime(totalSec: Int): String =
-    "%d:%02d".format(totalSec / 60, totalSec % 60)
+    if (totalSec >= 3600) "%d:%02d:%02d".format(totalSec / 3600, totalSec % 3600 / 60, totalSec % 60)
+    else "%d:%02d".format(totalSec / 60, totalSec % 60)
 
 private fun formatDateTime(epochMillis: Long): String = runCatching {
     Instant.ofEpochMilli(epochMillis)

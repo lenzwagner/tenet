@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.run
 
+import androidx.compose.material.icons.outlined.Restaurant
 import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -80,6 +81,19 @@ class RunWorkoutViewModel @Inject constructor(
         RunPlanUiBuilder.build(overview, method).flatMap { it.units }.firstOrNull { it.id == plannedId }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** Carbs and water before / during this run, scaled by the profile's weight. */
+    val fueling: StateFlow<app.tenet.android.core.common.RunFueling.Advice?> =
+        combine(unit, repository.observeOverview(), settings.settings) { u, overview, s ->
+            u ?: return@combine null
+            app.tenet.android.core.common.RunFueling.advise(
+                durationSec = u.workout.estDurationSec,
+                zone = u.zone,
+                race = u.race,
+                weightKg = s.profile?.weightKg,
+                marathon = overview.detail?.goalId == app.tenet.android.core.common.RunPlanMath.RunGoal.MARATHON.name,
+            )
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     fun load(plannedId: String) {
         id.value = plannedId
     }
@@ -92,6 +106,55 @@ class RunWorkoutViewModel @Inject constructor(
     fun setSkipped(skipped: Boolean) {
         val plannedId = id.value ?: return
         viewModelScope.launch { repository.setPlannedRunSkipped(plannedId, skipped) }
+    }
+}
+
+/** "Verpflegung": carbs and water before and during the run. */
+@Composable
+private fun FuelCard(a: app.tenet.android.core.common.RunFueling.Advice) {
+    TenetCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Restaurant, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(8.dp))
+                Text("Verpflegung", style = MaterialTheme.typography.titleMedium)
+            }
+            FuelRow(
+                "Kohlenhydrate vorher",
+                a.carbsBeforeG?.let { "${it.first}–${it.last} g" } ?: "nicht nötig",
+                a.carbsBeforeWhen,
+            )
+            FuelRow(
+                "Kohlenhydrate unterwegs",
+                a.carbsPerHourG?.let { "${it.first}–${it.last} g pro Stunde" } ?: "keine",
+                a.carbsDuringTotalG?.let { "insgesamt etwa ${it.first}–${it.last} g, ab ca. 30–45 min" },
+            )
+            FuelRow("Wasser vorher", "${a.waterBeforeMl.first}–${a.waterBeforeMl.last} ml", "2–4 h vor dem Start, kurz davor ein paar Schlucke")
+            FuelRow(
+                "Wasser unterwegs",
+                a.waterPerHourMl?.let { "${it.first}–${it.last} ml pro Stunde" } ?: "nicht nötig",
+                a.waterPerHourMl?.let { "alle 15–20 min ein paar Schlucke" + if (a.sodium) " · mit Elektrolyten" else "" },
+            )
+            a.tips.forEach { tip ->
+                Text("• $tip", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text(
+                "Richtwerte nach Sporternährungs-Empfehlungen, an dein Gewicht aus dem Profil angepasst.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun FuelRow(label: String, value: String, note: String?) {
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            Text(value, style = MaterialTheme.typography.titleSmall)
+        }
+        note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 
@@ -110,6 +173,7 @@ fun RunWorkoutScreen(
 ) {
     LaunchedEffect(plannedId) { viewModel.load(plannedId) }
     val unit by viewModel.unit.collectAsStateWithLifecycle()
+    val fueling by viewModel.fueling.collectAsStateWithLifecycle()
     var moveDialog by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
@@ -225,6 +289,7 @@ fun RunWorkoutScreen(
                         ?: Text(if (s.kind == Kind.RECOVERY) "locker traben" else "nach Gefühl", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+            item(key = "fuel") { fueling?.let { FuelCard(it) } }
             item(key = "why") {
                 TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
