@@ -51,8 +51,13 @@ class CompanionAgent @Inject constructor(
     suspend fun handle(text: String, name: String = "Tenny"): Reply {
         if (text.isBlank()) return Reply("Sag mir, was ich tun soll.")
         if (!aiEnabled) return offline(text)
-        val answer = ai.json(SYSTEM.replace("\"Tenny\"", "\"$name\"") + "\n\nKONTEXT\n" + context(), text, maxTokens = 900)
-            ?: return offline(text).let { it.copy(text = "KI gerade nicht erreichbar. " + it.text) }
+        // chat(): retries when NIM is busy, turns thinking off and falls back to a second
+        // model – the plain json() call gave up after 30 s on slower models.
+        val prompt = SYSTEM.replace("\"Tenny\"", "\"$name\"") + "\n\nKONTEXT\n" + context() + "\n\nNUTZER: " + text
+        val answer = ai.chat(prompt, FALLBACK_MODELS, maxTokens = 900, timeoutMs = 45_000)
+            ?.let { AiAssistant.extractJson(it) }
+            // No guessing from the sentence here: that once logged "Federweißer" for a question.
+            ?: return Reply("Ich erreiche die KI gerade nicht (${ai.lastError ?: "keine Antwort"}). Versuch es gleich nochmal.")
         val done = mutableListOf<String>()
         var navigate: Destination? = null
         val actions = answer.optJSONArray("actions") ?: JSONArray()
@@ -75,7 +80,8 @@ class CompanionAgent @Inject constructor(
 
     /** Without AI: simple food sentences still work ("100 g Haferflocken"). */
     private suspend fun offline(text: String): Reply {
-        val phrases = FoodPhraseParser.parse(text)
+        // Only clear food sentences with an amount ("100 g …", "2 Eier"), never a question.
+        val phrases = if (text.trim().endsWith("?")) emptyList() else FoodPhraseParser.parse(text).filter { it.explicit || it.count != null }
         if (phrases.isEmpty()) {
             return Reply("Ohne KI verstehe ich nur Essen wie „100 g Haferflocken“. Den NVIDIA-Schlüssel trägst du unter Einstellungen → KI ein.")
         }
@@ -204,6 +210,9 @@ class CompanionAgent @Inject constructor(
     }
 
     companion object {
+        /** Tried after the model chosen in the settings: fast JSON first, then a stronger one. */
+        private val FALLBACK_MODELS = listOf(AiAssistant.DEFAULT_MODEL, "openai/gpt-oss-20b")
+
         private val SYSTEM = """
             Du bist "Tenny", der freundliche Begleiter in der Fitness- und Journal-App Tenet. Antworte immer auf Deutsch, kurz (1–3 Sätze), du duzt.
             Du kannst Fragen zu Training, Ernährung, Gesundheit und Notizen mit dem KONTEXT beantworten und Aktionen ausführen.

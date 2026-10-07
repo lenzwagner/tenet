@@ -1,5 +1,7 @@
 package app.tenet.android.ui
 
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -94,6 +96,9 @@ import kotlinx.coroutines.launch
 class CompanionViewModel @Inject constructor(private val agent: CompanionAgent) : ViewModel() {
     private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy.asStateFlow()
+    private val _request = MutableStateFlow<String?>(null)
+    /** What is being worked on right now (shown instead of the input). */
+    val request: StateFlow<String?> = _request.asStateFlow()
     private val _reply = MutableStateFlow<String?>(null)
     val reply: StateFlow<String?> = _reply.asStateFlow()
     private val _navigate = Channel<CompanionAgent.Destination>(Channel.BUFFERED)
@@ -103,6 +108,8 @@ class CompanionViewModel @Inject constructor(private val agent: CompanionAgent) 
     fun send(text: String, name: String) {
         if (text.isBlank() || _busy.value) return
         _busy.value = true
+        _request.value = text
+        _reply.value = null
         viewModelScope.launch {
             val r = runCatching { agent.handle(text, name) }.getOrElse { CompanionAgent.Reply("Ups, das ging schief: ${it.message}") }
             _reply.value = r.text
@@ -128,9 +135,9 @@ fun CompanionOverlay(
 ) {
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val reply by viewModel.reply.collectAsStateWithLifecycle()
+    val request by viewModel.request.collectAsStateWithLifecycle()
     var chatOpen by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { viewModel.navigate.collect(onNavigate) }
-    LaunchedEffect(visible) { if (!visible) chatOpen = false }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val density = LocalDensity.current
@@ -144,11 +151,47 @@ fun CompanionOverlay(
         var dragging by remember { mutableStateOf(false) }
         val scope = rememberCoroutineScope()
 
+        // Going home: walk to the house button in the page header, then shrink into it;
+        // coming back: pop out of the house and walk back to the old spot.
+        val statusTop = androidx.compose.foundation.layout.WindowInsets.statusBars.getTop(density)
+        val house = Offset(
+            ((constraints.maxWidth - with(density) { 80.dp.toPx() } - sizePx / 2) / maxX).coerceIn(0f, 1f),
+            ((statusTop + with(density) { 22.dp.toPx() } - sizePx * 0.75f) / maxY).coerceIn(0f, 1f),
+        )
+        val presence = remember { Animatable(if (visible) 1f else 0f) }
+        var lastSpot by remember { mutableStateOf(Offset(0.80f, 0.60f)) }
+        // True from "go home" until it is back on its spot (also when called back halfway).
+        var away by remember { mutableStateOf(!visible) }
+        LaunchedEffect(visible) {
+            if (!visible && presence.value > 0f) {
+                chatOpen = false
+                if (!away) lastSpot = pos.value
+                away = true
+                facingLeft = house.x < pos.value.x
+                walking = true
+                val distance = hypot((house.x - pos.value.x) * maxX, (house.y - pos.value.y) * maxY)
+                pos.animateTo(house, tween((distance / 1.4f).roundToInt().coerceIn(500, 1600), easing = FastOutSlowInEasing))
+                walking = false
+                presence.animateTo(0f, tween(380, easing = FastOutSlowInEasing))
+            } else if (visible && away) {
+                if (presence.value < 1f) {
+                    pos.snapTo(house)
+                    presence.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.45f, stiffness = 300f))
+                }
+                facingLeft = lastSpot.x < pos.value.x
+                walking = true
+                val distance = hypot((lastSpot.x - pos.value.x) * maxX, (lastSpot.y - pos.value.y) * maxY)
+                pos.animateTo(lastSpot, tween((distance / 1.2f).roundToInt().coerceIn(500, 1800), easing = FastOutSlowInEasing))
+                walking = false
+                away = false
+            }
+        }
+
         // Roaming: after a few minutes, run to another spot and stay there a while.
         LaunchedEffect(visible) {
             while (visible) {
                 delay(Random.nextLong(90_000, 240_000))
-                if (dragging || chatOpen) continue
+                if (dragging || chatOpen || busy) continue
                 val target = Offset(Random.nextFloat() * 0.75f + 0.08f, Random.nextFloat() * 0.50f + 0.22f)
                 val from = pos.value
                 facingLeft = target.x < from.x
@@ -159,11 +202,17 @@ fun CompanionOverlay(
             }
         }
 
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn() + scaleIn(initialScale = 0.4f),
-            exit = fadeOut() + scaleOut(targetScale = 0.4f),
-            modifier = Modifier.offset { IntOffset((pos.value.x * maxX).roundToInt(), (pos.value.y * maxY).roundToInt()) },
+        if (presence.value > 0f) Box(
+            Modifier
+                .offset { IntOffset((pos.value.x * maxX).roundToInt(), (pos.value.y * maxY).roundToInt()) }
+                .graphicsLayer {
+                    val p = presence.value
+                    scaleX = p
+                    scaleY = p
+                    alpha = p.coerceIn(0f, 1f)
+                    // Slips "through the door": shrinks towards its feet and slightly up.
+                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0.2f)
+                },
         ) {
             app.tenet.android.core.designsystem.component.CompanionCreature(
                 kind = kind,
@@ -196,13 +245,15 @@ fun CompanionOverlay(
         }
 
         AnimatedVisibility(
-            visible = visible && chatOpen,
+            visible = presence.value == 1f && chatOpen,
             enter = slideInVertically { it } + fadeIn(),
             exit = slideOutVertically { it } + fadeOut(),
             modifier = Modifier.align(Alignment.BottomCenter).imePadding().navigationBarsPadding(),
         ) {
             ChatPanel(
                 name = kind.label,
+                kind = kind,
+                request = request,
                 busy = busy,
                 reply = reply,
                 onSend = { viewModel.send(it, kind.label) },
@@ -218,7 +269,15 @@ fun CompanionOverlay(
 private val CreatureSize = 64.dp
 
 @Composable
-private fun ChatPanel(name: String, busy: Boolean, reply: String?, onSend: (String) -> Unit, onClose: () -> Unit) {
+private fun ChatPanel(
+    name: String,
+    kind: app.tenet.android.core.designsystem.component.CompanionKind,
+    request: String?,
+    busy: Boolean,
+    reply: String?,
+    onSend: (String) -> Unit,
+    onClose: () -> Unit,
+) {
     var text by remember { mutableStateOf("") }
     val dictation = rememberDictation("Was soll $name tun?") { onSend(it) }
     val submit = {
@@ -236,10 +295,17 @@ private fun ChatPanel(name: String, busy: Boolean, reply: String?, onSend: (Stri
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                if (busy) LoadingIndicator(Modifier.size(32.dp))
                 IconButton(onClick = onClose, shapes = IconButtonDefaults.shapes()) {
                     Icon(Icons.Outlined.Close, contentDescription = "Schließen")
                 }
+            }
+            // Working: the request and an animated "doing it" view take the input's place.
+            if (busy) {
+                WorkingView(name, kind, request)
+                return@Column
+            }
+            if (reply != null && request != null) {
+                Text("„$request“", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
             }
             Text(
                 reply ?: "Hi! Sag z. B. „100 g Haferflocken zum Frühstück“, „schreib Milch auf die Einkaufsliste“ oder frag mich zu deinem Training.",
@@ -266,6 +332,37 @@ private fun ChatPanel(name: String, busy: Boolean, reply: String?, onSend: (Stri
                     }
                 }
             }
+        }
+    }
+}
+
+/** While the agent works: the creature thinks, a wavy bar runs and the steps change. */
+@Composable
+private fun WorkingView(name: String, kind: app.tenet.android.core.designsystem.component.CompanionKind, request: String?) {
+    val steps = listOf("liest deine Nachricht", "schaut in deine Daten", "fragt die KI", "trägt es ein")
+    var step by remember { mutableStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1_600)
+            step = (step + 1).coerceAtMost(steps.lastIndex)
+        }
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        app.tenet.android.core.designsystem.component.CompanionCreature(
+            kind = kind,
+            walking = true,
+            thinking = true,
+            facingLeft = false,
+            modifier = Modifier.size(56.dp),
+        )
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            request?.let {
+                Text("„$it“", style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            }
+            androidx.compose.animation.AnimatedContent(targetState = step, label = "step") { i ->
+                Text("$name ${steps[i]} …", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            }
+            androidx.compose.material3.LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
     }
 }
