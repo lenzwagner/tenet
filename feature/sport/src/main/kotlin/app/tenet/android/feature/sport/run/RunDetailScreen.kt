@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.run
 
+import app.tenet.android.core.designsystem.component.CardHeader
 import app.tenet.android.core.designsystem.theme.TenetCard
 import kotlinx.coroutines.launch
 import app.tenet.android.core.designsystem.component.LocalAppSnackbar
@@ -332,11 +333,7 @@ private fun Stat(value: String, label: String, modifier: Modifier = Modifier) {
 private fun SectionCard(icon: ImageVector, title: String, content: @Composable () -> Unit) {
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(8.dp))
-                Text(title, style = MaterialTheme.typography.titleMedium)
-            }
+            CardHeader(icon, title)
             content()
         }
     }

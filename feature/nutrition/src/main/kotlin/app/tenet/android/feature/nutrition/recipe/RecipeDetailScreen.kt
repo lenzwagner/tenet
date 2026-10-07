@@ -1,5 +1,7 @@
 package app.tenet.android.feature.nutrition.recipe
 
+import androidx.compose.material.icons.outlined.LocalFireDepartment
+import app.tenet.android.core.designsystem.component.CardHeader
 import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.graphics.luminance
@@ -447,9 +449,9 @@ fun RecipeDetailScreen(
                 Text("Kochmodus starten")
             }
 
-            if (d.hasNutrition) ElevatedCard(Modifier.fillMaxWidth()) {
+            if (d.hasNutrition) app.tenet.android.core.designsystem.theme.TenetCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Pro Portion", style = MaterialTheme.typography.labelLarge)
+                    CardHeader(Icons.Outlined.LocalFireDepartment, "Nährwerte", meta = "Pro Portion")
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Nutrient("${d.perServing.kcal.roundToInt()}", "kcal")
                         Nutrient(d.perServing.protein.fmt(), "Eiweiß g")

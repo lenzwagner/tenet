@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport
 
+import app.tenet.android.core.designsystem.component.CardHeader
 import app.tenet.android.core.designsystem.theme.TenetCard
 import app.tenet.android.feature.sport.run.PlanWeekCard
 import app.tenet.android.feature.sport.run.NextRunCard
@@ -235,17 +236,14 @@ private fun VolumeCard(state: RunningUiState) {
     val periods = if (monthly) state.monthlyVolume else state.weeklyVolume
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.BarChart, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(8.dp))
-                Text("Umfang", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            CardHeader(Icons.Outlined.BarChart, "Umfang", action = {
                 SegmentedSelector(
                     segments = listOf(Segment("Woche"), Segment("Monat")),
                     selectedIndex = if (monthly) 1 else 0,
                     onSelect = { monthly = it == 1 },
                     modifier = Modifier.width(168.dp),
                 )
-            }
+            })
             val current = periods.lastOrNull()
             if (current == null || periods.all { it.runs == 0 }) {
                 Text(
@@ -357,15 +355,7 @@ private fun formatHours(sec: Int): String = "%d:%02d h".format(sec / 3600, (sec 
 private fun PlanCard(state: RunningUiState, onCreatePlan: () -> Unit, onOpenPlan: (String) -> Unit) {
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.AutoMirrored.Outlined.DirectionsRun,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("Trainingsplan", style = MaterialTheme.typography.titleMedium)
-            }
+            CardHeader(Icons.AutoMirrored.Outlined.DirectionsRun, "Trainingsplan")
 
             val plan = state.overview.plan
             if (plan == null) {
@@ -447,15 +437,7 @@ private fun PlanCard(state: RunningUiState, onCreatePlan: () -> Unit, onOpenPlan
 private fun RecentRunsCard(state: RunningUiState, onOpenRun: (String) -> Unit) {
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Outlined.History,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.tertiary,
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("Letzte Läufe", style = MaterialTheme.typography.titleMedium)
-            }
+            CardHeader(Icons.Outlined.History, "Letzte Läufe")
             val runs = state.overview.runs
             if (runs.isEmpty()) {
                 Text(

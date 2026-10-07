@@ -1,5 +1,7 @@
 package app.tenet.android.feature.sport.calisthenics
 
+import androidx.compose.material.icons.automirrored.outlined.FormatListBulleted
+import app.tenet.android.core.designsystem.component.CardHeader
 import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
@@ -500,7 +502,7 @@ private fun StationList(info: CsStrengthInfo, elapsedSec: Long, onSwap: (Strengt
 
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("Stationen", style = MaterialTheme.typography.titleMedium)
+            CardHeader(Icons.AutoMirrored.Outlined.FormatListBulleted, "Stationen", meta = "${info.stations.size}")
             info.stations.forEachIndexed { index, station ->
                 val active = index == currentIndex
                 Row(

@@ -1,5 +1,8 @@
 package app.tenet.android.feature.journal
 
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material.icons.outlined.Bedtime
+import app.tenet.android.core.designsystem.component.CardHeader
 import app.tenet.android.core.designsystem.theme.TenetCard
 import app.tenet.android.core.database.entity.EntryType
 import app.tenet.android.core.designsystem.theme.JournalReading
@@ -345,15 +348,11 @@ private fun WeeklyGoal(done: Int) {
 @Composable
 private fun OnThisDayCard(entries: List<Entry>, actions: EntryActions) {
     TenetCard(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+        colors = app.tenet.android.core.designsystem.theme.tenetAccentCardColors(MaterialTheme.colorScheme.tertiaryContainer),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.History, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("An diesem Tag", style = MaterialTheme.typography.titleMedium)
-            }
+            CardHeader(Icons.Outlined.History, "An diesem Tag", color = app.tenet.android.core.designsystem.theme.cardTint(app.tenet.android.core.designsystem.theme.HealthTint.MIND, LocalContentColor.current))
             entries.take(3).forEach { entry ->
                 val years = LocalDate.now().year - runCatching { LocalDate.parse(entry.entryDate).year }.getOrDefault(LocalDate.now().year)
                 Surface(
@@ -399,7 +398,7 @@ private fun MoodCalendar(moods: Map<String, Float>, onDay: (LocalDate) -> Unit) 
     val today = LocalDate.now()
     val surface = MaterialTheme.colorScheme.surfaceContainerHigh
 
-    ElevatedCard(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { month = ym.minusMonths(1).toString() }, shapes = IconButtonDefaults.shapes()) {
@@ -556,17 +555,16 @@ internal fun SleepNightCard(
     val zone = java.time.ZoneId.systemDefault()
     val fmt = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
     val colors = MaterialTheme.colorScheme
-    TenetCard(colors = CardDefaults.cardColors(containerColor = colors.secondaryContainer), modifier = Modifier.fillMaxWidth()) {
+    val onCard = if (app.tenet.android.core.designsystem.theme.isClearStyle) colors.onSurface else colors.onSecondaryContainer
+    TenetCard(colors = app.tenet.android.core.designsystem.theme.tenetAccentCardColors(colors.secondaryContainer), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = colors.onSecondaryContainer, modifier = Modifier.weight(1f))
-                Text(
-                    night.start.atZone(zone).format(fmt) + " – " + night.end.atZone(zone).format(fmt),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = colors.onSecondaryContainer,
-                )
-            }
-            Text(night.durationText, style = MaterialTheme.typography.displaySmall, color = colors.onSecondaryContainer)
+            CardHeader(
+                Icons.Outlined.Bedtime,
+                title,
+                color = app.tenet.android.core.designsystem.theme.cardTint(app.tenet.android.core.designsystem.theme.HealthTint.SLEEP, onCard),
+                meta = night.start.atZone(zone).format(fmt) + " – " + night.end.atZone(zone).format(fmt),
+            )
+            Text(night.durationText, style = MaterialTheme.typography.displaySmall, color = onCard)
             val phases = listOfNotNull(
                 night.deepMin?.let { Triple("Tief", it, colors.primary) },
                 night.lightMin?.let { Triple("Leicht", it, colors.primary.copy(alpha = 0.55f)) },
@@ -598,13 +596,9 @@ private fun DreamPatternsCard(state: JournalUiState) {
     val total = state.dreams.size
     val lucid = state.dreamMeta.values.count { it.lucid }
     val nightmares = state.dreamMeta.values.count { it.nightmare }
-    ElevatedCard(Modifier.fillMaxWidth()) {
+    TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                ShapeIcon(Icons.Outlined.Insights)
-                Spacer(Modifier.width(12.dp))
-                Text("Muster", style = MaterialTheme.typography.titleMedium)
-            }
+            CardHeader(Icons.Outlined.Insights, "Muster", color = app.tenet.android.core.designsystem.theme.cardTint(app.tenet.android.core.designsystem.theme.HealthTint.SLEEP), meta = "${total} Träume")
             Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
                 Stat("$total", "Träume")
                 Stat("${if (total == 0) 0 else lucid * 100 / total} %", "Luzid")

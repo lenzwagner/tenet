@@ -1,10 +1,10 @@
 # Tenet – offene ToDos
 
-Stand: 07.10.2026, Version 1.0.0.15 (auf `main` gepusht, APK `tenet-1.0.0.15-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 07.10.2026, Version 1.0.0.16 (auf `main` gepusht, APK `tenet-1.0.0.16-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Übergabe (Session 06.–07.10.2026)
 
-**Stand:** 1.0.0.6 – 1.0.0.15 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
+**Stand:** 1.0.0.6 – 1.0.0.16 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
 
 **Wichtig vor dem nächsten Update am Handy:**
 - Seit 1.0.0.6 ist die Datenbank mit SQLCipher verschlüsselt (Rohschlüssel, im Android Keystore gewrappt, `no_backup/db.key`). Die alte Klartext-DB wird beim ersten Start einmal umgewandelt. Im Emulator geprüft, mit echten Daten noch nicht → vorher mit Google anmelden und synchronisieren.
@@ -16,7 +16,7 @@ Stand: 07.10.2026, Version 1.0.0.15 (auf `main` gepusht, APK `tenet-1.0.0.15-rel
 - Baseline Profile neu erzeugen nur auf dem Emulator: `ANDROID_SERIAL=emulator-5580 ./gradlew :app:generateReleaseBaselineProfile` (deinstalliert die App dort!).
 - Die `preview-*.png` im Projektordner gehören nicht zu Tenet und werden bewusst nicht committet.
 
-**Design-Stand:** Stil „Klar“ (Standard; „Expressiv“ in Optionen → Darstellung → Stil): neutrale Flächen, Inter, iOS-Schalter/Segmente/Gruppen. Seitenkopf wie Apple Health: Farbverlauf je Bereich (`HeaderImage.wash`, `pageWash`, `SubPageWash`), großer Titel klappt in kleine Leiste; auf allen Haupt- und Unterseiten.
+**Design-Stand:** Stil „Klar“ (Standard; „Expressiv“ in Optionen → Darstellung → Stil): neutrale Flächen, Inter, iOS-Schalter/Segmente/Gruppen. Seitenkopf wie Apple Health: Farbverlauf je Bereich (`HeaderImage.wash`, `pageWash`, `SubPageWash`), großer Titel klappt in kleine Leiste; auf allen Haupt- und Unterseiten. Karten wie Health-Zusammenfassung: `CardHeader` (kleines Piktogramm + Titel in Kategorie-Farbe `HealthTint`, graue Info rechts, Chevron), 20-dp-Ecken (`tenetCardShape`), getönte Karten in „Klar“ weiß (`tenetAccentCardColors`).
 
 **Offene Ideen aus der Session (nicht begonnen):**
 - Übergänge vom Element aus (Rezept-Kachel/Notiz wächst in die Detailseite, Shared Element)
@@ -96,7 +96,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Alte APKs im Projektordner aufräumen (~40 Stück, je ~10–18 MB, enthalten den NIM-Schlüssel)
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.15)
+## Zuletzt erledigt (0.5.0 – 1.0.0.16)
+
+- 1.0.0.16: Karten wie in Apple Health – Kopfzeile mit kleinem Piktogramm und Titel in der Kategorie-Farbe (Sport orange, Ernährung grün, Journal türkis, Schlaf/Traum lila, Serien orange, Körper pink, Wasser/Info blau), graue Info rechts und Pfeil bei antippbaren Karten; rundere Ecken; auf Heute, Sport (Gym, Calisthenics, Laufen, Plan, Fortschritt, Zusammenfassung), Ernährung (Ringe, Wasser, Mahlzeiten, Auswertung, Rezept, Optimierer) und Journal (Schlaf, An diesem Tag, Muster, Impuls)
 
 - 1.0.0.15: Farbverlauf auch auf allen Unterseiten (Detailseiten, Editoren, Plan, Training, Optimierer, Suche …) in der Farbe ihres Bereichs; Kopfleisten durchsichtig, beim Scrollen in Seitenfarbe; AMOLED-Träume bleiben schwarz
 

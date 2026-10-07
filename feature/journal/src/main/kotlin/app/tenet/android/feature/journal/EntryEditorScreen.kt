@@ -1,5 +1,6 @@
 package app.tenet.android.feature.journal
 
+import app.tenet.android.core.designsystem.component.CardHeader
 import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.outlined.Add
@@ -763,15 +764,11 @@ private fun DiarySection(
         var promptOffset by rememberSaveable { mutableIntStateOf(0) }
         val prompt = promptOfDay(promptOffset)
         TenetCard(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+            colors = app.tenet.android.core.designsystem.theme.tenetAccentCardColors(MaterialTheme.colorScheme.tertiaryContainer),
             modifier = Modifier.fillMaxWidth(),
         ) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.AutoAwesome, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Impuls", style = MaterialTheme.typography.labelLarge)
-                }
+                CardHeader(Icons.Outlined.AutoAwesome, "Impuls", color = app.tenet.android.core.designsystem.theme.cardTint(app.tenet.android.core.designsystem.theme.HealthTint.MIND, androidx.compose.material3.LocalContentColor.current))
                 Text(prompt, style = MaterialTheme.typography.titleMedium)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilledTonalButton(onClick = { onUsePrompt(prompt) }, shapes = ButtonDefaults.shapes()) {

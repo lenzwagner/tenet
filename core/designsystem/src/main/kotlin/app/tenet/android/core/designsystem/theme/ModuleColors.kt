@@ -101,8 +101,13 @@ fun areaCardColors(area: AppArea): CardColors =
  */
 @Composable
 fun AreaTheme(area: AppArea, content: @Composable () -> Unit) {
-    // Two-tone and "Klar": the app scheme already is what every area uses.
-    if (LocalTwoTone.current || LocalDesignStyle.current == app.tenet.android.core.common.DesignStyle.CLEAR) return content()
+    // "Klar": neutral scheme, only card headers take the area's Health color.
+    if (LocalDesignStyle.current == app.tenet.android.core.common.DesignStyle.CLEAR) {
+        val tint = healthTint(area.tint, MaterialTheme.colorScheme.surface.luminance() < 0.5f)
+        return androidx.compose.runtime.CompositionLocalProvider(LocalCardTint provides tint, content = content)
+    }
+    // Two-tone: the app scheme already is what every area uses.
+    if (LocalTwoTone.current) return content()
     val base = MaterialTheme.colorScheme
     val colors = areaColors(area)
     val tint = colors.container
@@ -145,3 +150,39 @@ fun AreaTheme(area: AppArea, content: @Composable () -> Unit) {
         )
     }
 }
+
+/**
+ * Category colors of the card headers in "Klar", after Apple Health
+ * (Activity orange, Sleep indigo, Mind teal, …).
+ */
+enum class HealthTint(val light: Long, val dark: Long) {
+    ACTIVITY(0xFFF2591D, 0xFFFF7A3D),
+    SLEEP(0xFF5856D6, 0xFF7D7AFF),
+    MIND(0xFF1FA894, 0xFF4CD3BE),
+    NUTRITION(0xFF28A745, 0xFF4CD964),
+    BODY(0xFFD9418C, 0xFFFF6BAE),
+    STREAK(0xFFF08A00, 0xFFFFA733),
+    INFO(0xFF1E88D9, 0xFF5AC8FA),
+}
+
+val AppArea.tint: HealthTint
+    get() = when (this) {
+        AppArea.SPORT -> HealthTint.ACTIVITY
+        AppArea.NUTRITION -> HealthTint.NUTRITION
+        AppArea.JOURNAL -> HealthTint.MIND
+    }
+
+fun healthTint(tint: HealthTint, dark: Boolean): Color = Color(if (dark) tint.dark else tint.light)
+
+/** Header color for a card in [tint]: the Health color in "Klar", else the area accent ([fallback]). */
+@Composable
+@ReadOnlyComposable
+fun cardTint(tint: HealthTint, fallback: Color = MaterialTheme.colorScheme.primary): Color =
+    if (LocalDesignStyle.current == app.tenet.android.core.common.DesignStyle.CLEAR) {
+        healthTint(tint, MaterialTheme.colorScheme.surface.luminance() < 0.5f)
+    } else {
+        fallback
+    }
+
+/** Header color of cards in the current area (set by [AreaTheme] in "Klar"). */
+val LocalCardTint = staticCompositionLocalOf<Color?> { null }

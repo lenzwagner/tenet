@@ -1,5 +1,8 @@
 package app.tenet.android.feature.sport.calisthenics
 
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.MilitaryTech
+import app.tenet.android.core.designsystem.component.CardHeader
 import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material3.Badge
@@ -262,7 +265,7 @@ fun SkillSessionScreen(
                     val setNumbers = state.sets.associate { it.id to it.sortOrder + 1 }
                     TenetCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Formvideos", style = MaterialTheme.typography.titleMedium)
+                            CardHeader(Icons.Outlined.Videocam, "Formvideos", meta = "${videos.size}")
                             FormVideoStrip(
                                 videos = videos.sortedByDescending { it.createdAt },
                                 caption = { v -> v.setId?.let { id -> setNumbers[id]?.let { "Satz $it" } } ?: "Ohne Satz" },
@@ -290,7 +293,7 @@ private fun CriterionCard(
 ) {
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Aufstiegskriterium", style = MaterialTheme.typography.titleMedium)
+            CardHeader(Icons.Outlined.MilitaryTech, "Aufstiegskriterium")
             Text(
                 text = criterionText,
                 style = MaterialTheme.typography.bodyMedium,
@@ -362,7 +365,7 @@ private fun HoldTimerCard(targetSeconds: Int, onHoldEnd: (Long?) -> Unit = {}) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("Hold-Timer", style = MaterialTheme.typography.titleMedium)
+            CardHeader(Icons.Outlined.Timer, "Hold-Timer")
             Text(
                 text = "%d:%02d".format(remaining / 60, remaining % 60),
                 style = MaterialTheme.typography.displayMedium,

@@ -1,5 +1,7 @@
 package app.tenet.android.feature.sport.gym
 
+import androidx.compose.material.icons.outlined.EmojiEvents
+import app.tenet.android.core.designsystem.component.CardHeader
 import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -131,11 +133,9 @@ fun WorkoutSummaryScreen(
                     TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                RecordBadge()
-                                Spacer(Modifier.width(12.dp))
-                                Text(
+                                CardHeader(
+                                    Icons.Outlined.EmojiEvents,
                                     if (prs.size == 1) "Neuer Rekord" else "${prs.size} neue Rekorde",
-                                    style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer,
                                 )
                             }
@@ -279,11 +279,7 @@ private fun Stat(value: String, label: String, modifier: Modifier) {
 
 @Composable
 internal fun SectionTitle(icon: ImageVector, text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(8.dp))
-        Text(text, style = MaterialTheme.typography.titleMedium)
-    }
+    CardHeader(icon, text)
 }
 
 internal fun kgText(v: Float) = if (v % 1f == 0f) "${v.toInt()} kg" else String.format(Locale.GERMAN, "%.1f kg", v)

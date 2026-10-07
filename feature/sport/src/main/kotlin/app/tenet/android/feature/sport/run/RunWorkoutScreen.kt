@@ -1,5 +1,7 @@
 package app.tenet.android.feature.sport.run
 
+import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
+import app.tenet.android.core.designsystem.component.CardHeader
 import androidx.compose.material.icons.outlined.Restaurant
 import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.foundation.layout.Arrangement
@@ -114,11 +116,7 @@ class RunWorkoutViewModel @Inject constructor(
 private fun FuelCard(a: app.tenet.android.core.common.RunFueling.Advice) {
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Restaurant, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(8.dp))
-                Text("Verpflegung", style = MaterialTheme.typography.titleMedium)
-            }
+            CardHeader(Icons.Outlined.Restaurant, "Verpflegung", color = app.tenet.android.core.designsystem.theme.cardTint(app.tenet.android.core.designsystem.theme.HealthTint.NUTRITION))
             FuelRow(
                 "Kohlenhydrate vorher",
                 a.carbsBeforeG?.let { "${it.first}–${it.last} g" } ?: "nicht nötig",
@@ -247,7 +245,7 @@ fun RunWorkoutScreen(
                 item(key = "done") {
                     TenetCard(onClick = { onOpenRun(r.session.id) }, modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Dein Lauf", style = MaterialTheme.typography.titleMedium)
+                            CardHeader(Icons.AutoMirrored.Outlined.DirectionsRun, "Dein Lauf", chevron = true)
                             Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                                 SmallMetric(kmText(r.run.distanceM.roundToInt()), "gelaufen", "geplant ≈ ${kmText(u.workout.estDistanceM)}")
                                 SmallMetric(minText(r.run.durationSec), "Dauer", "geplant ≈ ${minText(u.workout.estDurationSec)}")
@@ -321,15 +319,15 @@ fun RunWorkoutScreen(
             }
             item(key = "fuel") { fueling?.let { FuelCard(it) } }
             item(key = "why") {
-                TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
+                TenetCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Outlined.Lightbulb, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Warum dieses Training?", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onTertiaryContainer)
-                        }
-                        Text(u.workout.purpose, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onTertiaryContainer)
-                        Text(u.workout.feel, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                        CardHeader(
+                            Icons.Outlined.Lightbulb,
+                            "Warum dieses Training?",
+                            color = app.tenet.android.core.designsystem.theme.cardTint(app.tenet.android.core.designsystem.theme.HealthTint.INFO),
+                        )
+                        Text(u.workout.purpose, style = MaterialTheme.typography.bodyMedium)
+                        Text(u.workout.feel, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -391,11 +389,7 @@ private fun SmallMetric(value: String, label: String, sub: String) {
 
 @Composable
 private fun SectionTitle(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(8.dp))
-        Text(text, style = MaterialTheme.typography.titleMedium)
-    }
+    CardHeader(icon, text)
 }
 
 private fun minOrSec(sec: Int) = if (sec < 60 || sec % 60 != 0) "${sec} s".let { if (sec >= 60) "${sec / 60}:${"%02d".format(sec % 60)} min" else it } else "${sec / 60} min"

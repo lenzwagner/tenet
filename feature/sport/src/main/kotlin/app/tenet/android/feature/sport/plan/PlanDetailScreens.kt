@@ -1,5 +1,7 @@
 package app.tenet.android.feature.sport.plan
 
+import androidx.compose.material.icons.outlined.Speed
+import app.tenet.android.core.designsystem.component.CardHeader
 import androidx.compose.foundation.layout.Box
 import app.tenet.android.core.common.RunPlanMath
 import app.tenet.android.core.designsystem.theme.TenetCard
@@ -205,7 +207,7 @@ private fun FitCard(s: RunPlanUi, fit: app.tenet.android.core.common.PlanFit.Ass
 private fun ZonesCard(zones: List<PaceZoneUi>) {
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Tempo-Zonen diese Woche", style = MaterialTheme.typography.titleMedium)
+            CardHeader(Icons.Outlined.Speed, "Tempo-Zonen", meta = "Diese Woche")
             zones.forEach { z ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
@@ -559,11 +561,7 @@ private fun ExerciseProgressCard(ex: GymPlanStats.ExerciseStat, next: OverloadMa
 
 @Composable
 private fun SectionTitle(icon: ImageVector, title: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(8.dp))
-        Text(title, style = MaterialTheme.typography.titleMedium)
-    }
+    CardHeader(icon, title)
 }
 
 @Composable

@@ -2,6 +2,9 @@ package app.tenet.android.core.designsystem.component
 
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -320,4 +324,56 @@ fun CompactNumberField(
             }
         },
     )
+}
+
+/**
+ * Card header after Apple Health's summary cards: a small pictogram and the
+ * title in the accent color, grey [meta] (time, date, count) and a chevron
+ * on the right when the card opens something. [action] takes an icon button
+ * or similar in place of the chevron.
+ */
+@Composable
+fun CardHeader(
+    icon: ImageVector,
+    title: String,
+    modifier: Modifier = Modifier,
+    color: androidx.compose.ui.graphics.Color = app.tenet.android.core.designsystem.theme.LocalCardTint.current ?: MaterialTheme.colorScheme.primary,
+    meta: String? = null,
+    chevron: Boolean = false,
+    action: (@Composable () -> Unit)? = null,
+) {
+    androidx.compose.foundation.layout.Row(
+        modifier = modifier.fillMaxWidth().heightIn(min = 24.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
+        androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
+        Text(
+            title,
+            style = MaterialTheme.typography.titleSmall.copy(fontSize = 16.sp),
+            color = color,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        if (meta != null) {
+            Text(
+                meta,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                modifier = Modifier.padding(start = 8.dp),
+            )
+        }
+        if (action != null) {
+            action()
+        } else if (chevron) {
+            Icon(
+                androidx.compose.material.icons.Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.padding(start = 2.dp).size(22.dp),
+            )
+        }
+    }
 }

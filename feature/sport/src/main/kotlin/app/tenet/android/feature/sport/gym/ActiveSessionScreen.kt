@@ -628,7 +628,7 @@ private fun ExerciseCard(
     onNote: (String) -> Unit,
 ) {
     var noteOpen by rememberSaveable(block.sessionExerciseId) { mutableStateOf(false) }
-    ElevatedCard(Modifier.fillMaxWidth()) {
+    app.tenet.android.core.designsystem.theme.TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // Photo → records & history (like Hevy).

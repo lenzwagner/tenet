@@ -1,5 +1,7 @@
 package app.tenet.android.feature.nutrition
 
+import androidx.compose.material.icons.outlined.LocalFireDepartment
+import app.tenet.android.core.designsystem.component.CardHeader
 import app.tenet.android.core.designsystem.header.pageWash
 import app.tenet.android.core.designsystem.theme.TenetCard
 import app.tenet.android.core.designsystem.component.TenetFabMenu
@@ -289,7 +291,12 @@ private fun TrackerPage(
             )
         }
         item(key = "rings") {
-            ElevatedCard(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+            TenetCard(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                CardHeader(
+                    Icons.Outlined.LocalFireDepartment,
+                    "Kalorien & Makros",
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp),
+                )
                 NutritionRings(
                     kcal = state.totals.kcal,
                     goalKcal = state.goal.kcal,
@@ -437,32 +444,31 @@ private fun DaySwitcher(
 @Composable
 private fun WaterCard(ml: Int, goalMl: Int, onAdd: () -> Unit, onRemove: () -> Unit, onEditGoal: () -> Unit) {
     TenetCard(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-        Row(Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            ShapeIcon(
-                Icons.Outlined.LocalDrink,
-                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-            )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    "Wasser · ${"%.2f".format(ml / 1000f).replace('.', ',')} / ${"%.1f".format(goalMl / 1000f).replace('.', ',')} l",
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                LinearWavyProgressIndicator(
-                    progress = { (ml.toFloat() / goalMl).coerceIn(0f, 1f) },
-                    color = MaterialTheme.colorScheme.tertiary,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+        val water = app.tenet.android.core.designsystem.theme.cardTint(app.tenet.android.core.designsystem.theme.HealthTint.INFO, MaterialTheme.colorScheme.tertiary)
+        Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 4.dp, bottom = 12.dp)) {
+            CardHeader(Icons.Outlined.LocalDrink, "Wasser", color = water, meta = "Ziel ${"%.1f".format(goalMl / 1000f).replace('.', ',')} l", action = {
+                TooltipIconButton(Icons.Outlined.Edit, "Wasserziel ändern", onEditGoal)
+            })
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "${"%.2f".format(ml / 1000f).replace('.', ',')} l",
+                        style = MaterialTheme.typography.headlineSmall,
+                    )
+                    LinearWavyProgressIndicator(
+                        progress = { (ml.toFloat() / goalMl).coerceIn(0f, 1f) },
+                        color = water,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                IconButton(onClick = onRemove, enabled = ml > 0, shapes = IconButtonDefaults.shapes()) {
+                    Icon(Icons.Outlined.Remove, contentDescription = "250 ml weniger")
+                }
+                FilledTonalIconButton(onClick = onAdd, shapes = IconButtonDefaults.shapes()) {
+                    Icon(Icons.Outlined.Add, contentDescription = "Glas (250 ml) trinken")
+                }
             }
-            Spacer(Modifier.width(8.dp))
-            IconButton(onClick = onRemove, enabled = ml > 0, shapes = IconButtonDefaults.shapes()) {
-                Icon(Icons.Outlined.Remove, contentDescription = "250 ml weniger")
-            }
-            FilledTonalIconButton(onClick = onAdd, shapes = IconButtonDefaults.shapes()) {
-                Icon(Icons.Outlined.Add, contentDescription = "Glas (250 ml) trinken")
-            }
-            TooltipIconButton(Icons.Outlined.Edit, "Wasserziel ändern", onEditGoal)
         }
     }
 }
@@ -490,20 +496,10 @@ private fun MealCard(
     ) {
         Column(
             Modifier
-                .padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = if (logs.isEmpty()) 8.dp else 12.dp)
+                .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 12.dp)
                 .animateContentSize(MaterialTheme.motionScheme.defaultSpatialSpec()),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                ShapeIcon(icon.icon)
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(title, style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        if (logs.isEmpty()) "Noch nichts eingetragen" else "$kcal kcal · ${logs.size} ${if (logs.size == 1) "Eintrag" else "Einträge"}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+            CardHeader(icon.icon, title, meta = if (logs.isEmpty()) null else "$kcal kcal", action = {
                 FilledTonalIconButton(onClick = onAdd, shapes = IconButtonDefaults.shapes()) {
                     Icon(Icons.Outlined.Add, contentDescription = "Zu $title hinzufügen")
                 }
@@ -519,6 +515,19 @@ private fun MealCard(
                         )
                     }
                 }
+            })
+            if (logs.isEmpty()) {
+                Text(
+                    "Noch nichts eingetragen",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                Text(
+                    "${logs.size} ${if (logs.size == 1) "Eintrag" else "Einträge"}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             if (logs.isNotEmpty()) {
                 Spacer(Modifier.height(10.dp))
@@ -626,19 +635,16 @@ private fun WeekCard(state: NutritionUiState, onDay: (LocalDate) -> Unit) {
     val onTarget = logged.count { it.kcal in goal * 0.9f..goal * 1.1f }
     val avgProtein = if (logged.isEmpty()) 0 else (logged.sumOf { it.protein.toDouble() } / logged.size).roundToInt()
 
-    ElevatedCard(Modifier.fillMaxWidth().padding(top = 16.dp)) {
+    TenetCard(Modifier.fillMaxWidth().padding(top = 16.dp)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                ShapeIcon(Icons.Outlined.QueryStats)
-                Spacer(Modifier.width(12.dp))
-                Text("Auswertung", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            CardHeader(Icons.Outlined.QueryStats, "Auswertung", action = {
                 SegmentedSelector(
                     segments = listOf(Segment("7 Tage"), Segment("30 Tage")),
                     selectedIndex = if (month) 1 else 0,
                     onSelect = { month = it == 1 },
                     modifier = Modifier.width(176.dp),
                 )
-            }
+            })
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 Nutrient("$avg", "Ø kcal")
                 Nutrient("$avgProtein", "Ø Eiweiß g")

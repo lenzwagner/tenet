@@ -1,5 +1,7 @@
 package app.tenet.android.feature.sport.gym
 
+import androidx.compose.material.icons.outlined.CalendarMonth
+import app.tenet.android.core.designsystem.component.CardHeader
 import androidx.compose.runtime.derivedStateOf
 import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.material3.Surface
@@ -276,18 +278,7 @@ private fun TodayCard(
 ) {
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Outlined.FitnessCenter,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    if (trainingDayStatus(TrainingDays.parse(overview.plan?.trainingDays)) != null) "Heute Ruhetag" else "Heute geplant",
-                    style = MaterialTheme.typography.titleMedium,
-                )
-            }
+            CardHeader(Icons.Outlined.FitnessCenter, if (trainingDayStatus(TrainingDays.parse(overview.plan?.trainingDays)) != null) "Heute Ruhetag" else "Heute geplant")
             val plan = overview.plan
             if (plan == null) {
                 Text(
@@ -351,21 +342,18 @@ private fun RoutineCard(
     val exercisesById = overview.exercises.associateBy { it.id }
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Trainingsplan", style = MaterialTheme.typography.titleMedium)
-                    // Rotating split: which unit is next, and what follows.
-                    if (overview.workouts.size > 1) {
-                        val next = overview.mainWorkout
-                        val after = overview.workouts.getOrNull((overview.workouts.indexOf(next) + 1) % overview.workouts.size)
-                        Text(
-                            "Als Nächstes: ${next?.title} · danach ${after?.title}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
+            CardHeader(Icons.Outlined.CalendarMonth, "Trainingsplan", action = {
                 TextButton(shapes = ButtonDefaults.shapes(), onClick = onEdit) { Text("Bearbeiten") }
+            })
+            // Rotating split: which unit is next, and what follows.
+            if (overview.workouts.size > 1) {
+                val next = overview.mainWorkout
+                val after = overview.workouts.getOrNull((overview.workouts.indexOf(next) + 1) % overview.workouts.size)
+                Text(
+                    "Als Nächstes: ${next?.title} · danach ${after?.title}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             OutlinedButton(
                 shapes = ButtonDefaults.shapes(),
@@ -420,18 +408,11 @@ private fun SessionsCard(overview: GymOverview, onOpenSession: (String) -> Unit,
     val titles = overview.workouts.associate { it.id to it.title }
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Outlined.History,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.secondary,
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("Letzte Trainings", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                if (overview.sessions.size > 5) {
-                    TextButton(onClick = onOpenHistory, shapes = ButtonDefaults.shapes()) { Text("Alle anzeigen") }
-                }
-            }
+            CardHeader(Icons.Outlined.History, "Letzte Trainings", action = if (overview.sessions.size > 5) {
+                { TextButton(onClick = onOpenHistory, shapes = ButtonDefaults.shapes()) { Text("Alle anzeigen") } }
+            } else {
+                null
+            })
             if (overview.sessions.isEmpty()) {
                 Text(
                     text = "Noch kein abgeschlossenes Training.",
@@ -470,14 +451,8 @@ private fun MuscleWeekCard(muscles: List<Pair<String, Int>>) {
     if (muscles.isEmpty()) return
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.AccessibilityNew, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(8.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("Sätze pro Muskel", style = MaterialTheme.typography.titleMedium)
-                    Text("Diese Woche · Ziel 10–20 Sätze für Muskelaufbau", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
+            CardHeader(Icons.Outlined.AccessibilityNew, "Sätze pro Muskel", meta = "Diese Woche")
+            Text("Ziel 10–20 Sätze für Muskelaufbau", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             muscles.forEach { (muscle, sets) ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(muscle, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(96.dp))
@@ -502,15 +477,7 @@ private fun ProgressCard(overview: GymOverview) {
     }
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.AutoMirrored.Outlined.TrendingUp,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.tertiary,
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("Fortschritt", style = MaterialTheme.typography.titleMedium)
-            }
+            CardHeader(Icons.AutoMirrored.Outlined.TrendingUp, "Fortschritt")
 
             // Weekly training goal as an MD3 progress bar.
             val weekOver = sessionsThisWeek >= WEEKLY_SESSION_GOAL

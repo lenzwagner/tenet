@@ -1,5 +1,7 @@
 package app.tenet.android.feature.nutrition.optimizer
 
+import androidx.compose.material.icons.outlined.TrackChanges
+import app.tenet.android.core.designsystem.component.CardHeader
 import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
@@ -250,7 +252,7 @@ private fun FitCard(target: Macros, plan: MacroPlan?) {
     val total = plan?.total ?: Macros()
     TenetCard(Modifier.fillMaxWidth().animateContentSize()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Ziel", style = MaterialTheme.typography.titleMedium)
+            CardHeader(Icons.Outlined.TrackChanges, "Ziel", meta = "Plan vs. Ziel")
             FitRow("Kalorien", total.kcal, target.kcal, "kcal", RingColors.kcal)
             FitRow("Eiweiß", total.protein, target.protein, "g", RingColors.protein)
             FitRow("Kohlenhydrate", total.carbs, target.carbs, "g", RingColors.carbs)

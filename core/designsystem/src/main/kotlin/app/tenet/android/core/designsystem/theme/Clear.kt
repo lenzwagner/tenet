@@ -159,11 +159,30 @@ fun tenetCardColors(): CardColors =
         CardDefaults.cardColors()
     }
 
+/**
+ * Colors for a card that Expressive highlights with a tonal [container]:
+ * "Klar" keeps it a plain white card like Apple Health (its header carries
+ * the color instead).
+ */
+@Composable
+fun tenetAccentCardColors(container: Color, content: Color = androidx.compose.material3.contentColorFor(container)): CardColors =
+    if (isClearStyle) tenetCardColors()
+    else CardDefaults.cardColors(containerColor = container, contentColor = content)
+
+/**
+ * Card corners of the current look: "Klar" rounds them like the Apple Health
+ * summary cards; Expressive keeps M3's card shape.
+ */
+val tenetCardShape: Shape
+    @Composable @ReadOnlyComposable get() =
+        if (isClearStyle) androidx.compose.foundation.shape.RoundedCornerShape(androidx.compose.ui.unit.Dp(20f))
+        else MaterialTheme.shapes.medium
+
 /** [Card] with the look's default colors; use instead of a plain Card. */
 @Composable
 fun TenetCard(
     modifier: Modifier = Modifier,
-    shape: Shape = CardDefaults.shape,
+    shape: Shape = tenetCardShape,
     colors: CardColors = tenetCardColors(),
     elevation: CardElevation = CardDefaults.cardElevation(),
     border: BorderStroke? = null,
@@ -176,7 +195,7 @@ fun TenetCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    shape: Shape = CardDefaults.shape,
+    shape: Shape = tenetCardShape,
     colors: CardColors = tenetCardColors(),
     elevation: CardElevation = CardDefaults.cardElevation(),
     border: BorderStroke? = null,

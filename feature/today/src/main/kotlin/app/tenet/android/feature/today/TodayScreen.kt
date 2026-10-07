@@ -2,6 +2,9 @@ package app.tenet.android.feature.today
 
 import app.tenet.android.core.designsystem.header.pageWash
 import app.tenet.android.core.designsystem.theme.TenetCard
+import app.tenet.android.core.designsystem.theme.HealthTint
+import app.tenet.android.core.designsystem.theme.cardTint
+import app.tenet.android.core.designsystem.component.CardHeader
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
@@ -426,18 +429,15 @@ private fun DayDots(mark: DayMarks, onSelected: Boolean) {
 // ---- Cards --------------------------------------------------------------------
 
 @Composable
-private fun CardTitle(icon: ImageVector, title: String, action: (@Composable () -> Unit)? = null, iconShape: androidx.compose.ui.graphics.Shape? = null, containerColor: androidx.compose.ui.graphics.Color? = null, contentColor: androidx.compose.ui.graphics.Color? = null) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        ShapeIcon(
-            icon = icon,
-            containerShape = iconShape ?: MaterialShapes.Cookie4Sided.toShape(),
-            containerColor = containerColor ?: MaterialTheme.colorScheme.primaryContainer,
-            contentColor = contentColor ?: MaterialTheme.colorScheme.onPrimaryContainer,
-        )
-        Spacer(Modifier.width(12.dp))
-        Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-        action?.invoke()
-    }
+private fun CardTitle(
+    icon: ImageVector,
+    title: String,
+    tint: HealthTint,
+    action: (@Composable () -> Unit)? = null,
+    meta: String? = null,
+    chevron: Boolean = false,
+) {
+    CardHeader(icon = icon, title = title, color = cardTint(tint), meta = meta, chevron = chevron, action = action)
 }
 
 @Composable
@@ -458,13 +458,7 @@ private fun DreamCard(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            CardTitle(
-                icon = Icons.Outlined.NightsStay,
-                title = "Traum",
-                iconShape = MaterialShapes.Sunny.toShape(),
-                containerColor = MaterialTheme.colorScheme.tertiary,
-                contentColor = MaterialTheme.colorScheme.onTertiary,
-            )
+            CardTitle(icon = Icons.Outlined.NightsStay, title = "Traum", tint = HealthTint.SLEEP)
             if (dream != null) {
                 Surface(
                     onClick = { onOpen(dream) },
@@ -507,10 +501,9 @@ private fun DreamCard(
 
 @Composable
 private fun NutritionCard(state: TodayUiState, onAddFood: () -> Unit, onEditGoal: () -> Unit) {
-    val area = areaColors(AppArea.NUTRITION)
     TenetCard(Modifier.fillMaxWidth(), colors = areaCardColors(AppArea.NUTRITION)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            CardTitle(Icons.Outlined.Restaurant, "Ernährung", containerColor = area.container, contentColor = area.onContainer, action = {
+            CardTitle(Icons.Outlined.Restaurant, "Ernährung", HealthTint.NUTRITION, action = {
                 TooltipIconButton(icon = Icons.Outlined.Edit, contentDescription = "Tagesziel bearbeiten", onClick = onEditGoal)
             })
             NutritionRings(
@@ -551,10 +544,9 @@ private val Discipline.label: String
 /** Done sessions and what is still planned (any discipline), else the next unit. */
 @Composable
 private fun SportCard(state: TodayUiState, onOpenSport: () -> Unit, onStartRun: (String) -> Unit) {
-    val area = areaColors(AppArea.SPORT)
     TenetCard(onClick = onOpenSport, modifier = Modifier.fillMaxWidth(), colors = areaCardColors(AppArea.SPORT)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            CardTitle(Icons.Outlined.FitnessCenter, "Sport", containerColor = area.container, contentColor = area.onContainer)
+            CardTitle(Icons.Outlined.FitnessCenter, "Sport", HealthTint.ACTIVITY, chevron = true)
             val rows = state.sessions.map { s ->
                 Triple(
                     s.discipline,
@@ -640,9 +632,7 @@ private fun JournalCard(
             CardTitle(
                 Icons.Outlined.AutoStories,
                 "Journal",
-                iconShape = MaterialShapes.Sunny.toShape(),
-                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                HealthTint.MIND,
                 action = {
                     state.mood?.let { mood ->
                         Text(
@@ -692,20 +682,13 @@ private fun StreakCard(streaks: Streaks) {
     val dark = c.surface.luminance() < 0.5f
     TenetCard(
         Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
+        colors = if (app.tenet.android.core.designsystem.theme.isClearStyle) app.tenet.android.core.designsystem.theme.tenetCardColors() else CardDefaults.cardColors(
             containerColor = androidx.compose.ui.graphics.lerp(c.surfaceContainerLow, c.secondaryContainer, if (dark) 0.22f else 0.30f),
             contentColor = c.onSurface,
         ),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            CardTitle(
-                Icons.Outlined.LocalFireDepartment,
-                "Serien",
-                iconShape = MaterialShapes.Burst.toShape(),
-                // Not the error red: it would clash with the area colors around it.
-                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-            )
+            CardTitle(Icons.Outlined.LocalFireDepartment, "Serien", HealthTint.STREAK)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 StreakStat(streaks.diaryDays, if (streaks.diaryDays == 1) "Tag" else "Tage", "Tagebuch", Icons.Outlined.AutoStories, AppArea.JOURNAL)
                 StreakStat(streaks.trackingDays, if (streaks.trackingDays == 1) "Tag" else "Tage", "Ernährung", Icons.Outlined.RestaurantMenu, AppArea.NUTRITION)

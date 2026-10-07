@@ -1,5 +1,7 @@
 package app.tenet.android.feature.sport.gym
 
+import androidx.compose.material.icons.outlined.BarChart
+import app.tenet.android.core.designsystem.component.CardHeader
 import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.material3.Surface
 import androidx.compose.foundation.verticalScroll
@@ -79,11 +81,7 @@ fun PrBadgeCard(personalBests: List<ProgressMath.PersonalBest>) {
 
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                RecordBadge()
-                Spacer(Modifier.width(12.dp))
-                Text("Neue Bestleistungen", style = MaterialTheme.typography.titleMedium)
-            }
+            CardHeader(Icons.Outlined.EmojiEvents, "Neue Bestleistungen", meta = "14 Tage")
             recent.forEach { pr ->
                 Row(
                     Modifier.fillMaxWidth(),
@@ -136,15 +134,7 @@ fun OneRmHistoryCard(
 
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.AutoMirrored.Outlined.TrendingUp,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("1RM-Verlauf (${formula.label})", style = MaterialTheme.typography.titleMedium)
-            }
+            CardHeader(Icons.AutoMirrored.Outlined.TrendingUp, "1RM-Verlauf", meta = formula.label)
 
             if (exercises.size > 1) {
                 Row(
@@ -243,15 +233,7 @@ fun VolumeHistoryCard(
 
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.AutoMirrored.Outlined.TrendingUp,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.secondary,
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("Volumen pro Woche", style = MaterialTheme.typography.titleMedium)
-            }
+            CardHeader(Icons.Outlined.BarChart, "Volumen pro Woche")
 
             Row(
                 Modifier
@@ -384,16 +366,9 @@ fun BodyMetricCard(
 
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Outlined.MonitorWeight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.tertiary,
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("Körper", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            CardHeader(Icons.Outlined.MonitorWeight, "Körper", color = app.tenet.android.core.designsystem.theme.cardTint(app.tenet.android.core.designsystem.theme.HealthTint.BODY), action = {
                 Button(shapes = ButtonDefaults.shapes(), onClick = { dialogOpen = true }) { Text("Eintragen") }
-            }
+            })
 
             val latest = metrics.lastOrNull()
             val previous = metrics.getOrNull(metrics.size - 2)

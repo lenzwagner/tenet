@@ -1,5 +1,8 @@
 package app.tenet.android.feature.sport.calisthenics
 
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.AccountTree
+import app.tenet.android.core.designsystem.component.CardHeader
 import androidx.compose.runtime.derivedStateOf
 import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.material.icons.outlined.MilitaryTech
@@ -348,18 +351,7 @@ private fun TodayCard(
     val overview = uiState.overview
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Outlined.SelfImprovement,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    if (trainingDayStatus(TrainingDays.parse(overview.plan?.trainingDays)) != null) "Heute Ruhetag" else "Heute geplant",
-                    style = MaterialTheme.typography.titleMedium,
-                )
-            }
+            CardHeader(Icons.Outlined.SelfImprovement, if (trainingDayStatus(TrainingDays.parse(overview.plan?.trainingDays)) != null) "Heute Ruhetag" else "Heute geplant")
             if (overview.plan == null) {
                 Text(
                     text = "Skill-Tree wird geladen …",
@@ -435,7 +427,7 @@ private fun SkillTreeCard(
     val overview = uiState.overview
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Skill-Tree", style = MaterialTheme.typography.titleMedium)
+            CardHeader(Icons.Outlined.AccountTree, "Skill-Tree")
 
             if (overview.skills.isEmpty()) {
                 Text(
@@ -623,11 +615,10 @@ private fun PlanCard(
     val exerciseNames = overview.exercises.associateBy({ it.id }, { it.name })
     TenetCard(onClick = onOpenPlan, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Trainingsplan · Kraft-Block", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            CardHeader(Icons.Outlined.CalendarMonth, "Trainingsplan", meta = "Kraft-Block", action = {
                 TooltipIconButton(Icons.Outlined.RestartAlt, "Plan neu einrichten", onSetup)
                 TooltipIconButton(Icons.AutoMirrored.Outlined.KeyboardArrowRight, "Plan-Details", onOpenPlan)
-            }
+            })
             if (overview.routine.isEmpty()) {
                 Text(
                     text = "Noch keine Übungen im Plan.",
@@ -661,15 +652,7 @@ private fun PlanCard(
 private fun SessionsCard(overview: CalisthenicsOverview, onOpenSummary: (String) -> Unit) {
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Outlined.History,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.secondary,
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("Letzte Sessions", style = MaterialTheme.typography.titleMedium)
-            }
+            CardHeader(Icons.Outlined.History, "Letzte Sessions")
             if (overview.sessions.isEmpty()) {
                 Text(
                     text = "Noch keine abgeschlossene Session.",
@@ -702,16 +685,7 @@ private fun SessionsCard(overview: CalisthenicsOverview, onOpenSummary: (String)
 private fun TimelineCard(uiState: CalisthenicsUiState) {
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    // Own icon: "Letzte Sessions" right above already uses the history clock.
-                    Icons.Outlined.MilitaryTech,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.tertiary,
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("Stufenaufstiege", style = MaterialTheme.typography.titleMedium)
-            }
+            CardHeader(Icons.Outlined.MilitaryTech, "Stufenaufstiege")
             if (uiState.timeline.isEmpty()) {
                 Text(
                     text = "Erfülle ein Aufstiegskriterium in zwei Sessions, " +

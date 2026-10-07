@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.run
 
+import app.tenet.android.core.designsystem.component.CardHeader
 import app.tenet.android.core.designsystem.theme.TenetCard
 import app.tenet.android.core.designsystem.component.RecordBadge
 import app.tenet.android.core.designsystem.component.rememberDictation
@@ -100,7 +101,7 @@ internal fun StartRunCard(
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (recording) {
-                Text("Lauf läuft", style = MaterialTheme.typography.titleMedium)
+                CardHeader(Icons.AutoMirrored.Outlined.DirectionsRun, "Lauf läuft")
                 Text(
                     "${formatDuration((liveMovingMs / 1000).toInt())} · ${formatKmDe(liveDistanceM)} km",
                     style = MaterialTheme.typography.headlineSmallEmphasized,
@@ -190,11 +191,7 @@ internal fun StartRunCard(
 internal fun RecordsCard(state: RunningUiState, onOpenRun: (String) -> Unit) {
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                RecordBadge()
-                Spacer(Modifier.width(12.dp))
-                Text("Bestzeiten", style = MaterialTheme.typography.titleMedium)
-            }
+            CardHeader(Icons.Outlined.EmojiEvents, "Bestzeiten")
             state.records.forEach { record ->
                 Row(
                     Modifier
