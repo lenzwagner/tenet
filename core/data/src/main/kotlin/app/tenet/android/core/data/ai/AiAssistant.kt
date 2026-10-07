@@ -138,6 +138,8 @@ class AiAssistant @Inject constructor(
         images: List<String> = emptyList(),
         maxTokens: Int = 2048,
         timeoutMs: Int = 120_000,
+        /** false: try [models] in order before the one chosen in the settings (speed over choice). */
+        configuredFirst: Boolean = true,
     ): String? {
         val cfg = _config.value
         if (!cfg.usable) {
@@ -145,7 +147,8 @@ class AiAssistant @Inject constructor(
             return null
         }
         return withContext(Dispatchers.IO) {
-            for (model in (listOf(cfg.model) + models).distinct()) {
+            val order = if (configuredFirst) listOf(cfg.model) + models else models + cfg.model
+            for (model in order.distinct()) {
                 val content: Any = if (images.isEmpty()) {
                     prompt
                 } else {

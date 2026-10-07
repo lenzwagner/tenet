@@ -94,6 +94,10 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class CompanionViewModel @Inject constructor(private val agent: CompanionAgent) : ViewModel() {
+    init {
+        viewModelScope.launch { runCatching { agent.warmUp() } }
+    }
+
     private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy.asStateFlow()
     private val _request = MutableStateFlow<String?>(null)
@@ -101,6 +105,9 @@ class CompanionViewModel @Inject constructor(private val agent: CompanionAgent) 
     val request: StateFlow<String?> = _request.asStateFlow()
     private val _reply = MutableStateFlow<String?>(null)
     val reply: StateFlow<String?> = _reply.asStateFlow()
+    /** Something was stored: close the chat and confirm briefly. */
+    private val _done = Channel<String>(Channel.BUFFERED)
+    val done = _done.receiveAsFlow()
     private val _navigate = Channel<CompanionAgent.Destination>(Channel.BUFFERED)
     val navigate = _navigate.receiveAsFlow()
 
@@ -112,7 +119,13 @@ class CompanionViewModel @Inject constructor(private val agent: CompanionAgent) 
         _reply.value = null
         viewModelScope.launch {
             val r = runCatching { agent.handle(text, name) }.getOrElse { CompanionAgent.Reply("Ups, das ging schief: ${it.message}") }
-            _reply.value = r.text
+            if (r.acted) {
+                _reply.value = null
+                _request.value = null
+                _done.send(r.text)
+            } else {
+                _reply.value = r.text
+            }
             _busy.value = false
             r.navigate?.let { _navigate.send(it) }
         }
@@ -138,6 +151,14 @@ fun CompanionOverlay(
     val request by viewModel.request.collectAsStateWithLifecycle()
     var chatOpen by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { viewModel.navigate.collect(onNavigate) }
+    // A task done (food logged, note extended …): the chat closes, a snackbar confirms.
+    val snackbar = app.tenet.android.core.designsystem.component.LocalAppSnackbar.current
+    LaunchedEffect(Unit) {
+        viewModel.done.collect { text ->
+            chatOpen = false
+            snackbar?.show(text)
+        }
+    }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val density = LocalDensity.current
@@ -336,15 +357,48 @@ private fun ChatPanel(
     }
 }
 
-/** While the agent works: the creature thinks, a wavy bar runs and the steps change. */
+/** What a request is about, guessed from its words, for the "working" text. */
+private enum class Task(val steps: List<String>) {
+    QUESTION(listOf("liest deine Frage", "schaut in deine Daten", "überlegt eine Antwort")),
+    FOOD(listOf("sucht das Lebensmittel", "rechnet die Nährwerte", "trägt es ins Ernährungstagebuch ein")),
+    WATER(listOf("holt ein Glas", "trägt das Wasser ein")),
+    WEIGHT(listOf("stellt sich auf die Waage", "trägt dein Gewicht ein")),
+    NOTE(listOf("blättert in deinen Notizen", "schreibt die Punkte auf", "speichert die Notiz")),
+    TRAINING(listOf("schaut in deinen Trainingsplan", "prüft deine letzten Einheiten", "passt das Training an")),
+    OPEN(listOf("sucht den richtigen Bereich", "öffnet ihn")),
+    OTHER(listOf("liest deine Nachricht", "denkt nach")),
+    ;
+
+    companion object {
+        fun of(text: String?): Task {
+            val t = text.orEmpty().lowercase()
+            fun has(vararg w: String) = w.any { it in t }
+            val question = t.trim().endsWith("?") ||
+                Regex("^(wie|was|wann|wo|warum|wieso|welche|wer|hab|habe|bin|ist|sind|kann|soll)\\b").containsMatchIn(t.trim())
+            return when {
+                has("notiz", "liste", "aufschreib", "schreib", "einkauf", "merk dir", "ergänz") && !question -> NOTE
+                has("wasser", "getrunken", "trinken") && !question -> WATER
+                has("wiege", "gewicht", " kg") && !question -> WEIGHT
+                question -> QUESTION
+                has("öffne", "zeig mir", "geh zu", "wechsel zu") -> OPEN
+                has("training", "trainings", "plan", "satz", "sätze", "lauf", "gym", "workout", "übung") -> TRAINING
+                Regex("\\d+\\s*(g|gramm|ml|stück)\\b").containsMatchIn(t) ||
+                    has("gegessen", "frühstück", "mittag", "abendessen", "snack", "hinzufügen", "füg", "add", "eintragen") -> FOOD
+                else -> OTHER
+            }
+        }
+    }
+}
+
+/** While the agent works: the creature thinks, a wavy bar runs and the task's steps change. */
 @Composable
 private fun WorkingView(name: String, kind: app.tenet.android.core.designsystem.component.CompanionKind, request: String?) {
-    val steps = listOf("liest deine Nachricht", "schaut in deine Daten", "fragt die KI", "trägt es ein")
-    var step by remember { mutableStateOf(0) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(1_600)
-            step = (step + 1).coerceAtMost(steps.lastIndex)
+    val steps = remember(request) { Task.of(request).steps }
+    var step by remember(request) { mutableStateOf(0) }
+    LaunchedEffect(request) {
+        while (step < steps.lastIndex) {
+            delay(1_400)
+            step++
         }
     }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

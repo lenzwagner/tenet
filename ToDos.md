@@ -1,10 +1,10 @@
 # Tenet – offene ToDos
 
-Stand: 07.10.2026, Version 1.0.0.31 (auf `main` gepusht, APK `tenet-1.0.0.31-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 07.10.2026, Version 1.0.0.32 (auf `main` gepusht, APK `tenet-1.0.0.32-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Übergabe (Session 06.–07.10.2026)
 
-**Stand:** 1.0.0.6 – 1.0.0.31 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
+**Stand:** 1.0.0.6 – 1.0.0.32 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
 
 **Wichtig vor dem nächsten Update am Handy:**
 - Seit 1.0.0.6 ist die Datenbank mit SQLCipher verschlüsselt (Rohschlüssel, im Android Keystore gewrappt, `no_backup/db.key`). Die alte Klartext-DB wird beim ersten Start einmal umgewandelt. Im Emulator geprüft, mit echten Daten noch nicht → vorher mit Google anmelden und synchronisieren.
@@ -104,7 +104,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Alte APKs im Projektordner aufräumen (~40 Stück, je ~10–18 MB, enthalten den NIM-Schlüssel)
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.31)
+## Zuletzt erledigt (0.5.0 – 1.0.0.32)
+
+- 1.0.0.32: Begleiter: Listen-Punkte werden einzeln, nicht abgehakt und groß geschrieben angelegt (auch ähnliche wie Toilettenpapier + Klopapier), Titel groß; nach einer erledigten Aufgabe schließt die Leiste und eine Snackbar bestätigt, bei Fragen bleibt sie offen; Arbeits-Text passt zur Anfrage (Frage, Essen, Notiz, Training, Wasser, Gewicht, Öffnen); schnelleres Modell: Nemotron 3.5 Lightning zuerst (gemessen ~2,5 s), Modellliste wird beim Start vorab geladen, abgeschaltete Modelle werden übersprungen
 
 - 1.0.0.31: Begleiter-KI zuverlässiger (Wiederholung bei „NIM ausgelastet“, Denken aus, Ersatzmodell, 45 s Zeit; Fehler mit Grund statt geratener Lebensmittel wie „Federweißer“); während er arbeitet zeigt die Leiste Anfrage, denkende Figur, wechselnde Schritte und Welle statt des Eingabefelds; Haus-Animation: läuft zum Haus-Symbol und schlüpft hinein, kommt beim Zurückholen herausgehüpft und läuft an seinen Platz
 

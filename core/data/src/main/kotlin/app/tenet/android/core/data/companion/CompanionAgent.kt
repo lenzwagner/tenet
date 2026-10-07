@@ -44,7 +44,8 @@ class CompanionAgent @Inject constructor(
     /** Where the app should go, when the user asked to open something. */
     enum class Destination { TODAY, SPORT, JOURNAL, NUTRITION, SETTINGS }
 
-    data class Reply(val text: String, val navigate: Destination? = null)
+    /** [acted]: something was stored – the chat closes and a short note confirms it. */
+    data class Reply(val text: String, val navigate: Destination? = null, val acted: Boolean = false)
 
     val aiEnabled: Boolean get() = ai.config.value.usable
 
@@ -53,8 +54,9 @@ class CompanionAgent @Inject constructor(
         if (!aiEnabled) return offline(text)
         // chat(): retries when NIM is busy, turns thinking off and falls back to a second
         // model – the plain json() call gave up after 30 s on slower models.
-        val prompt = SYSTEM.replace("\"Tenny\"", "\"$name\"") + "\n\nKONTEXT\n" + context() + "\n\nNUTZER: " + text
-        val answer = ai.chat(prompt, FALLBACK_MODELS, maxTokens = 900, timeoutMs = 45_000)
+        val prompt = SYSTEM.replace("\"Tenny\"", "\"$name\"") + "\n\nKONTEXT\n" + context() + "\n\nNACHRICHT DES NUTZERS (nur darauf reagieren): " + text
+        val answer = ai.chat(prompt, fastModels(), maxTokens = 600, timeoutMs = 30_000, configuredFirst = false)
+
             ?.let { AiAssistant.extractJson(it) }
             // No guessing from the sentence here: that once logged "Federweißer" for a question.
             ?: return Reply("Ich erreiche die KI gerade nicht (${ai.lastError ?: "keine Antwort"}). Versuch es gleich nochmal.")
@@ -67,15 +69,25 @@ class CompanionAgent @Inject constructor(
                 when (a.optString("type")) {
                     "log_food" -> done += logFood(a)
                     "add_water" -> done += addWater(a.optInt("ml"))
-                    "create_note" -> done += createNote(a.optString("title"), a.optString("body"))
-                    "append_note" -> done += appendNote(a.optString("title"), a.optString("text"))
+                    "create_note" -> done += if (isList(a)) {
+                        createNote(a.optString("title"), noteItems(a, "body"))
+                    } else {
+                        createTextNote(a.optString("title"), a.optString("body"))
+                    }
+                    "append_note" -> done += appendNote(a.optString("title"), noteItems(a, "text"))
                     "log_weight" -> done += logWeight(a.optDouble("kg", Double.NaN))
                     "navigate" -> navigate = runCatching { Destination.valueOf(a.optString("to").uppercase()) }.getOrNull()
                 }
             }.onFailure { done += "Das hat nicht geklappt: ${a.optString("type")}" }
         }
         val reply = answer.optString("reply").takeIf { it.isNotBlank() && it != "null" }
-        return Reply(listOfNotNull(reply, done.filter { it.isNotBlank() }.joinToString("\n").ifBlank { null }).joinToString("\n"), navigate)
+        val stored = done.filter { it.isNotBlank() }
+        return Reply(
+            // After an action the app's own confirmation is enough; the model's text is for answers.
+            if (stored.isNotEmpty()) stored.joinToString("\n") else reply ?: "Hm, da weiß ich gerade nichts zu.",
+            navigate,
+            acted = stored.any { it.startsWith("✓") },
+        )
     }
 
     /** Without AI: simple food sentences still work ("100 g Haferflocken"). */
@@ -87,6 +99,22 @@ class CompanionAgent @Inject constructor(
         }
         val lines = phrases.map { logPhrase(it, defaultMeal()) }
         return Reply(lines.joinToString("\n"))
+    }
+
+    /** Small models this key can use, fastest first; looked up once per app start. */
+    private var models: List<String>? = null
+
+    /** Looks the models up ahead of the first message (saves ~1.5 s on it). */
+    suspend fun warmUp() {
+        if (aiEnabled) fastModels()
+    }
+
+    private suspend fun fastModels(): List<String> {
+        models?.let { return it }
+        val available = runCatching { ai.fetchModels().map { it.id }.toSet() }.getOrDefault(emptySet())
+        val picked = FAST_MODELS.filter { it in available }.ifEmpty { listOf(AiAssistant.DEFAULT_MODEL) }
+        if (available.isNotEmpty()) models = picked
+        return picked
     }
 
     // ---- Actions --------------------------------------------------------------
@@ -121,31 +149,64 @@ class CompanionAgent @Inject constructor(
         return "✓ $ml ml Wasser"
     }
 
-    private suspend fun createNote(title: String, body: String): String {
+    /** List items of an action: "items":[…] or lines of [field]; markers and ticks removed. */
+    private fun noteItems(a: JSONObject, field: String): List<String> {
+        val arr = a.optJSONArray("items")
+        val raw = if (arr != null && arr.length() > 0) {
+            (0 until arr.length()).map { arr.optString(it) }
+        } else {
+            a.optString(field).lines()
+        }
+        return raw.map { it.replace(Regex("""^\s*([-*•]\s*)?(\[[ xX]?]\s*)?"""), "").trim() }
+            .filter { it.isNotBlank() && it != "null" }
+            .map { it.replaceFirstChar { c -> c.titlecase(Locale.GERMAN) } }
+    }
+
+    private fun isList(a: JSONObject) = (a.optJSONArray("items")?.length() ?: 0) > 0 ||
+        a.optString("body").lines().any { it.trimStart().startsWith("-") || it.trimStart().startsWith("*") || it.trimStart().startsWith("•") }
+
+    private suspend fun createTextNote(title: String, body: String): String {
         if (title.isBlank() && body.isBlank()) return ""
         val now = System.currentTimeMillis()
         entries.save(
             Entry(
-                id = newUuid(), type = EntryType.NOTE, title = title.trim(), body = body.trim(),
+                id = newUuid(), type = EntryType.NOTE, title = cap(title), body = cap(body.takeIf { it != "null" }.orEmpty()),
                 createdAt = now, updatedAt = now, entryDate = LocalDate.now().toString(),
             ),
             diaryMeta = null,
             dreamMeta = null,
         )
-        return "✓ Notiz „${title.ifBlank { "Ohne Titel" }}“ angelegt"
+        return "✓ Notiz „${cap(title).ifBlank { "Ohne Titel" }}“ angelegt"
     }
 
-    /** Adds a line to a note found by title; checklists get a new item. */
-    private suspend fun appendNote(title: String, text: String): String {
-        if (text.isBlank()) return ""
+    private fun cap(text: String) = text.trim().replaceFirstChar { it.titlecase(Locale.GERMAN) }
+
+    /** New note; items become an unchecked checklist, each starting with a capital letter. */
+    private suspend fun createNote(title: String, items: List<String>): String {
+        if (title.isBlank() && items.isEmpty()) return ""
+        val now = System.currentTimeMillis()
+        entries.save(
+            Entry(
+                id = newUuid(), type = EntryType.NOTE, title = cap(title), body = items.joinToString("\n") { "- [ ] $it" },
+                createdAt = now, updatedAt = now, entryDate = LocalDate.now().toString(),
+            ),
+            diaryMeta = null,
+            dreamMeta = null,
+        )
+        return "✓ Notiz „${cap(title).ifBlank { "Ohne Titel" }}“ angelegt" + if (items.isEmpty()) "" else ": " + items.joinToString(", ")
+    }
+
+    /** Adds items to a note found by title (new note if there is none); checklists get unchecked items. */
+    private suspend fun appendNote(title: String, items: List<String>): String {
+        if (items.isEmpty()) return ""
         val note = entries.findByTitle(title)
             ?: entries.search(title).firstOrNull { it.type == EntryType.NOTE }
-            ?: return createNote(title, "- [ ] ${text.trim()}")
+            ?: return createNote(title, items)
         val body = note.body.trimEnd()
-        val isList = body.lines().any { it.trimStart().startsWith("- [") }
-        val line = if (isList) "- [ ] ${text.trim()}" else text.trim()
-        entries.updateBody(note.id, if (body.isEmpty()) line else "$body\n$line")
-        return "✓ In „${note.title.ifBlank { "Notiz" }}“ ergänzt: ${text.trim()}"
+        val isList = body.isEmpty() || body.lines().any { it.trimStart().startsWith("- [") }
+        val lines = items.joinToString("\n") { if (isList) "- [ ] $it" else it }
+        entries.updateBody(note.id, if (body.isEmpty()) lines else "$body\n$lines")
+        return "✓ In „${note.title.ifBlank { "Notiz" }}“ ergänzt: ${items.joinToString(", ")}"
     }
 
     private suspend fun logWeight(kg: Double): String {
@@ -174,8 +235,8 @@ class CompanionAgent @Inject constructor(
         val planned = weekCalendar.observePlannedBetween(today, today.plusDays(6)).first()
             .filter { !it.skipped }
             .joinToString("\n") { "- ${it.date ?: "?"} ${it.discipline.label()} ${it.title}" }.ifBlank { "nichts" }
-        val notes = entries.observeByType(EntryType.NOTE).first().take(15)
-            .joinToString("\n") { "- „${it.title.ifBlank { "Ohne Titel" }}“: ${it.body.replace('\n', ' ').take(160)}" }.ifBlank { "keine" }
+        val notes = entries.observeByType(EntryType.NOTE).first().take(8)
+            .joinToString("\n") { "- „${it.title.ifBlank { "Ohne Titel" }}“: ${it.body.replace('\n', ' ').take(100)}" }.ifBlank { "keine" }
         return """
             Heute: ${today.format(day)}, ${LocalTime.now().withSecond(0).withNano(0)} Uhr
             Ernährung heute: ${totals.kcal.roundToInt()} von ${goal.kcal.roundToInt()} kcal, Eiweiß ${totals.protein.roundToInt()}/${goal.protein.roundToInt()} g, Wasser $water ml
@@ -210,8 +271,16 @@ class CompanionAgent @Inject constructor(
     }
 
     companion object {
-        /** Tried after the model chosen in the settings: fast JSON first, then a stronger one. */
-        private val FALLBACK_MODELS = listOf(AiAssistant.DEFAULT_MODEL, "openai/gpt-oss-20b")
+        /**
+         * Small, fast models first (a short JSON answer needs no big model, ~1–2 s),
+         * then the one from the settings, then the app default.
+         */
+        // Measured on NIM (Oct 2026): ~2.5 s each, Nemotron Lightning answered most naturally.
+        private val FAST_MODELS = listOf(
+            "nvidia/nemotron-3.5-lightning-30b-a3b",
+            AiAssistant.DEFAULT_MODEL,
+            "mistralai/mistral-7b-instruct-v0.3",
+        )
 
         private val SYSTEM = """
             Du bist "Tenny", der freundliche Begleiter in der Fitness- und Journal-App Tenet. Antworte immer auf Deutsch, kurz (1–3 Sätze), du duzt.
@@ -221,8 +290,10 @@ class CompanionAgent @Inject constructor(
             {"type":"log_food","items":[{"name": einfacher deutscher Lebensmittelname für die Suche, "grams": Zahl, "explicit": true wenn Menge genannt, "meal": "BREAKFAST"|"LUNCH"|"DINNER"|"SNACK"|null}]}
               Mengen ohne Angabe realistisch schätzen (1 Ei = 60 g, 1 Banane = 120 g, Portion Haferflocken = 50 g).
             {"type":"add_water","ml": Zahl}
-            {"type":"create_note","title": Text, "body": Text (Listen als Zeilen "- [ ] Punkt")}
-            {"type":"append_note","title": Titel einer vorhandenen Notiz, "text": neuer Punkt}  z. B. "schreib Milch auf die Einkaufsliste"
+            {"type":"create_note","title": Titel, "items": ["Punkt", …]}  für Listen (Einkaufsliste …), sonst "body": Text
+            {"type":"append_note","title": Titel einer vorhandenen Notiz, "items": ["Punkt", …]}  z. B. "schreib Milch auf die Einkaufsliste"
+              Punkte NUR aus der Nachricht des Nutzers, Wort für Wort, jeden einzeln – auch ähnliche (Toilettenpapier UND Klopapier).
+              NIE Punkte aus dem KONTEXT oder aus Beispielen übernehmen, nichts zusammenfassen, nichts abhaken.
             {"type":"log_weight","kg": Zahl}
             {"type":"navigate","to":"TODAY"|"SPORT"|"JOURNAL"|"NUTRITION"|"SETTINGS"}  nur wenn der Nutzer etwas öffnen will
             Bei Aktionen: reply nur kurz bestätigen (z. B. "Erledigt!"), KEINE Kalorien oder Nährwerte nennen – die echten Werte ergänzt die App. Bei Fragen: konkret auf die Daten im KONTEXT eingehen.
