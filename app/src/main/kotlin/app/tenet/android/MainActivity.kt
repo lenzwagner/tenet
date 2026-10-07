@@ -49,7 +49,11 @@ class MainActivity : FragmentActivity() {
         super.onStart()
         JournalLock.onForeground()
         // Pull new runs whenever the app comes to the foreground.
-        lifecycleScope.launch { healthConnect.syncIfDue() }
+        lifecycleScope.launch {
+            healthConnect.syncIfDue()
+            // Home screen widgets: fresh steps whenever the app was opened.
+            app.tenet.android.widget.TenetWidgets.updateAll(applicationContext)
+        }
         // Signed in with Google: fetch what other devices changed.
         if (accounts.account.value != null) app.tenet.android.core.data.sync.SyncWorker.runSoon(this)
     }

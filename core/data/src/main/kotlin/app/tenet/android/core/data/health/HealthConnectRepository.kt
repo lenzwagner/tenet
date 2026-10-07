@@ -187,7 +187,7 @@ class HealthConnectRepository @Inject constructor(
                     timeRangeFilter = TimeRangeFilter.between(start, Instant.now()),
                 ),
             )[StepsRecord.COUNT_TOTAL] ?: 0L
-        }.getOrNull()
+        }.onFailure { android.util.Log.w("TenetHealth", "steps failed", it) }.getOrNull()
     }
 
     /** Per wake-up day: resting heart rate and night HRV, for the readiness score. */

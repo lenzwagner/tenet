@@ -699,8 +699,8 @@ private fun HealthFeed(
 ) {
     val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        WeekRing(feed.weekActiveMin, feed.weekGoalMin, Modifier.weight(1f))
-        Column(Modifier.weight(1.15f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        WeekRing(feed.weekActiveMin, feed.weekGoalMin, Modifier.weight(0.85f))
+        Column(Modifier.weight(1.3f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             FeedPill(
                 icon = Icons.AutoMirrored.Outlined.DirectionsWalk,
                 label = "Schritte",
@@ -764,21 +764,21 @@ private fun FeedPill(
     Box(
         Modifier
             .fillMaxWidth()
-            .height(72.dp)
+            .height(56.dp)
             .clip(MaterialTheme.shapes.extraLarge)
             .background(colors.container),
     ) {
         // Tagesform: the brighter part shows the score like a bar.
         fill?.let { Box(Modifier.fillMaxHeight().fillMaxWidth(it.coerceIn(0f, 1f)).background(colors.fill)) }
-        Row(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(44.dp).background(colors.badge, CircleShape), contentAlignment = Alignment.Center) {
-                Icon(icon, contentDescription = null, tint = colors.container.takeIf { it.luminance() < 0.5f } ?: colors.content, modifier = Modifier.size(24.dp))
+        Row(Modifier.fillMaxSize().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(34.dp).background(colors.badge, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = colors.container.takeIf { it.luminance() < 0.5f } ?: colors.content, modifier = Modifier.size(19.dp))
             }
             Spacer(Modifier.width(10.dp))
             Column {
-                if (!labelBelow) Text(label, style = MaterialTheme.typography.labelLarge, color = colors.content)
-                Text(value, style = MaterialTheme.typography.titleLarge, color = colors.content, maxLines = 1)
-                if (labelBelow) Text(label, style = MaterialTheme.typography.labelMedium, color = colors.content.copy(alpha = 0.85f))
+                if (!labelBelow) Text(label, style = MaterialTheme.typography.labelMedium, color = colors.content)
+                Text(value, style = MaterialTheme.typography.titleMedium, color = colors.content, maxLines = 1)
+                if (labelBelow) Text(label, style = MaterialTheme.typography.labelSmall, color = colors.content.copy(alpha = 0.85f))
             }
         }
     }
@@ -793,7 +793,7 @@ private fun WeekRing(minutes: Int, goal: Int, modifier: Modifier = Modifier) {
     val sweep by androidx.compose.animation.core.animateFloatAsState(360f * (minutes.toFloat() / goal).coerceIn(0f, 1f), label = "week")
     Box(modifier.aspectRatio(1f).semantics(mergeDescendants = true) { contentDescription = "Diese Woche $minutes von $goal Minuten aktiv" }, contentAlignment = Alignment.Center) {
         androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-            val stroke = androidx.compose.ui.graphics.drawscope.Stroke(width = size.minDimension * 0.13f, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+            val stroke = androidx.compose.ui.graphics.drawscope.Stroke(width = size.minDimension * 0.11f, cap = androidx.compose.ui.graphics.StrokeCap.Round)
             val inset = stroke.width / 2
             val arc = androidx.compose.ui.geometry.Size(size.width - stroke.width, size.height - stroke.width)
             val tl = androidx.compose.ui.geometry.Offset(inset, inset)
@@ -801,9 +801,9 @@ private fun WeekRing(minutes: Int, goal: Int, modifier: Modifier = Modifier) {
             if (sweep > 0f) drawArc(accent, -90f, sweep, false, tl, arc, style = stroke)
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Woche aktiv", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("$pct %", style = MaterialTheme.typography.displaySmall)
-            Text("$minutes von $goal min", style = MaterialTheme.typography.labelMedium, color = accent)
+            Text("Woche aktiv", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("$pct %", style = MaterialTheme.typography.headlineMedium)
+            Text("$minutes von $goal min", style = MaterialTheme.typography.labelSmall, color = accent)
         }
     }
 }
