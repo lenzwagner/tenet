@@ -150,7 +150,7 @@ internal fun NextRunCard(unit: PlanRunUnit, onStart: () -> Unit, onOpen: () -> U
                     when {
                         done -> "Heute erledigt"
                         today -> "Heute"
-                        else -> "Als Nächstes · ${unit.date.format(DAY)}"
+                        else -> "Keine Session heute · als Nächstes ${unit.date.format(DAY)}"
                     },
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,

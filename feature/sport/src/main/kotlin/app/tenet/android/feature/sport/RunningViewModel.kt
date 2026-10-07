@@ -79,6 +79,7 @@ class RunningViewModel @Inject constructor(
     private val aiFiller: AiFiller,
     settingsRepository: UserSettingsRepository,
     private val healthConnect: HealthConnectRepository,
+    private val planRepository: app.tenet.android.core.data.PlanRepository,
 ) : ViewModel() {
 
     private val _refreshing = MutableStateFlow(false)
@@ -234,6 +235,15 @@ class RunningViewModel @Inject constructor(
             )
         }
     }
+    /** Every plan of this discipline (active first) for switching. */
+    val plans: kotlinx.coroutines.flow.StateFlow<List<app.tenet.android.core.database.entity.TrainingPlan>> =
+        planRepository.observePlans(app.tenet.android.core.database.entity.Discipline.RUNNING)
+            .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun switchPlan(planId: String) {
+        viewModelScope.launch { planRepository.activate(app.tenet.android.core.database.entity.Discipline.RUNNING, planId) }
+    }
+
 }
 
 /** Run as input for the form estimate. */

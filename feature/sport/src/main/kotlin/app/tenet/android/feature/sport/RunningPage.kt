@@ -209,10 +209,13 @@ fun RunningPage(
         // Without a plan the setup card above already asks for one: no second "Plan erstellen".
         if (!(showSetup && state.overview.plan == null)) {
             item {
+                val plans by viewModel.plans.collectAsStateWithLifecycle()
                 PlanCard(
                     state = state,
                     onCreatePlan = onOpenSetup,
                     onOpenPlan = onOpenPlan,
+                    plans = plans,
+                    onSwitchPlan = viewModel::switchPlan,
                 )
             }
         }
@@ -352,10 +355,16 @@ private fun formatKm(meters: Float): String = String.format(Locale.GERMAN, "%.1f
 private fun formatHours(sec: Int): String = "%d:%02d h".format(sec / 3600, (sec % 3600) / 60)
 
 @Composable
-private fun PlanCard(state: RunningUiState, onCreatePlan: () -> Unit, onOpenPlan: (String) -> Unit) {
+private fun PlanCard(
+    state: RunningUiState,
+    onCreatePlan: () -> Unit,
+    onOpenPlan: (String) -> Unit,
+    plans: List<app.tenet.android.core.database.entity.TrainingPlan> = emptyList(),
+    onSwitchPlan: (String) -> Unit = {},
+) {
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            CardHeader(Icons.AutoMirrored.Outlined.DirectionsRun, "Trainingsplan")
+            CardHeader(Icons.AutoMirrored.Outlined.DirectionsRun, "Trainingsplan", action = { PlanSwitchButton(plans) { onSwitchPlan(it.id) } })
 
             val plan = state.overview.plan
             if (plan == null) {

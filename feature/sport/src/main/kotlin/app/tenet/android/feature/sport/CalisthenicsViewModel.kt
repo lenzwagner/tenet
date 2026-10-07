@@ -86,6 +86,7 @@ data class CsNavEvent(
 class CalisthenicsViewModel @Inject constructor(
     private val repository: SkillRepository,
     private val weekCalendarRepository: WeekCalendarRepository,
+    private val planRepository: app.tenet.android.core.data.PlanRepository,
 ) : ViewModel() {
 
     init {
@@ -276,4 +277,13 @@ class CalisthenicsViewModel @Inject constructor(
     fun setTrainingDays(planId: String, days: Set<java.time.DayOfWeek>) {
         viewModelScope.launch { weekCalendarRepository.setTrainingDays(planId, days) }
     }
+    /** Every plan of this discipline (active first) for switching. */
+    val plans: kotlinx.coroutines.flow.StateFlow<List<app.tenet.android.core.database.entity.TrainingPlan>> =
+        planRepository.observePlans(app.tenet.android.core.database.entity.Discipline.CALISTHENICS)
+            .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun switchPlan(planId: String) {
+        viewModelScope.launch { planRepository.activate(app.tenet.android.core.database.entity.Discipline.CALISTHENICS, planId) }
+    }
+
 }

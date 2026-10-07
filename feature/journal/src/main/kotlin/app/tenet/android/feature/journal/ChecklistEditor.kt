@@ -41,6 +41,11 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -141,7 +146,19 @@ internal fun ChecklistEditor(body: String, onBody: (String) -> Unit) {
         Column(Modifier.padding(vertical = 8.dp)) {
             items.forEachIndexed { index, item ->
                 val requester = focus.getOrPut(item.id) { FocusRequester() }
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 4.dp, end = 4.dp)) {
+                // The row being typed in stays just above the keyboard; rows above scroll away.
+                val inView = remember(item.id) { BringIntoViewRequester() }
+                var focused by remember(item.id) { mutableStateOf(false) }
+                LaunchedEffect(focused, item.field.text.length, items.size) {
+                    if (focused) {
+                        withFrameNanos { }
+                        inView.bringIntoView()
+                    }
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(start = 4.dp, end = 4.dp).bringIntoViewRequester(inView),
+                ) {
                     if (item.heading) Spacer(Modifier.width(16.dp)) else Checkbox(
                         checked = item.checked,
                         onCheckedChange = {
@@ -158,7 +175,7 @@ internal fun ChecklistEditor(body: String, onBody: (String) -> Unit) {
                             if (cut < 0) {
                                 item.field = value
                             } else {
-                                val rest = value.text.substring(cut + 1).replace("\n", " ")
+                                val rest = value.text.substring(cut + 1).replace("\n", " ").replaceFirstChar { it.titlecase(java.util.Locale.GERMAN) }
                                 item.field = TextFieldValue(value.text.substring(0, cut), TextRange(cut))
                                 val added = newItem(false, rest)
                                 items.add(index + 1, added)
@@ -179,7 +196,7 @@ internal fun ChecklistEditor(body: String, onBody: (String) -> Unit) {
                             textDecoration = if (item.checked) TextDecoration.LineThrough else null,
                         ),
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(
                             onNext = {
                                 val added = newItem(false, "")
@@ -201,6 +218,7 @@ internal fun ChecklistEditor(body: String, onBody: (String) -> Unit) {
                         modifier = Modifier
                             .weight(1f)
                             .focusRequester(requester)
+                            .onFocusChanged { focused = it.isFocused }
                             .onPreviewKeyEvent { event ->
                                 val removeEmpty = event.type == KeyEventType.KeyDown &&
                                     event.key == Key.Backspace &&

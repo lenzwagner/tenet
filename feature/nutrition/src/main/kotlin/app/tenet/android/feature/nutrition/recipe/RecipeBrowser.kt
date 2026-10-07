@@ -22,6 +22,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -147,7 +148,13 @@ fun RecipeBrowser(
     contentPadding: PaddingValues,
     /** Empty state: import a recipe from a link or text. */
     onImport: (() -> Unit)? = null,
+    /** Multi-select delete (long-press a tile); Saffron recipes are skipped, they would come back with the sync. */
+    onDeleteRecipes: ((List<String>) -> Unit)? = null,
 ) {
+    var selectedIds by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    val selecting = selectedIds.isNotEmpty()
+    val toggle = { id: String -> selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id }
     var query by rememberSaveable { mutableStateOf("") }
     var favorites by rememberSaveable { mutableStateOf(false) }
     var vegetarian by rememberSaveable { mutableStateOf(false) }
@@ -189,7 +196,15 @@ fun RecipeBrowser(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalItemSpacing = 8.dp,
         ) {
-            item(key = "filters", span = StaggeredGridItemSpan.FullLine) {
+            if (selecting) item(key = "selection", span = StaggeredGridItemSpan.FullLine) {
+                app.tenet.android.core.designsystem.component.SelectionBar(
+                    count = selectedIds.size,
+                    total = shown.size,
+                    onClose = { selectedIds = emptyList() },
+                    onSelectAll = { selectedIds = shown.map { it.recipe.id } },
+                    onDelete = { confirmDelete = true },
+                )
+            } else item(key = "filters", span = StaggeredGridItemSpan.FullLine) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(bottom = 4.dp)) {
                     RecipeSearchBar(
                         query = query,
@@ -285,14 +300,79 @@ fun RecipeBrowser(
             }
             items(shown.size, key = { shown[it].recipe.id }) { i ->
                 val detail = shown[i]
-                RecipeTile(detail, onClick = { onOpenRecipe(detail.recipe.id) }, modifier = Modifier.animateItem())
+                val id = detail.recipe.id
+                RecipeTile(
+                    detail,
+                    onClick = { if (selecting) toggle(id) else onOpenRecipe(id) },
+                    onLongClick = if (onDeleteRecipes != null) { { toggle(id) } } else null,
+                    selecting = selecting,
+                    selected = id in selectedIds,
+                    modifier = Modifier.animateItem(),
+                )
             }
         }
     }
+
+    if (confirmDelete && onDeleteRecipes != null) {
+        val chosen = recipes.filter { it.recipe.id in selectedIds }
+        val own = chosen.filterNot { it.fromSaffron }
+        val saffron = chosen.size - own.size
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = {
+                Text(
+                    when (own.size) {
+                        0 -> "Nichts zu löschen"
+                        1 -> "„${own.first().recipe.title}“ löschen?"
+                        else -> "${own.size} Rezepte löschen?"
+                    },
+                )
+            },
+            text = {
+                Text(
+                    listOfNotNull(
+                        "Das lässt sich nicht rückgängig machen.".takeIf { own.isNotEmpty() },
+                        when (saffron) {
+                            0 -> null
+                            1 -> "1 Saffron-Rezept bleibt – lösch es in Saffron, sonst kommt es mit dem nächsten Abgleich zurück."
+                            else -> "$saffron Saffron-Rezepte bleiben – lösch sie in Saffron, sonst kommen sie mit dem nächsten Abgleich zurück."
+                        },
+                    ).joinToString("\n\n"),
+                )
+            },
+            confirmButton = {
+                if (own.isNotEmpty()) {
+                    TextButton(
+                        onClick = {
+                            onDeleteRecipes(own.map { it.recipe.id })
+                            selectedIds = emptyList()
+                            confirmDelete = false
+                        },
+                        shapes = ButtonDefaults.shapes(),
+                    ) { Text("Löschen", color = MaterialTheme.colorScheme.error) }
+                } else {
+                    TextButton(onClick = { confirmDelete = false }, shapes = ButtonDefaults.shapes()) { Text("OK") }
+                }
+            },
+            dismissButton = if (own.isNotEmpty()) {
+                { TextButton(onClick = { confirmDelete = false }, shapes = ButtonDefaults.shapes()) { Text("Abbrechen") } }
+            } else {
+                null
+            },
+        )
+    }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-private fun RecipeTile(detail: RecipeDetail, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun RecipeTile(
+    detail: RecipeDetail,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
+    selecting: Boolean = false,
+    selected: Boolean = false,
+) {
     val r = detail.recipe
     var failed by remember(r.photoUri) { mutableStateOf(false) }
     // Saffron photos: the small offline copy; own recipes: their local photo.
@@ -302,8 +382,24 @@ private fun RecipeTile(detail: RecipeDetail, onClick: () -> Unit, modifier: Modi
     val hasPhoto = r.photoUri != null && !failed
     // Varying heights make the grid look like a cookbook, not a table.
     val ratio = if (detail.fromSaffron) (if (r.title.length % 3 == 0) 0.8f else 0.7f) else 1f
-    TenetCard(onClick = onClick, shape = MaterialTheme.shapes.large, modifier = modifier.fillMaxWidth()) {
-        Column {
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    TenetCard(
+        shape = MaterialTheme.shapes.large,
+        border = if (selected) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+      Box {
+        Column(
+            Modifier.combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick?.let { long ->
+                    {
+                        haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        long()
+                    }
+                },
+            ),
+        ) {
             if (hasPhoto) {
                 // Photo with the title on a soft scrim (Pinterest/Saffron style).
                 Box(Modifier.fillMaxWidth().aspectRatio(ratio)) {
@@ -351,6 +447,13 @@ private fun RecipeTile(detail: RecipeDetail, onClick: () -> Unit, modifier: Modi
             }
             TileFacts(detail)
         }
+        if (selecting) {
+            app.tenet.android.core.designsystem.component.SelectionCheck(
+                selected,
+                Modifier.align(Alignment.TopStart).padding(8.dp),
+            )
+        }
+      }
     }
 }
 

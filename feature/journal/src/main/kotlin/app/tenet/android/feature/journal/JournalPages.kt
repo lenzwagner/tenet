@@ -128,8 +128,25 @@ internal fun NotesPage(state: JournalUiState, actions: EntryActions) {
             (folderFilter == null || it.folder == folderFilter)
     }
 
+    // Multi-select: long-press a note, tap more, delete them together.
+    var selectedIds by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    val selecting = selectedIds.isNotEmpty()
+    val toggle = { id: String -> selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id }
+
     Column(Modifier.fillMaxSize()) {
-        Row(
+        if (selecting) {
+            app.tenet.android.core.designsystem.component.SelectionBar(
+                count = selectedIds.size,
+                total = notes.size,
+                onClose = { selectedIds = emptyList() },
+                onSelectAll = { selectedIds = notes.map { it.id } },
+                onDelete = {
+                    actions.deleteMany(notes.filter { it.id in selectedIds })
+                    selectedIds = emptyList()
+                },
+                modifier = Modifier.padding(start = 4.dp, end = 8.dp, top = 8.dp),
+            )
+        } else Row(
             Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -213,6 +230,9 @@ internal fun NotesPage(state: JournalUiState, actions: EntryActions) {
                             previewLines = 4,
                             fixedHeight = true,
                             modifier = Modifier.height(240.dp).animateItem(),
+                            selecting = selecting,
+                            selected = note.id in selectedIds,
+                            onSelect = { toggle(note.id) },
                         )
                     }
                 }
@@ -230,6 +250,9 @@ internal fun NotesPage(state: JournalUiState, actions: EntryActions) {
                                 image = state.attachments[note.id]?.firstOrNull { it.mimeType.startsWith("image") },
                                 hasVoice = state.attachments[note.id].orEmpty().any { it.mimeType.startsWith("audio") },
                                 previewLines = 3,
+                                selecting = selecting,
+                                selected = note.id in selectedIds,
+                                onSelect = { toggle(note.id) },
                             )
                         }
                     }
@@ -688,6 +711,10 @@ internal fun EntryCard(
     modifier: Modifier = Modifier,
     leading: (@Composable () -> Unit)? = null,
     extra: (@Composable () -> Unit)? = null,
+    /** Multi-select: [onSelect] toggles this card; long-press starts the selection. */
+    selecting: Boolean = false,
+    selected: Boolean = false,
+    onSelect: (() -> Unit)? = null,
 ) {
     var menu by remember { mutableStateOf(false) }
     val preview = remember(entry.body) { markdownPlain(entry.body) }
@@ -695,15 +722,27 @@ internal fun EntryCard(
     // Diary and dreams in the serif reading font if set; notes stay in the UI font.
     val serif = entry.type != EntryType.NOTE && LocalJournalSerif.current
 
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     TenetCard(
         colors = CardDefaults.cardColors(containerColor = noteContainer(entry.color)),
+        border = if (selected) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         modifier = modifier.fillMaxWidth(),
     ) {
         Column(
             Modifier
                 .fillMaxWidth()
                 .then(if (fixedHeight) Modifier.fillMaxHeight() else Modifier)
-                .combinedClickable(onClick = { actions.open(entry) }, onLongClick = { menu = true }),
+                .combinedClickable(
+                    onClick = { if (selecting && onSelect != null) onSelect() else actions.open(entry) },
+                    onLongClick = {
+                        if (onSelect != null) {
+                            haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            onSelect()
+                        } else {
+                            menu = true
+                        }
+                    },
+                ),
         ) {
             if (image != null) {
                 AsyncImage(
@@ -760,7 +799,12 @@ internal fun EntryCard(
                     if (entry.pinned) {
                         Icon(Icons.Filled.PushPin, contentDescription = "Angeheftet", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                     }
-                    Box {
+                    if (selecting) {
+                        app.tenet.android.core.designsystem.component.SelectionCheck(
+                            selected,
+                            Modifier.padding(12.dp),
+                        )
+                    } else Box {
                         IconButton(onClick = { menu = true }, shapes = IconButtonDefaults.shapes()) {
                             Icon(Icons.Outlined.MoreVert, contentDescription = "Mehr")
                         }

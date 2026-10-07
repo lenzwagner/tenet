@@ -119,6 +119,14 @@ class NutritionViewModel @Inject constructor(
         viewModelScope.launch { foodRepository.ensureSeeded() }
     }
 
+    /** Multi-select on the recipes page (own recipes only; the browser leaves Saffron ones out). */
+    fun deleteRecipes(ids: List<String>) {
+        viewModelScope.launch {
+            ids.forEach { recipeRepository.delete(it) }
+            _messages.send(if (ids.size == 1) "Rezept gelöscht" else "${ids.size} Rezepte gelöscht")
+        }
+    }
+
     /** Day the tracker last treated as "today" (to follow midnight rollovers). */
     private var knownToday = LocalDate.now()
 

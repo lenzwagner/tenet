@@ -1,5 +1,10 @@
 package app.tenet.android.feature.sport.calisthenics
 
+import app.tenet.android.feature.sport.PlanSwitchButton
+import app.tenet.android.feature.sport.nextTrainingDayLabel
+import app.tenet.android.feature.sport.todayState
+import app.tenet.android.feature.sport.TodaySessionCard
+import app.tenet.android.feature.sport.TodayState
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.AccountTree
 import app.tenet.android.core.designsystem.component.CardHeader
@@ -265,7 +270,7 @@ fun CalisthenicsPage(
             item(key = "today") {
                 TodayCard(
                     uiState,
-                    onTrainingDays = viewModel::setTrainingDays,
+                    onOpenPlan = onOpenPlan,
                     onResume = viewModel::resumeSession,
                     onStartSkill = viewModel::startSkillSession,
                     onStartStrength = { showStrengthSheet = true },
@@ -281,7 +286,18 @@ fun CalisthenicsPage(
                     onDeleteVideo = viewModel::deleteFormVideo,
                 )
             }
-            item { PlanCard(overview, onSetup = onOpenSetup, onOpenPlan = onOpenPlan, onOpenExercise = onOpenExercise) }
+            item {
+                val plans by viewModel.plans.collectAsStateWithLifecycle()
+                PlanCard(
+                    overview,
+                    onSetup = onOpenSetup,
+                    onOpenPlan = onOpenPlan,
+                    onOpenExercise = onOpenExercise,
+                    plans = plans,
+                    onSwitchPlan = viewModel::switchPlan,
+                    onTrainingDays = viewModel::setTrainingDays,
+                )
+            }
             item { SessionsCard(overview, onOpenSummary) }
             item { TimelineCard(uiState) }
         }
@@ -343,73 +359,42 @@ private fun criterionText(step: SkillStep): String =
 @Composable
 private fun TodayCard(
     uiState: CalisthenicsUiState,
-    onTrainingDays: (String, Set<java.time.DayOfWeek>) -> Unit,
+    onOpenPlan: () -> Unit,
     onResume: () -> Unit,
     onStartSkill: () -> Unit,
     onStartStrength: () -> Unit,
 ) {
     val overview = uiState.overview
-    TenetCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            CardHeader(Icons.Outlined.SelfImprovement, if (trainingDayStatus(TrainingDays.parse(overview.plan?.trainingDays)) != null) "Heute Ruhetag" else "Heute geplant")
-            if (overview.plan == null) {
-                Text(
-                    text = "Skill-Tree wird geladen …",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                return@Column
+    val plan = overview.plan
+    val state = todayState(plan?.trainingDays, overview.activeSession != null, overview.sessions)
+    val skillName = overview.skills.firstOrNull { it.id == uiState.selectedSkillId }?.name
+    val current = uiState.currentStep
+    TodaySessionCard(
+        icon = Icons.Outlined.SelfImprovement,
+        state = state,
+        title = skillName ?: "Skill-Tree",
+        subtitle = when {
+            plan == null -> "Skill-Tree wird geladen …"
+            current == null -> overview.mainWorkout?.let { "${it.title} · ${overview.routine.size} Übungen" }
+            else -> "Stufe: ${current.label} · Ziel ${criterionText(current)}" +
+                (overview.mainWorkout?.let { "\nKraft-Block: ${overview.routine.size} Übungen" } ?: "")
+        },
+        nextLabel = nextTrainingDayLabel(plan?.trainingDays),
+        onClick = onOpenPlan.takeIf { plan != null },
+    ) {
+        if (plan == null) return@TodaySessionCard
+        when (state) {
+            TodayState.ACTIVE -> Button(shapes = ButtonDefaults.shapes(), onClick = onResume, modifier = Modifier.weight(1f)) {
+                Text("Session fortsetzen")
             }
-            val skillName = overview.skills
-                .firstOrNull { it.id == uiState.selectedSkillId }?.name
-            Text(
-                text = skillName ?: "Skill-Tree",
-                style = MaterialTheme.typography.headlineSmall,
-            )
-            val current = uiState.currentStep
-            Text(
-                text = if (current == null) {
-                    "Keine Stufen vorhanden"
-                } else {
-                    "Aktuelle Stufe: ${current.label} · Ziel ${criterionText(current)}"
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            overview.plan?.let { plan ->
-                trainingDayStatus(TrainingDays.parse(plan.trainingDays))?.let {
-                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
-                }
-                TrainingDaysRow(value = plan.trainingDays, onChange = { onTrainingDays(plan.id, it) })
+            TodayState.PLANNED -> {
+                Button(shapes = ButtonDefaults.shapes(), onClick = onStartSkill, modifier = Modifier.weight(1f)) { Text("Skill trainieren") }
+                // One filled main action; the second is outlined (M3 emphasis).
+                OutlinedButton(shapes = ButtonDefaults.shapes(), onClick = onStartStrength, modifier = Modifier.weight(1f)) { Text("Kraft-Block") }
             }
-            overview.mainWorkout?.let { workout ->
-                Text(
-                    text = "${workout.title} · ${overview.routine.size} Übungen",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (overview.activeSession != null) {
-                OutlinedButton(shapes = ButtonDefaults.shapes(), onClick = onResume, modifier = Modifier.fillMaxWidth()) {
-                    Text("Session fortsetzen")
-                }
-            } else {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Button(
-                        shapes = ButtonDefaults.shapes(),
-                        onClick = onStartSkill,
-                        modifier = Modifier.weight(1f),
-                    ) { Text("Skill trainieren") }
-                    // One filled main action; the second is tonal (M3 emphasis).
-                    FilledTonalButton(
-                        shapes = ButtonDefaults.shapes(),
-                        onClick = onStartStrength,
-                        modifier = Modifier.weight(1f),
-                    ) { Text("Kraft-Block") }
-                }
+            TodayState.DONE, TodayState.REST -> {
+                OutlinedButton(shapes = ButtonDefaults.shapes(), onClick = onStartSkill, modifier = Modifier.weight(1f)) { Text("Skill") }
+                OutlinedButton(shapes = ButtonDefaults.shapes(), onClick = onStartStrength, modifier = Modifier.weight(1f)) { Text("Kraft-Block") }
             }
         }
     }
@@ -611,14 +596,21 @@ private fun PlanCard(
     onSetup: () -> Unit,
     onOpenPlan: () -> Unit,
     onOpenExercise: (String) -> Unit,
+    plans: List<app.tenet.android.core.database.entity.TrainingPlan> = emptyList(),
+    onSwitchPlan: (String) -> Unit = {},
+    onTrainingDays: (String, Set<java.time.DayOfWeek>) -> Unit = { _, _ -> },
 ) {
     val exerciseNames = overview.exercises.associateBy({ it.id }, { it.name })
     TenetCard(onClick = onOpenPlan, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             CardHeader(Icons.Outlined.CalendarMonth, "Trainingsplan", meta = "Kraft-Block", action = {
+                PlanSwitchButton(plans) { onSwitchPlan(it.id) }
                 TooltipIconButton(Icons.Outlined.RestartAlt, "Plan neu einrichten", onSetup)
                 TooltipIconButton(Icons.AutoMirrored.Outlined.KeyboardArrowRight, "Plan-Details", onOpenPlan)
             })
+            overview.plan?.let { plan ->
+                TrainingDaysRow(value = plan.trainingDays, onChange = { onTrainingDays(plan.id, it) })
+            }
             if (overview.routine.isEmpty()) {
                 Text(
                     text = "Noch keine Übungen im Plan.",

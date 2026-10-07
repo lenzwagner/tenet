@@ -1,10 +1,10 @@
 # Tenet – offene ToDos
 
-Stand: 07.10.2026, Version 1.0.0.17 (auf `main` gepusht, APK `tenet-1.0.0.17-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 07.10.2026, Version 1.0.0.18 (auf `main` gepusht, APK `tenet-1.0.0.18-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Übergabe (Session 06.–07.10.2026)
 
-**Stand:** 1.0.0.6 – 1.0.0.17 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
+**Stand:** 1.0.0.6 – 1.0.0.18 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
 
 **Wichtig vor dem nächsten Update am Handy:**
 - Seit 1.0.0.6 ist die Datenbank mit SQLCipher verschlüsselt (Rohschlüssel, im Android Keystore gewrappt, `no_backup/db.key`). Die alte Klartext-DB wird beim ersten Start einmal umgewandelt. Im Emulator geprüft, mit echten Daten noch nicht → vorher mit Google anmelden und synchronisieren.
@@ -41,6 +41,8 @@ Im Emulator nicht möglich.
 - [ ] Laufplan neu erstellen: Wunschzeit-Check, Tempo-Zonen, progressive Intervalle/Pyramide/Renntempo-Finish, Verpflegung, Pace je km; Sprachführung bei progressiven Reps und Schwellen-Blöcken im echten Lauf
 - [ ] Prognose „heute / am Wettkampftag“ nach ein paar echten Läufen
 - [ ] Kalorienring: kurzer Impuls mit Haptik beim Schließen eines Rings (im Emulator nicht gesehen)
+- [ ] Mehrfachauswahl Rezepte mit echten (eigenen + Saffron-)Rezepten löschen
+- [ ] Plan wechseln mit zwei echten Plänen (Gym/Laufen), Statistiken bleiben vollständig
 - [ ] „Übung tauschen“ öffnet halbhoch und lässt sich hochziehen
 - [ ] Calisthenics-Live-Mitteilung: Hold-Countdown-Chip in der Statusleiste, „Satz fertig“ vom Sperrbildschirm
 - [ ] Tastatur verdeckt nirgends mehr Eingaben (Setup, Rezepte, Einträge, Training)
@@ -96,7 +98,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Alte APKs im Projektordner aufräumen (~40 Stück, je ~10–18 MB, enthalten den NIM-Schlüssel)
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.17)
+## Zuletzt erledigt (0.5.0 – 1.0.0.18)
+
+- 1.0.0.18: Mehrfachauswahl – lange drücken auf Notiz oder Rezept, weitere antippen, oben „N ausgewählt · Alle · Löschen“ (Notizen mit einem Rückgängig, Rezepte mit Rückfrage; Saffron-Rezepte bleiben, kämen sonst per Sync zurück); Checklisten: jeder Punkt startet groß (Tastatur), der Punkt, an dem man schreibt, bleibt knapp über der Tastatur; Gym und Calisthenics oben wie Laufen: Heute-Karte mit der Session für heute bzw. „Keine Session heute“ + nächster Tag, Trainingstage wandern in die Plan-Karte; Plan wechseln (⇄ in der Plan-Karte) bei Gym, Calisthenics und Laufen, sobald es mehr als einen Plan gibt – Statistiken zählen weiter alle Sessions der Sportart
 
 - 1.0.0.17: Hinter der Tab-Leiste kein unscharfer Verlauf mehr – Inhalt blendet deckend in die Seitenfarbe aus (hell fast weiß, dunkel schwarz)
 

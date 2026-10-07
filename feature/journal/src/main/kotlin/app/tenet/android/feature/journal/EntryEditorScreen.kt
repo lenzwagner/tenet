@@ -533,6 +533,7 @@ private fun EditorScaffold(
                 BasicTextField(
                     value = state.title,
                     onValueChange = viewModel::onTitle,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences),
                     singleLine = false,
                     maxLines = 3,
                     textStyle = MaterialTheme.typography.headlineSmall.copy(color = MaterialTheme.colorScheme.onSurface),
@@ -688,6 +689,7 @@ private fun BodyEditor(
                 BasicTextField(
                     value = field,
                     onValueChange = { apply(it.continueList(field)) },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences),
                     textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                     decorationBox = { inner ->

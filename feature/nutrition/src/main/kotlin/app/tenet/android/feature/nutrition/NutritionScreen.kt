@@ -250,6 +250,7 @@ fun NutritionScreen(
                         onRefresh = viewModel::refreshRecipes,
                         contentPadding = PagePadding,
                         onImport = onImportRecipe,
+                        onDeleteRecipes = viewModel::deleteRecipes,
                     )
                 }
             }

@@ -95,6 +95,16 @@ fun JournalScreen(
                 onCommit = { viewModel.commitDelete(entry.id) },
             )
         },
+        deleteMany = { entries ->
+            haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+            val ids = entries.map { it.id }
+            ids.forEach(viewModel::hide)
+            snackbar?.showUndo(
+                if (ids.size == 1) "„${entries.first().title.ifBlank { "Eintrag" }}“ gelöscht" else "${ids.size} Einträge gelöscht",
+                onUndo = { ids.forEach(viewModel::restore) },
+                onCommit = { ids.forEach(viewModel::commitDelete) },
+            )
+        },
         togglePin = { viewModel.setPinned(it.id, !it.pinned) },
         toggleCheck = { entry, line ->
             haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)
@@ -170,6 +180,8 @@ internal class EntryActions(
     /** New entry of a type, with a start action (START_DICTATE …) or "". */
     val create: (EntryType, String) -> Unit = { _, _ -> },
     val delete: (Entry) -> Unit,
+    /** Several at once (multi-select), one undo for all. */
+    val deleteMany: (List<Entry>) -> Unit = { it.forEach(delete) },
     val togglePin: (Entry) -> Unit,
     val toggleCheck: (Entry, Int) -> Unit,
 )

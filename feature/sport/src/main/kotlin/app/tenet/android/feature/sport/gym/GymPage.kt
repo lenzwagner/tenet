@@ -1,5 +1,10 @@
 package app.tenet.android.feature.sport.gym
 
+import app.tenet.android.feature.sport.PlanSwitchButton
+import app.tenet.android.feature.sport.nextTrainingDayLabel
+import app.tenet.android.feature.sport.todayState
+import app.tenet.android.feature.sport.TodaySessionCard
+import app.tenet.android.feature.sport.TodayState
 import androidx.compose.material.icons.outlined.CalendarMonth
 import app.tenet.android.core.designsystem.component.CardHeader
 import androidx.compose.runtime.derivedStateOf
@@ -179,14 +184,18 @@ fun GymPage(
                 TodayCard(
                     overview,
                     onStart = { viewModel.startWorkout() },
-                    onTrainingDays = viewModel::setTrainingDays,
+                    onOpenPlan = { overview.plan?.id?.let(onOpenPlan) },
                     onFinishStale = { id -> viewModel.finishSession(id) { onOpenSummary(id) } },
                     onDiscardStale = viewModel::discardActiveSession,
                 )
             }
             item {
+                val plans by viewModel.plans.collectAsStateWithLifecycle()
                 RoutineCard(
                     overview = overview,
+                    plans = plans,
+                    onSwitchPlan = viewModel::switchPlan,
+                    onTrainingDays = viewModel::setTrainingDays,
                     onEdit = onOpenRoutineEditor,
                     onOpenLibrary = onOpenLibrary,
                     onOpenPlan = { overview.plan?.id?.let(onOpenPlan) },
@@ -272,35 +281,21 @@ fun GymPage(
 private fun TodayCard(
     overview: GymOverview,
     onStart: () -> Unit,
-    onTrainingDays: (String, Set<java.time.DayOfWeek>) -> Unit,
+    onOpenPlan: () -> Unit,
     onFinishStale: (String) -> Unit = {},
     onDiscardStale: () -> Unit = {},
 ) {
-    TenetCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            CardHeader(Icons.Outlined.FitnessCenter, if (trainingDayStatus(TrainingDays.parse(overview.plan?.trainingDays)) != null) "Heute Ruhetag" else "Heute geplant")
-            val plan = overview.plan
-            if (plan == null) {
-                Text(
-                    text = "Bibliothek wird geladen …",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                return@Column
-            }
-            Text(
-                text = overview.mainWorkout?.title ?: plan.name,
-                style = MaterialTheme.typography.headlineSmall,
-            )
-            Text(
-                text = trainingDayStatus(TrainingDays.parse(plan.trainingDays))
-                    ?: "${overview.routine.size} Übungen · ${plan.goal ?: "Kraft"}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            TrainingDaysRow(value = plan.trainingDays, onChange = { onTrainingDays(plan.id, it) })
-            val active = overview.activeSession
-            val hasActive = active != null
+    val plan = overview.plan
+    val active = overview.activeSession
+    val state = todayState(plan?.trainingDays, active != null, overview.sessions)
+    TodaySessionCard(
+        icon = Icons.Outlined.FitnessCenter,
+        state = state,
+        title = overview.mainWorkout?.title ?: plan?.name ?: "Gym",
+        subtitle = if (plan == null) "Bibliothek wird geladen …" else "${overview.routine.size} Übungen · ${plan.goal ?: "Kraft"}",
+        nextLabel = nextTrainingDayLabel(plan?.trainingDays),
+        onClick = onOpenPlan.takeIf { plan != null },
+        extra = {
             // Forgot to finish? A session open for hours gets an explicit choice.
             if (active != null && System.currentTimeMillis() - active.startedAt > 4 * 60 * 60_000L) {
                 Surface(color = MaterialTheme.colorScheme.errorContainer, shape = MaterialTheme.shapes.large, modifier = Modifier.fillMaxWidth()) {
@@ -317,14 +312,23 @@ private fun TodayCard(
                     }
                 }
             }
-            if (hasActive) {
-                OutlinedButton(shapes = ButtonDefaults.shapes(), onClick = onStart, modifier = Modifier.fillMaxWidth()) {
-                    Text("Session fortsetzen")
+        },
+    ) {
+        if (plan == null) return@TodaySessionCard
+        when (state) {
+            TodayState.ACTIVE -> Button(shapes = ButtonDefaults.shapes(), onClick = onStart, modifier = Modifier.weight(1f)) {
+                Text("Session fortsetzen")
+            }
+            TodayState.PLANNED -> {
+                Button(shapes = ButtonDefaults.shapes(), onClick = onStart, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text("Starten")
                 }
-            } else {
-                Button(shapes = ButtonDefaults.shapes(), onClick = onStart, modifier = Modifier.fillMaxWidth()) {
-                    Text("Workout starten")
-                }
+                OutlinedButton(shapes = ButtonDefaults.shapes(), onClick = onOpenPlan, modifier = Modifier.weight(1f)) { Text("Details") }
+            }
+            TodayState.DONE, TodayState.REST -> OutlinedButton(shapes = ButtonDefaults.shapes(), onClick = onStart, modifier = Modifier.weight(1f)) {
+                Text(if (state == TodayState.DONE) "Noch eine Session" else "Trotzdem trainieren")
             }
         }
     }
@@ -333,6 +337,9 @@ private fun TodayCard(
 @Composable
 private fun RoutineCard(
     overview: GymOverview,
+    plans: List<app.tenet.android.core.database.entity.TrainingPlan>,
+    onSwitchPlan: (String) -> Unit,
+    onTrainingDays: (String, Set<java.time.DayOfWeek>) -> Unit,
     onEdit: () -> Unit,
     onOpenLibrary: () -> Unit,
     onOpenPlan: () -> Unit,
@@ -342,9 +349,13 @@ private fun RoutineCard(
     val exercisesById = overview.exercises.associateBy { it.id }
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            CardHeader(Icons.Outlined.CalendarMonth, "Trainingsplan", action = {
+            CardHeader(Icons.Outlined.CalendarMonth, "Trainingsplan", meta = overview.plan?.name, action = {
+                PlanSwitchButton(plans) { onSwitchPlan(it.id) }
                 TextButton(shapes = ButtonDefaults.shapes(), onClick = onEdit) { Text("Bearbeiten") }
             })
+            overview.plan?.let { plan ->
+                TrainingDaysRow(value = plan.trainingDays, onChange = { onTrainingDays(plan.id, it) })
+            }
             // Rotating split: which unit is next, and what follows.
             if (overview.workouts.size > 1) {
                 val next = overview.mainWorkout

@@ -210,6 +210,14 @@ interface SportDao {
     @Query("UPDATE TrainingPlan SET active = 0 WHERE discipline = :discipline")
     suspend fun deactivatePlans(discipline: Discipline)
 
+    /** Every plan of a discipline, the active one first (older ones stay for switching back). */
+    @Query("SELECT * FROM TrainingPlan WHERE discipline = :discipline ORDER BY active DESC, startDate DESC, name")
+    fun observePlans(discipline: Discipline): Flow<List<TrainingPlan>>
+
+    /** Makes [planId] the one active plan of its discipline. */
+    @Query("UPDATE TrainingPlan SET active = CASE WHEN id = :planId THEN 1 ELSE 0 END WHERE discipline = :discipline")
+    suspend fun activatePlan(discipline: Discipline, planId: String)
+
     /**
      * Active planned workouts of a weekly structure (weekIndex + dayIndex,
      * anchored at the plan's startDate) for the week calendar and the

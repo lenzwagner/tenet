@@ -13,6 +13,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.foundation.border
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -374,6 +377,65 @@ fun CardHeader(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 modifier = Modifier.padding(start = 2.dp).size(22.dp),
             )
+        }
+    }
+}
+
+/**
+ * Bar for multi-select in lists and grids (long-press an item to start):
+ * close, "N ausgewählt", select all and delete. Back ends the selection.
+ */
+@Composable
+fun SelectionBar(
+    count: Int,
+    total: Int,
+    onClose: () -> Unit,
+    onSelectAll: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    androidx.activity.compose.BackHandler(onBack = onClose)
+    androidx.compose.foundation.layout.Row(
+        modifier = modifier.fillMaxWidth().heightIn(min = 48.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TooltipIconButton(androidx.compose.material.icons.Icons.Rounded.Close, "Auswahl beenden", onClose)
+        Text(
+            "$count ausgewählt",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.weight(1f),
+        )
+        if (count < total) {
+            androidx.compose.material3.TextButton(onClick = onSelectAll, shapes = androidx.compose.material3.ButtonDefaults.shapes()) {
+                Text("Alle")
+            }
+        }
+        IconButton(onClick = onDelete, enabled = count > 0, shapes = IconButtonDefaults.shapes()) {
+            Icon(
+                androidx.compose.material.icons.Icons.Outlined.Delete,
+                contentDescription = "Auswahl löschen",
+                tint = if (count > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** Round check mark on a selectable tile: filled accent when [selected], an empty ring otherwise. */
+@Composable
+fun SelectionCheck(selected: Boolean, modifier: Modifier = Modifier) {
+    val c = MaterialTheme.colorScheme
+    Box(
+        modifier
+            .size(24.dp)
+            .background(if (selected) c.primary else c.surface.copy(alpha = 0.7f), androidx.compose.foundation.shape.CircleShape)
+            .then(
+                if (selected) Modifier
+                else Modifier.border(1.5.dp, c.outline, androidx.compose.foundation.shape.CircleShape),
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (selected) {
+            Icon(androidx.compose.material.icons.Icons.Rounded.Check, contentDescription = "Ausgewählt", tint = c.onPrimary, modifier = Modifier.size(16.dp))
         }
     }
 }
