@@ -1,6 +1,8 @@
 package app.tenet.android.ui
 
 
+import app.tenet.android.core.designsystem.header.HeaderImage
+import app.tenet.android.core.designsystem.header.SubPageWash
 import androidx.compose.foundation.layout.ime
 import kotlinx.coroutines.flow.first
 import app.tenet.android.navigation.RecipeImportRoute
@@ -350,6 +352,7 @@ fun TenetApp(
                 }
 }
                 composable<SearchRoute> {
+ SubPageWash(HeaderImage.TODAY) {
                     SearchScreen(
                         onBack = { navController.popBackStack() },
                         onOpenEntry = { entry ->
@@ -364,7 +367,9 @@ fun TenetApp(
                         },
                     )
                 }
+}
                 composable<ExerciseLibraryRoute> {
+ SubPageWash(HeaderImage.SPORT) {
  AreaTheme(AppArea.SPORT) {
                     ExerciseLibraryScreen(
                         onBack = { navController.popBackStack() },
@@ -372,12 +377,16 @@ fun TenetApp(
                     )
                 }
 }
+}
                 composable<RoutineEditorRoute> {
+ SubPageWash(HeaderImage.SPORT) {
  AreaTheme(AppArea.SPORT) {
                     RoutineEditorScreen(onBack = { navController.popBackStack() })
                 }
 }
+}
                 composable<ActiveSessionRoute> { entry ->
+ SubPageWash(HeaderImage.SPORT) {
  AreaTheme(AppArea.SPORT) {
                     val route = entry.toRoute<ActiveSessionRoute>()
                     ActiveSessionScreen(
@@ -393,7 +402,9 @@ fun TenetApp(
                     )
                 }
 }
+}
                 composable<WorkoutSummaryRoute> { entry ->
+ SubPageWash(HeaderImage.SPORT) {
  AreaTheme(AppArea.SPORT) {
                     val route = entry.toRoute<WorkoutSummaryRoute>()
                     WorkoutSummaryScreen(
@@ -404,7 +415,9 @@ fun TenetApp(
                     )
                 }
 }
+}
                 composable<CaliPlanDetailRoute> {
+ SubPageWash(HeaderImage.SPORT) {
  AreaTheme(AppArea.SPORT) {
                     CaliPlanScreen(
                         onBack = { navController.popBackStack() },
@@ -412,7 +425,9 @@ fun TenetApp(
                     )
                 }
 }
+}
                 composable<WorkoutHistoryRoute> {
+ SubPageWash(HeaderImage.SPORT) {
  AreaTheme(AppArea.SPORT) {
                     WorkoutHistoryScreen(
                         onBack = { navController.popBackStack() },
@@ -420,7 +435,9 @@ fun TenetApp(
                     )
                 }
 }
+}
                 composable<ExerciseDetailRoute> { entry ->
+ SubPageWash(HeaderImage.SPORT) {
  AreaTheme(AppArea.SPORT) {
                     ExerciseDetailScreen(
                         exerciseId = entry.toRoute<ExerciseDetailRoute>().exerciseId,
@@ -429,7 +446,9 @@ fun TenetApp(
                     )
                 }
 }
+}
                 composable<SkillSessionRoute> { entry ->
+ SubPageWash(HeaderImage.SPORT) {
  AreaTheme(AppArea.SPORT) {
                     val route = entry.toRoute<SkillSessionRoute>()
                     SkillSessionScreen(
@@ -444,12 +463,16 @@ fun TenetApp(
                     )
                 }
 }
+}
                 composable<WeekCalendarRoute> {
+ SubPageWash(HeaderImage.SPORT) {
  AreaTheme(AppArea.SPORT) {
                     WeekCalendarScreen(onBack = { navController.popBackStack() })
                 }
 }
+}
                 composable<ActiveRunRoute> { entry ->
+ SubPageWash(HeaderImage.SPORT) {
  AreaTheme(AppArea.SPORT) {
                     val route = entry.toRoute<ActiveRunRoute>()
                     ActiveRunScreen(
@@ -463,7 +486,9 @@ fun TenetApp(
                     )
                 }
 }
+}
                 composable<RunPlanDetailRoute> { entry ->
+ SubPageWash(HeaderImage.SPORT) {
  AreaTheme(AppArea.SPORT) {
                     RunPlanDetailScreen(
                         planId = entry.toRoute<RunPlanDetailRoute>().planId,
@@ -473,7 +498,9 @@ fun TenetApp(
                     )
                 }
 }
+}
                 composable<RunWorkoutRoute> { entry ->
+ SubPageWash(HeaderImage.SPORT) {
  AreaTheme(AppArea.SPORT) {
                     RunWorkoutScreen(
                         plannedId = entry.toRoute<RunWorkoutRoute>().plannedId,
@@ -483,7 +510,9 @@ fun TenetApp(
                     )
                 }
 }
+}
                 composable<SportSetupRoute> { entry ->
+ SubPageWash(HeaderImage.SPORT) {
  AreaTheme(AppArea.SPORT) {
                     val done = { navController.popBackStack(); Unit }
                     val setupRoute = entry.toRoute<SportSetupRoute>()
@@ -494,7 +523,9 @@ fun TenetApp(
                     }
                 }
 }
+}
                 composable<ProgressionRoute> { entry ->
+ SubPageWash(HeaderImage.SPORT) {
  AreaTheme(AppArea.SPORT) {
                     ProgressionScreen(
                         initialPage = entry.toRoute<ProgressionRoute>().page,
@@ -502,7 +533,9 @@ fun TenetApp(
                     )
                 }
 }
+}
                 composable<GymPlanDetailRoute> { entry ->
+ SubPageWash(HeaderImage.SPORT) {
  AreaTheme(AppArea.SPORT) {
                     GymPlanDetailScreen(
                         planId = entry.toRoute<GymPlanDetailRoute>().planId,
@@ -510,7 +543,9 @@ fun TenetApp(
                     )
                 }
 }
+}
                 composable<RunDetailRoute> { entry ->
+ SubPageWash(HeaderImage.SPORT) {
  AreaTheme(AppArea.SPORT) {
                     val route = entry.toRoute<RunDetailRoute>()
                     RunDetailScreen(
@@ -520,7 +555,9 @@ fun TenetApp(
                     )
                 }
 }
+}
                 composable<CsWorkoutRoute> { entry ->
+ SubPageWash(HeaderImage.SPORT) {
  AreaTheme(AppArea.SPORT) {
                     val route = entry.toRoute<CsWorkoutRoute>()
                     CsWorkoutScreen(
@@ -533,6 +570,7 @@ fun TenetApp(
                         },
                     )
                 }
+}
 }
                 composable<JournalRoute> {
  AreaTheme(AppArea.JOURNAL) {
@@ -579,6 +617,7 @@ fun TenetApp(
                     }
                 }
                 composable<EntryEditorRoute> { entry ->
+ SubPageWash(HeaderImage.JOURNAL) {
  AreaTheme(AppArea.JOURNAL) {
                     val route = entry.toRoute<EntryEditorRoute>()
                     JournalLockGate(enabled = settings.journalLock) {
@@ -598,6 +637,7 @@ fun TenetApp(
                     )
                     }
                 }
+}
 }
                 // New entries float as a sheet over the page they came from.
                 dialog<NewEntryRoute>(
@@ -660,6 +700,7 @@ fun TenetApp(
                 }
 }
                 composable<RecipeDetailRoute> { entry ->
+ SubPageWash(HeaderImage.NUTRITION) {
  AreaTheme(AppArea.NUTRITION) {
                     val route = entry.toRoute<RecipeDetailRoute>()
                     val message by entry.savedStateHandle.getStateFlow<String?>(RECIPE_MESSAGE, null).collectAsStateWithLifecycle()
@@ -675,7 +716,9 @@ fun TenetApp(
                     )
                 }
 }
+}
                 composable<RecipeImportRoute> { entry ->
+ SubPageWash(HeaderImage.NUTRITION) {
  AreaTheme(AppArea.NUTRITION) {
                     RecipeImportScreen(
                         initialUrl = entry.toRoute<RecipeImportRoute>().url,
@@ -687,7 +730,9 @@ fun TenetApp(
                     )
                 }
 }
+}
                 composable<RecipeEditorRoute> { entry ->
+ SubPageWash(HeaderImage.NUTRITION) {
  AreaTheme(AppArea.NUTRITION) {
                     val route = entry.toRoute<RecipeEditorRoute>()
                     RecipeEditorScreen(
@@ -701,7 +746,9 @@ fun TenetApp(
                     )
                 }
 }
+}
                 composable<RecipeTextEditRoute> { entry ->
+ SubPageWash(HeaderImage.NUTRITION) {
  AreaTheme(AppArea.NUTRITION) {
                     RecipeTextEditorScreen(
                         recipeId = entry.toRoute<RecipeTextEditRoute>().recipeId,
@@ -713,7 +760,9 @@ fun TenetApp(
                     )
                 }
 }
+}
                 composable<MacroOptimizerRoute> { entry ->
+ SubPageWash(HeaderImage.NUTRITION) {
  AreaTheme(AppArea.NUTRITION) {
                     app.tenet.android.feature.nutrition.optimizer.MacroOptimizerScreen(
                         date = entry.toRoute<MacroOptimizerRoute>().date,
@@ -721,7 +770,9 @@ fun TenetApp(
                     )
                 }
 }
+}
                 composable<CookingRoute> { entry ->
+ SubPageWash(HeaderImage.NUTRITION) {
  AreaTheme(AppArea.NUTRITION) {
                     val route = entry.toRoute<CookingRoute>()
                     CookingModeScreen(
@@ -730,6 +781,7 @@ fun TenetApp(
                         onClose = { navController.popBackStack() },
                     )
                 }
+}
 }
             }
 

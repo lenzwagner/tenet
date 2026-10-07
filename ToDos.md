@@ -72,7 +72,9 @@ Im Emulator nicht möglich.
 - [ ] Eigener Signaturschlüssel statt Debug-Keystore. Wechsel = einmal neu installieren, dabei gehen die Daten verloren.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.14)
+## Zuletzt erledigt (0.5.0 – 1.0.0.15)
+
+- 1.0.0.15: Farbverlauf auch auf allen Unterseiten (Detailseiten, Editoren, Plan, Training, Optimierer, Suche …) in der Farbe ihres Bereichs; Kopfleisten durchsichtig, beim Scrollen in Seitenfarbe; AMOLED-Träume bleiben schwarz
 
 - 1.0.0.14: Farbverlauf läuft auch gescrollt ganz weich aus (vorher harte Kante hinter den Karten)
 

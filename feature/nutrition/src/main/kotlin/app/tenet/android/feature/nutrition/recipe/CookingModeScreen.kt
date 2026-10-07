@@ -88,8 +88,10 @@ fun CookingModeScreen(
     }
 
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
                 navigationIcon = { TooltipIconButton(Icons.Outlined.Close, "Kochmodus beenden", onClose) },
                 title = { Text(detail?.recipe?.title.orEmpty()) },
                 subtitle = { Text("$servings Portionen") },

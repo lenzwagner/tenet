@@ -149,8 +149,10 @@ fun CaliPlanScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
                 navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", onBack) },
                 title = { Text(state?.title ?: "Trainingsplan") },
                 subtitle = { Text("Kraft-Block & Skills") },

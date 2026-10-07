@@ -430,7 +430,8 @@ private fun EditorScaffold(
         // In the sheet the status bar is far away; only keyboard and nav bar matter.
         contentWindowInsets = if (inSheet) WindowInsets.navigationBars.union(WindowInsets.ime) else ScaffoldDefaults.contentWindowInsets,
         // In the sheet everything shares the sheet's surface.
-        containerColor = if (inSheet) Color.Transparent else MaterialTheme.colorScheme.background,
+        // Over the area's colour wash; AMOLED dreams stay pure black.
+        containerColor = if (!inSheet && MaterialTheme.colorScheme.background == Color.Black) Color.Black else Color.Transparent,
         topBar = {
             MediumFlexibleTopAppBar(
                 scrollBehavior = scrollBehavior,
@@ -441,7 +442,7 @@ private fun EditorScaffold(
                         scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                     )
                 } else {
-                    TopAppBarDefaults.topAppBarColors()
+                    app.tenet.android.core.designsystem.header.washTopBarColors()
                 },
                 navigationIcon = {
                     if (inSheet) {

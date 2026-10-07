@@ -300,8 +300,10 @@ fun RecipeImportScreen(
     @Suppress("DEPRECATION") val clipboard = LocalClipboardManager.current
 
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
                 navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", onBack) },
                 title = { Text("Rezept importieren") },
                 subtitle = { Text(if (viewModel.signedIn) "Landet auch in Saffron" else "Als Gast nur auf diesem Handy") },

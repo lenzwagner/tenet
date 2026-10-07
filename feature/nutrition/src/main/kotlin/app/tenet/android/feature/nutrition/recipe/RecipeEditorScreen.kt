@@ -111,9 +111,11 @@ fun RecipeEditorScreen(
     }
 
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             MediumFlexibleTopAppBar(
+                colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", onBack) },
                 title = { Text(if (state.isNew) "Neues Rezept" else "Rezept bearbeiten") },

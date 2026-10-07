@@ -66,9 +66,11 @@ fun WeekCalendarScreen(
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             MediumFlexibleTopAppBar(
+                colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     TooltipIconButton(icon = Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Zurück", onClick = onBack)

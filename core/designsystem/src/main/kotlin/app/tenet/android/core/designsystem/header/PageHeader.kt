@@ -272,3 +272,26 @@ fun Modifier.collapsingHeight(fullHeight: Dp, fraction: () -> Float): Modifier =
         )
         layout(placeable.width, h) { placeable.place(0, 0) }
     }
+
+/**
+ * Background of a sub page: the page colour with its area's colour wash at
+ * the top (like the main pages, without the scroll coupling). Sub-page
+ * Scaffolds and top bars are transparent, so the wash shows behind them.
+ */
+@Composable
+fun SubPageWash(header: HeaderImage, content: @Composable () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .pageWash(header) { 0f },
+    ) { content() }
+}
+
+/** Transparent top bar over the wash; once content scrolls under it, it gets the page colour. */
+@Composable
+fun washTopBarColors(): androidx.compose.material3.TopAppBarColors =
+    androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
+        containerColor = Color.Transparent,
+        scrolledContainerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.94f),
+    )

@@ -45,8 +45,10 @@ fun WorkoutHistoryScreen(
     val zone = ZoneId.systemDefault()
     val months = overview.sessions.groupBy { Instant.ofEpochMilli(it.startedAt).atZone(zone).toLocalDate().withDayOfMonth(1) }
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
                 navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", onBack) },
                 title = { Text("Trainingsverlauf") },
                 subtitle = { Text("${overview.sessions.size} Trainings") },

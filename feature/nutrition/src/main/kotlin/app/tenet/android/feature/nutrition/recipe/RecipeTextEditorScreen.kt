@@ -198,9 +198,11 @@ fun RecipeTextEditorScreen(
     BackHandler(enabled = s.dirty && !s.saving) { confirmLeave = true }
 
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
+                colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
                 navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", leave) },
                 title = { Text("Rezept bearbeiten") },
                 subtitle = { if (s.saffron) Text("Änderungen gehen auch an Saffron") },

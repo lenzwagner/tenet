@@ -95,8 +95,10 @@ fun WorkoutSummaryScreen(
     LaunchedEffect(sessionId) { viewModel.load(sessionId) }
     val s by viewModel.summary.collectAsStateWithLifecycle()
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
                 navigationIcon = {
                     TooltipIconButton(if (fresh) Icons.Outlined.Close else Icons.AutoMirrored.Outlined.ArrowBack, if (fresh) "Schließen" else "Zurück", onClose)
                 },

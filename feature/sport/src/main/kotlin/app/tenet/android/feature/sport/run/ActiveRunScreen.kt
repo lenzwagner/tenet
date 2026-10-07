@@ -170,8 +170,10 @@ fun ActiveRunScreen(
     }
 
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
                 navigationIcon = {
                     TooltipIconButton(
                         Icons.AutoMirrored.Outlined.ArrowBack,

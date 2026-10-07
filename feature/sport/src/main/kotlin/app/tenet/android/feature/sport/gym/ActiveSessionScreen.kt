@@ -184,8 +184,10 @@ fun ActiveSessionScreen(
 
     Box(Modifier.fillMaxSize()) {
         Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
             topBar = {
                 TopAppBar(
+                colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
                     navigationIcon = {
                         TooltipIconButton(icon = Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Zurück (Session bleibt aktiv)", onClick = onBack)
                     },

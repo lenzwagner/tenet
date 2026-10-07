@@ -177,8 +177,10 @@ fun RunWorkoutScreen(
     var moveDialog by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
                 navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", onBack) },
                 title = { Text(unit?.title ?: "Training") },
                 subtitle = { unit?.let { Text("${it.date.format(DATE)} · Woche ${it.week + 1}") } },

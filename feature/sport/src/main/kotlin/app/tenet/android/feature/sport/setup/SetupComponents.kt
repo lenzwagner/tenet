@@ -79,8 +79,10 @@ internal fun SetupScaffold(
     val last = step == stepTitles.lastIndex
     BackHandler { if (step > 0) onStep(step - 1) else onClose() }
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
                 navigationIcon = { TooltipIconButton(Icons.Outlined.Close, "Einrichtung schließen", onClose) },
                 title = { Text(title) },
                 subtitle = { Text("Schritt ${step + 1} von ${stepTitles.size}") },

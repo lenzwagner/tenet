@@ -129,8 +129,10 @@ fun ProgressionScreen(
     var range by rememberSaveable { mutableIntStateOf(Range.M6.ordinal) }
 
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
                 navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", onBack) },
                 title = { Text("Fortschritt") },
                 subtitle = { Text("Wie du dich über die Zeit verbesserst") },

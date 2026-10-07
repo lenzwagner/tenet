@@ -99,9 +99,11 @@ fun RunPlanDetailScreen(
     val snackbar = androidx.compose.runtime.remember { androidx.compose.material3.SnackbarHostState() }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         snackbarHost = { androidx.compose.material3.SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
+                colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
                 navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", onBack) },
                 title = { Text(state?.title ?: "Laufplan") },
                 subtitle = { state?.goalDate?.let { Text("Ziel am ${it.format(DATE)}") } },
@@ -429,8 +431,10 @@ fun GymPlanDetailScreen(
     LaunchedEffect(planId) { viewModel.load(planId) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
                 navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", onBack) },
                 title = { Text(state?.title ?: "Trainingsplan") },
                 subtitle = { Text("Fortschritt") },
