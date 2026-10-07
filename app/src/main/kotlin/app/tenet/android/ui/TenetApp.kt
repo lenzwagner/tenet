@@ -641,7 +641,8 @@ fun TenetApp(
 }
                 // New entries float as a sheet over the page they came from.
                 dialog<NewEntryRoute>(
-                    dialogProperties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+                    // Back/Escape go through the sheet's own handler, which saves what was written.
+                    dialogProperties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false, dismissOnBackPress = false),
                 ) { entry ->
  AreaTheme(AppArea.JOURNAL) {
                     val route = entry.toRoute<NewEntryRoute>()

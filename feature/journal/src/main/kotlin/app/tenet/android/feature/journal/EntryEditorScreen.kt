@@ -1,5 +1,7 @@
 package app.tenet.android.feature.journal
 
+import androidx.compose.ui.graphics.luminance
+import app.tenet.android.core.designsystem.header.sheetWash
 import app.tenet.android.core.designsystem.component.CardHeader
 import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.material3.TextButton
@@ -298,7 +300,7 @@ private fun EditorSheetFrame(
         }
         Surface(
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            color = Color.Transparent,
             shadowElevation = 8.dp,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -306,7 +308,8 @@ private fun EditorSheetFrame(
                 .height(sheetHeight)
                 .offset { IntOffset(0, (offset.value * sheetPx).roundToInt()) },
         ) {
-            Column {
+            // The whole note on the journal's colour wash, very faint.
+            Column(Modifier.sheetWash(app.tenet.android.core.designsystem.header.HeaderImage.JOURNAL)) {
                 // Drag handle: pull the sheet down to close it.
                 Box(
                     Modifier
@@ -426,13 +429,19 @@ private fun EditorScaffold(
         }
     }
 
+    // Full screen: the whole note on the faint journal wash like the new-note sheet
+    // (which paints it itself); AMOLED dreams stay pure black.
+    val darkUi = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val amoledDream = state.type == EntryType.DREAM && darkUi && app.tenet.android.core.designsystem.theme.LocalAmoledDreams.current
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = Modifier
+            .then(if (!inSheet && !amoledDream) Modifier.sheetWash(app.tenet.android.core.designsystem.header.HeaderImage.JOURNAL) else Modifier)
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
         // In the sheet the status bar is far away; only keyboard and nav bar matter.
         contentWindowInsets = if (inSheet) WindowInsets.navigationBars.union(WindowInsets.ime) else ScaffoldDefaults.contentWindowInsets,
         // In the sheet everything shares the sheet's surface.
         // Over the area's colour wash; AMOLED dreams stay pure black.
-        containerColor = if (!inSheet && MaterialTheme.colorScheme.background == Color.Black) Color.Black else Color.Transparent,
+        containerColor = if (amoledDream && !inSheet) Color.Black else Color.Transparent,
         topBar = {
             MediumFlexibleTopAppBar(
                 scrollBehavior = scrollBehavior,
@@ -440,7 +449,8 @@ private fun EditorScaffold(
                 colors = if (inSheet) {
                     TopAppBarDefaults.topAppBarColors(
                         containerColor = Color.Transparent,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                        // Text scrolling under the bar fades behind a veil of the sheet's base.
+                        scrolledContainerColor = (if (MaterialTheme.colorScheme.background.luminance() < 0.5f) Color.Black else Color.White).copy(alpha = 0.9f),
                     )
                 } else {
                     app.tenet.android.core.designsystem.header.washTopBarColors()
@@ -683,7 +693,7 @@ private fun BodyEditor(
             // Writing surface without a box: a calm tonal sheet (M3), placeholder instead of a label.
             Surface(
                 shape = MaterialTheme.shapes.large,
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.45f),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 BasicTextField(

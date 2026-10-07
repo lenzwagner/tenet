@@ -839,11 +839,24 @@ internal fun EntryCard(
                             JournalReading(enabled = serif) {
                                 MarkdownView(
                                     body = entry.body,
-                                    onToggleCheck = { line -> actions.toggleCheck(entry, line) },
+                                    // While selecting, the checklist is read-only.
+                                    onToggleCheck = { line -> if (!selecting) actions.toggleCheck(entry, line) },
                                     onLink = { actions.open(entry) },
                                     compact = true,
                                     maxBlocks = lines,
                                     maxLines = lines,
+                                )
+                            }
+                            // Selecting: a tap anywhere on the preview (checkboxes, links) only selects.
+                            if (selecting) {
+                                Box(
+                                    Modifier
+                                        .matchParentSize()
+                                        .combinedClickable(
+                                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                            indication = null,
+                                            onClick = { onSelect?.invoke() },
+                                        ),
                                 )
                             }
                         }

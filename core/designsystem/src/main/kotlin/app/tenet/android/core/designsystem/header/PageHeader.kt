@@ -288,6 +288,29 @@ fun SubPageWash(header: HeaderImage, content: @Composable () -> Unit) {
     ) { content() }
 }
 
+/**
+ * Whole-surface wash for sheets (new note …): the area's colours, very
+ * faint, over the full height. Light: white at the top melting into the
+ * colour at the bottom; dark the other way round, colour at the top
+ * fading into black.
+ */
+fun Modifier.sheetWash(header: HeaderImage): Modifier = composed {
+    val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val base = if (dark) Color.Black else Color.White
+    val colors = header.wash.map { Color(it).copy(alpha = if (dark) 0.22f else 0.30f) }
+    drawBehind {
+        drawRect(base)
+        // Diagonal colour across the sheet …
+        drawRect(Brush.linearGradient(colors, start = Offset.Zero, end = Offset(size.width, size.height)))
+        // … and the plain base on the side the look starts from.
+        drawRect(
+            Brush.verticalGradient(
+                if (dark) listOf(Color.Transparent, base.copy(alpha = 0.55f), base) else listOf(base, base.copy(alpha = 0.55f), Color.Transparent),
+            ),
+        )
+    }
+}
+
 /** Transparent top bar over the wash; once content scrolls under it, it gets the page colour. */
 @Composable
 fun washTopBarColors(): androidx.compose.material3.TopAppBarColors =

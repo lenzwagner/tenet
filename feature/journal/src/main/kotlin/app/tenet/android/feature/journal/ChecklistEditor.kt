@@ -140,7 +140,7 @@ internal fun ChecklistEditor(body: String, onBody: (String) -> Unit) {
 
     Surface(
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.45f),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(vertical = 8.dp)) {
