@@ -1,6 +1,29 @@
 # Tenet – offene ToDos
 
-Stand: 06.10.2026, Version 1.0.0.5. Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 07.10.2026, Version 1.0.0.15 (auf `main` gepusht, APK `tenet-1.0.0.15-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+
+## Übergabe (Session 06.–07.10.2026)
+
+**Stand:** 1.0.0.6 – 1.0.0.15 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
+
+**Wichtig vor dem nächsten Update am Handy:**
+- Seit 1.0.0.6 ist die Datenbank mit SQLCipher verschlüsselt (Rohschlüssel, im Android Keystore gewrappt, `no_backup/db.key`). Die alte Klartext-DB wird beim ersten Start einmal umgewandelt. Im Emulator geprüft, mit echten Daten noch nicht → vorher mit Google anmelden und synchronisieren.
+- Neue Laufplan-Logik (Tempo-Progression, progressive Intervalle, Pyramiden, Schwellen-Blöcke, Renntempo-Finish) gilt nur für **neu erstellte** Pläne → bestehenden Halbmarathon-Plan über „Neu erstellen“ neu anlegen.
+
+**Arbeitsweise / Werkzeuge:**
+- Release bauen: `printf '1.0.0.X\n' | ./build_new.sh` (setzt versionCode/-Name, signiert mit Debug-Keystore).
+- Emulator: AVD `Pixel_10` auf Port **5580** starten (`emulator -avd Pixel_10 -port 5580`), weil BlueStacks Port 5555 belegt; `emulator-5554` ist BlueStacks und nicht anfassen.
+- Baseline Profile neu erzeugen nur auf dem Emulator: `ANDROID_SERIAL=emulator-5580 ./gradlew :app:generateReleaseBaselineProfile` (deinstalliert die App dort!).
+- Die `preview-*.png` im Projektordner gehören nicht zu Tenet und werden bewusst nicht committet.
+
+**Design-Stand:** Stil „Klar“ (Standard; „Expressiv“ in Optionen → Darstellung → Stil): neutrale Flächen, Inter, iOS-Schalter/Segmente/Gruppen. Seitenkopf wie Apple Health: Farbverlauf je Bereich (`HeaderImage.wash`, `pageWash`, `SubPageWash`), großer Titel klappt in kleine Leiste; auf allen Haupt- und Unterseiten.
+
+**Offene Ideen aus der Session (nicht begonnen):**
+- Übergänge vom Element aus (Rezept-Kachel/Notiz wächst in die Detailseite, Shared Element)
+- Feinere Haptik (Satz abhaken, Kalorienziel erreicht, Rekord)
+- Rekord-/Workout-Zusammenfassung als teilbares Bild
+- Bestehenden Laufplan auf die neuen Einheiten umrechnen, ohne ihn neu anzulegen
+- Sheets („Hinzufügen“, „Neuer Eintrag“) eventuell auch mit leichtem Farbverlauf
 
 ## Google-Anmeldung & Sync (0.15)
 
@@ -12,12 +35,21 @@ Stand: 06.10.2026, Version 1.0.0.5. Abgeleitet aus `App_Konzept.md`, dem aktuell
 Im Emulator nicht möglich.
 
 - [x] Barcode-Scan mit echter Packung (Google Code Scanner → Open Food Facts)
+- [ ] Update auf 1.0.0.15 über 1.0.0.5: Datenbank wird einmalig verschlüsselt – Daten danach vollständig? (vorher synchronisieren)
+- [ ] Kaltstart-Tempo am Handy (Emulator: ~2 s → ~0,6 s seit 1.0.0.6)
+- [ ] Seitenkopf-Farbverlauf und Klar-Stil hell/dunkel am echten Display, auch beim Scrollen
+- [ ] Laufplan neu erstellen: Wunschzeit-Check, Tempo-Zonen, progressive Intervalle/Pyramide/Renntempo-Finish, Verpflegung, Pace je km; Sprachführung bei progressiven Reps und Schwellen-Blöcken im echten Lauf
+- [ ] Prognose „heute / am Wettkampftag“ nach ein paar echten Läufen
+- [ ] Kalorienring: kurzer Impuls mit Haptik beim Schließen eines Rings (im Emulator nicht gesehen)
+- [ ] „Übung tauschen“ öffnet halbhoch und lässt sich hochziehen
+- [ ] Calisthenics-Live-Mitteilung: Hold-Countdown-Chip in der Statusleiste, „Satz fertig“ vom Sperrbildschirm
+- [ ] Tastatur verdeckt nirgends mehr Eingaben (Setup, Rezepte, Einträge, Training)
 - [ ] Journal-Sperre mit Fingerabdruck bzw. Displaysperre
 - [ ] Sprachmemo aufnehmen und abspielen
 - [ ] Neues Diktat-Sheet am Handy: längere Pausen, Signaltöne beim Neustart der Erkennung?
 - [ ] Echter GPS-Lauf: Sprachansagen, geführte Intervalle, Auto-Pause, Live-Benachrichtigung
 - [x] Health-Connect-Import mit Uhr oder Strava, inkl. Duplikat-Erkennung bei parallelem GPS-Lauf
-- [ ] Live-Mitteilung im Training am echten Handy (Android 16: Chip in der Statusleiste, Eingabe vom Sperrbildschirm)
+- [ ] Live-Mitteilung im Gym-Training (Android 16: Chip in der Statusleiste, Eingabe vom Sperrbildschirm)
 - [ ] Hold-Timer und AMRAP per Lautstärketaste
 - [ ] Haptik (Vibration) an allen Stellen
 - [ ] „Lauf starten“ auf der Heute-Seite an einem Tag mit geplantem Lauf
@@ -25,7 +57,6 @@ Im Emulator nicht möglich.
 - [ ] Health Connect: Trainings und Gewicht schreiben, Gewicht aus Waage/Fitbit lesen. Vorher in Einstellungen → Health Connect → „Berechtigungen“ die neuen Rechte erlauben
 - [ ] Schlaf bei den Träumen mit echter Uhr/Schlaf-App prüfen (Emulator hat keine Schlafdaten)
 - [ ] Pace-Ansagen bei lockeren/langen Läufen (zu schnell / passt / langsamer, Halbzeit, Ziel)
-- [ ] Update auf die Version mit SQLCipher: die vorhandene Datenbank wird beim ersten Start einmalig verschlüsselt (im Emulator mit 1.0.0.5-Daten geprüft). Vorher am Handy mit Google anmelden und synchronisieren, falls etwas schiefgeht
 - [ ] Formvideo mit echter Kamera aufnehmen (Satz-Knopf in der Skill-Session), Vergleich zweier Videos, ½ Tempo
 - [ ] KI per Sprache: Mahlzeit diktieren (Ernährung → Hinzufügen → Mikrofon), Lauf nachtragen (Diktieren), Gym-Sätze (Mikrofon in der Session), Traum/Tagebuch nach „Erzählen“
 
@@ -40,14 +71,11 @@ Im Emulator nicht möglich.
 ## Sport · Laufen
 
 - [ ] GPX-Strecke beim Export auch mit Pausen-Segmenten
+- [ ] Bestehende Pläne auf die neuen Einheiten-Typen umrechnen (aktuell nur bei „Neu erstellen“)
 
 ## Journal · Notizen
 
-
 - [ ] Teilen aus anderen Apps (Share-Target): Text oder Link wird Notiz
-
-## Journal · Tagebuch
-
 
 ## Journal · Träume
 
@@ -57,10 +85,6 @@ Im Emulator nicht möglich.
 
 - [ ] Widget „Kalorien heute“
 
-## Ernährung · Rezepte
-
-
-
 ## KI-Ausfüllhilfe (NVIDIA NIM)
 
 - [ ] API-Schlüssel bei NVIDIA neu erzeugen (er stand im Chat) und in den Einstellungen eintragen
@@ -68,9 +92,9 @@ Im Emulator nicht möglich.
 ## Technik
 
 - [ ] APK ist durch SQLCipher von 9,7 auf 18,5 MB gewachsen (native Bibliothek für 4 Architekturen). Mit `abiFilters += "arm64-v8a"` wäre sie wieder kleiner, läuft dann aber nur noch auf 64-Bit-ARM (alle aktuellen Handys, Emulator auf dem Mac auch)
-
-- [ ] Eigener Signaturschlüssel statt Debug-Keystore. Wechsel = einmal neu installieren, dabei gehen die Daten verloren.
+- [ ] Eigener Signaturschlüssel statt Debug-Keystore. Wechsel = einmal neu installieren, dabei gehen die Daten verloren (und der DB-Schlüssel – vorher synchronisieren).
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
+- [ ] Alte APKs im Projektordner aufräumen (~40 Stück, je ~10–18 MB, enthalten den NIM-Schlüssel)
 
 ## Zuletzt erledigt (0.5.0 – 1.0.0.15)
 
