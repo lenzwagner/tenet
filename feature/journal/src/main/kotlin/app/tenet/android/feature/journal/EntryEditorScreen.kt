@@ -442,6 +442,8 @@ private fun EditorScaffold(
         // In the sheet everything shares the sheet's surface.
         // Over the area's colour wash; AMOLED dreams stay pure black.
         containerColor = if (amoledDream && !inSheet) Color.Black else Color.Transparent,
+        // A transparent container has no content colour of its own: set it, or icons and labels go black in dark mode.
+        contentColor = MaterialTheme.colorScheme.onSurface,
         topBar = {
             MediumFlexibleTopAppBar(
                 scrollBehavior = scrollBehavior,
@@ -449,11 +451,13 @@ private fun EditorScaffold(
                 colors = if (inSheet) {
                     TopAppBarDefaults.topAppBarColors(
                         containerColor = Color.Transparent,
-                        // Text scrolling under the bar fades behind a veil of the sheet's base.
-                        scrolledContainerColor = (if (MaterialTheme.colorScheme.background.luminance() < 0.5f) Color.Black else Color.White).copy(alpha = 0.9f),
+                        // The wash stays visible behind the bar (content is clipped below it).
+                        scrolledContainerColor = Color.Transparent,
                     )
-                } else {
+                } else if (amoledDream) {
                     app.tenet.android.core.designsystem.header.washTopBarColors()
+                } else {
+                    TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent)
                 },
                 navigationIcon = {
                     if (inSheet) {

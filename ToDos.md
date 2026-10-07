@@ -1,10 +1,10 @@
 # Tenet – offene ToDos
 
-Stand: 07.10.2026, Version 1.0.0.20 (auf `main` gepusht, APK `tenet-1.0.0.20-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 07.10.2026, Version 1.0.0.21 (auf `main` gepusht, APK `tenet-1.0.0.21-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Übergabe (Session 06.–07.10.2026)
 
-**Stand:** 1.0.0.6 – 1.0.0.20 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
+**Stand:** 1.0.0.6 – 1.0.0.21 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
 
 **Wichtig vor dem nächsten Update am Handy:**
 - Seit 1.0.0.6 ist die Datenbank mit SQLCipher verschlüsselt (Rohschlüssel, im Android Keystore gewrappt, `no_backup/db.key`). Die alte Klartext-DB wird beim ersten Start einmal umgewandelt. Im Emulator geprüft, mit echten Daten noch nicht → vorher mit Google anmelden und synchronisieren.
@@ -41,6 +41,7 @@ Im Emulator nicht möglich.
 - [ ] Laufplan neu erstellen: Wunschzeit-Check, Tempo-Zonen, progressive Intervalle/Pyramide/Renntempo-Finish, Verpflegung, Pace je km; Sprachführung bei progressiven Reps und Schwellen-Blöcken im echten Lauf
 - [ ] Prognose „heute / am Wettkampftag“ nach ein paar echten Läufen
 - [ ] Kalorienring: kurzer Impuls mit Haptik beim Schließen eines Rings (im Emulator nicht gesehen)
+- [ ] Notiz-Kachel mit Foto + Checkliste: ganze Punkte sichtbar (im Emulator kein Foto)
 - [ ] Mehrfachauswahl Rezepte mit echten (eigenen + Saffron-)Rezepten löschen
 - [ ] Plan wechseln mit zwei echten Plänen (Gym/Laufen), Statistiken bleiben vollständig
 - [ ] „Übung tauschen“ öffnet halbhoch und lässt sich hochziehen
@@ -98,7 +99,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Alte APKs im Projektordner aufräumen (~40 Stück, je ~10–18 MB, enthalten den NIM-Schlüssel)
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.20)
+## Zuletzt erledigt (0.5.0 – 1.0.0.21)
+
+- 1.0.0.21: Notiz-Verlauf hell und dunkel immer oben, fest beim Scrollen (Kopfleiste durchsichtig); im Dunkeln Symbole/Beschriftungen wieder hell; Notiz-Kacheln mit Foto höher, damit die Liste darunter nicht mit halbem Kästchen abgeschnitten wird
 
 - 1.0.0.20: Notiz (neu als Sheet und geöffnet) ganz auf zartem Journal-Verlauf – hell oben weiß, unten Farbe; dunkel oben Farbe, unten schwarz (AMOLED-Träume bleiben schwarz), Text-/Listenflächen halbtransparent; Checklisten in markierten Notizen lassen sich nicht mehr abhaken (Tippen wählt nur aus); Escape (Hardware-Tastatur) verwirft eine neue Notiz nicht mehr, sondern speichert wie Zurück
 

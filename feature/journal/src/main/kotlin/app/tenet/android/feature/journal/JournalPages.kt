@@ -221,15 +221,18 @@ internal fun NotesPage(state: JournalUiState, actions: EntryActions) {
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(notes, key = { it.id }) { note ->
+                        val image = state.attachments[note.id]?.firstOrNull { it.mimeType.startsWith("image") }
                         EntryCard(
                             entry = note,
                             actions = actions,
                             tags = state.tagsByEntry[note.id].orEmpty(),
-                            image = state.attachments[note.id]?.firstOrNull { it.mimeType.startsWith("image") },
+                            image = image,
                             hasVoice = state.attachments[note.id].orEmpty().any { it.mimeType.startsWith("audio") },
                             previewLines = 4,
                             fixedHeight = true,
-                            modifier = Modifier.height(240.dp).animateItem(),
+                            // With a photo the tile grows by the photo, so the preview below
+                            // still shows whole lines (a checkbox was cut in half before).
+                            modifier = Modifier.height(if (image != null) 340.dp else 240.dp).animateItem(),
                             selecting = selecting,
                             selected = note.id in selectedIds,
                             onSelect = { toggle(note.id) },

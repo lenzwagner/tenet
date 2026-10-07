@@ -289,24 +289,31 @@ fun SubPageWash(header: HeaderImage, content: @Composable () -> Unit) {
 }
 
 /**
- * Whole-surface wash for sheets (new note …): the area's colours, very
- * faint, over the full height. Light: white at the top melting into the
- * colour at the bottom; dark the other way round, colour at the top
- * fading into black.
+ * Fixed wash for notes (sheet and full screen): the area's colours at the
+ * top, very faint, melting into white (light) or black (dark) further
+ * down. Drawn behind the scrolling content, so it stays put.
  */
 fun Modifier.sheetWash(header: HeaderImage): Modifier = composed {
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val base = if (dark) Color.Black else Color.White
-    val colors = header.wash.map { Color(it).copy(alpha = if (dark) 0.22f else 0.30f) }
+    val colors = header.wash.map { Color(it).copy(alpha = if (dark) 0.32f else 0.40f) }
+    val density = LocalDensity.current
+    val washPx = with(density) { WashHeight.toPx() }
     drawBehind {
         drawRect(base)
-        // Diagonal colour across the sheet …
-        drawRect(Brush.linearGradient(colors, start = Offset.Zero, end = Offset(size.width, size.height)))
-        // … and the plain base on the side the look starts from.
+        drawRect(
+            Brush.linearGradient(colors, start = Offset.Zero, end = Offset(size.width, washPx * 0.55f)),
+            size = Size(size.width, washPx),
+        )
         drawRect(
             Brush.verticalGradient(
-                if (dark) listOf(Color.Transparent, base.copy(alpha = 0.55f), base) else listOf(base, base.copy(alpha = 0.55f), Color.Transparent),
+                0f to Color.Transparent,
+                0.35f to base.copy(alpha = 0.3f),
+                0.7f to base.copy(alpha = 0.8f),
+                1f to base,
+                endY = washPx,
             ),
+            size = Size(size.width, washPx),
         )
     }
 }
