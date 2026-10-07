@@ -176,6 +176,11 @@ class SettingsViewModel @Inject constructor(
         reminderScheduler.scheduleTrainingReminder(enabled, minuteOfDay)
     }
 
+    fun setReadinessReport(enabled: Boolean, minuteOfDay: Int = settings.value.readinessReportMinute) {
+        viewModelScope.launch { repository.setReadinessReport(enabled, minuteOfDay) }
+        reminderScheduler.scheduleReadinessReport(enabled, minuteOfDay)
+    }
+
     fun setDreamReminder(enabled: Boolean, minuteOfDay: Int = settings.value.dreamReminderMinute) {
         viewModelScope.launch { repository.setDreamReminder(enabled, minuteOfDay) }
         reminderScheduler.scheduleDreamReminder(enabled, minuteOfDay)

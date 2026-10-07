@@ -9,6 +9,8 @@ import androidx.health.connect.client.records.ElevationGainedRecord
 import androidx.health.connect.client.records.ExerciseRouteResult
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
+import androidx.health.connect.client.records.RestingHeartRateRecord
 import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.records.SleepSessionRecord
@@ -165,6 +167,49 @@ class HealthConnectRepository @Inject constructor(
                 )
             },
         )
+    }
+
+    /** Per wake-up day: resting heart rate and night HRV, for the readiness score. */
+    data class HeartDay(val restingHr: Int?, val hrvMs: Double?)
+
+    /**
+     * Resting heart rate and HRV (RMSSD) per day since [from]. Resting HR from
+     * the watch's own daily value, else the low end of the night's heart rate;
+     * HRV averaged over the day's samples (mostly taken during sleep).
+     */
+    suspend fun heartDays(from: Instant, nights: Map<java.time.LocalDate, SleepNight>): Map<java.time.LocalDate, HeartDay> {
+        if (!_status.value.enabled || availability() != Availability.AVAILABLE) return emptyMap()
+        val granted = runCatching { client.permissionController.getGrantedPermissions() }.getOrDefault(emptySet())
+        val zone = java.time.ZoneId.systemDefault()
+        val range = TimeRangeFilter.after(from)
+        val resting: Map<java.time.LocalDate, Int> = if (READ_RESTING_HR in granted) {
+            runCatching { readAll(RestingHeartRateRecord::class, range, emptySet()) }.getOrDefault(emptyList())
+                .groupBy { it.time.atZone(zone).toLocalDate() }
+                .mapValues { (_, list) -> list.minOf { it.beatsPerMinute.toInt() } }
+        } else {
+            emptyMap()
+        }
+        // Fallback: 5th percentile of the heart rate while asleep.
+        val nightHr: Map<java.time.LocalDate, Int> = if (READ_HR in granted && nights.isNotEmpty()) {
+            val samples = runCatching { readAll(HeartRateRecord::class, range, emptySet()) }.getOrDefault(emptyList())
+                .flatMap { it.samples }
+            nights.mapNotNull { (day, night) ->
+                val bpm = samples.filter { it.time >= night.start && it.time <= night.end }.map { it.beatsPerMinute.toInt() }.sorted()
+                if (bpm.size < 20) null else day to bpm[bpm.size / 20]
+            }.toMap()
+        } else {
+            emptyMap()
+        }
+        val hrv: Map<java.time.LocalDate, Double> = if (READ_HRV in granted) {
+            runCatching { readAll(HeartRateVariabilityRmssdRecord::class, range, emptySet()) }.getOrDefault(emptyList())
+                .groupBy { it.time.atZone(zone).toLocalDate() }
+                .mapValues { (_, list) -> list.map { it.heartRateVariabilityMillis }.average() }
+        } else {
+            emptyMap()
+        }
+        return (resting.keys + nightHr.keys + hrv.keys).associateWith { day ->
+            HeartDay(resting[day] ?: nightHr[day], hrv[day])
+        }
     }
 
     private suspend fun readRunRecords(from: Instant): List<ExerciseSessionRecord> {
@@ -367,6 +412,9 @@ class HealthConnectRepository @Inject constructor(
         )
 
         val READ_SLEEP: String = HealthPermission.getReadPermission(SleepSessionRecord::class)
+        val READ_HR: String = HealthPermission.getReadPermission(HeartRateRecord::class)
+        val READ_RESTING_HR: String = HealthPermission.getReadPermission(RestingHeartRateRecord::class)
+        val READ_HRV: String = HealthPermission.getReadPermission(HeartRateVariabilityRmssdRecord::class)
 
         /** Without these, nothing can be imported. */
         val REQUIRED: Set<String> = setOf(
@@ -383,6 +431,8 @@ class HealthConnectRepository @Inject constructor(
             "android.permission.health.READ_HEALTH_DATA_HISTORY",
             HealthWriter.READ_WEIGHT,
             READ_SLEEP,
+            READ_RESTING_HR,
+            READ_HRV,
             HealthWriter.WRITE_WEIGHT,
             HealthWriter.WRITE_EXERCISE,
             HealthWriter.WRITE_DISTANCE,

@@ -48,6 +48,9 @@ data class UserSettings(
     /** Morning reminder on training days ("Heute: Intervalle 3 × 1000 m"). */
     val trainingReminder: Boolean = false,
     val trainingReminderMinute: Int = 7 * 60,
+    /** Morning readiness report (Health Connect). */
+    val readinessReport: Boolean = false,
+    val readinessReportMinute: Int = 7 * 60 + 30,
     /** Custom meal section names keyed by MealType name (App_Konzept.md 5.4 "umbenennbar"). */
     val mealNames: Map<String, String> = emptyMap(),
     /** Daily water goal in ml. */

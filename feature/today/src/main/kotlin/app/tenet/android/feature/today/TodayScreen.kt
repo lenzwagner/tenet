@@ -1,5 +1,6 @@
 package app.tenet.android.feature.today
 
+import androidx.compose.material.icons.outlined.MonitorHeart
 import app.tenet.android.core.designsystem.header.pageWash
 import app.tenet.android.core.designsystem.theme.TenetCard
 import app.tenet.android.core.designsystem.theme.HealthTint
@@ -190,6 +191,7 @@ fun TodayScreen(
     val headerState = rememberHeaderScrollState()
     val listState = rememberReselectListState(headerState)
     val weather by viewModel.weather.collectAsStateWithLifecycle()
+    val readiness by viewModel.readiness.collectAsStateWithLifecycle()
     // With weather the year goes, so date and weather fit one line.
     val dateText = weather?.let { w ->
         state.date.format(DateTimeFormatter.ofPattern("EEEE, d. MMMM", Locale.GERMAN)) + " · " + w.emoji + " " +
@@ -299,6 +301,7 @@ fun TodayScreen(
                                 locked = journalLocked,
                             ) }
                             TodayCard.STREAKS -> StreakCard(state.streaks)
+                            TodayCard.READINESS -> readiness?.takeIf { state.isToday }?.let { ReadinessCard(it.result) }
                         }
                     }
                 }
@@ -670,6 +673,82 @@ private fun JournalCard(
                 }
             }
         }
+    }
+}
+
+/**
+ * Morning readiness like Google Health / Fitbit: score ring, what it means
+ * for today's training and the parts behind it (HRV, resting pulse, sleep, load).
+ */
+@Composable
+private fun ReadinessCard(r: app.tenet.android.core.common.Readiness.Result) {
+    val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val levelColor = readinessColor(r.level, dark)
+    TenetCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            CardTitle(Icons.Outlined.MonitorHeart, "Bereitschaft", HealthTint.BODY, meta = "Heute")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                ReadinessRing(r.score, levelColor, Modifier.size(88.dp))
+                Spacer(Modifier.width(16.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(r.headline, style = MaterialTheme.typography.titleLarge)
+                    Text(r.advice, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            // Parts in a 2-column grid, like Health's metric tiles.
+            r.contributors.chunked(2).forEach { pair ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    pair.forEach { c ->
+                        Surface(
+                            shape = MaterialTheme.shapes.large,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+                                Text(c.kind.label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(c.value, style = MaterialTheme.typography.titleMedium)
+                                Text(c.detail, style = MaterialTheme.typography.labelSmall, color = readinessColor(partLevel(c.score), dark))
+                            }
+                        }
+                    }
+                    if (pair.size == 1) Spacer(Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+private fun partLevel(score: Int) = when {
+    score >= 80 -> app.tenet.android.core.common.Readiness.Level.HIGH
+    score >= 60 -> app.tenet.android.core.common.Readiness.Level.GOOD
+    score >= 40 -> app.tenet.android.core.common.Readiness.Level.MODERATE
+    else -> app.tenet.android.core.common.Readiness.Level.LOW
+}
+
+private fun readinessColor(level: app.tenet.android.core.common.Readiness.Level, dark: Boolean) = androidx.compose.ui.graphics.Color(
+    when (level) {
+        app.tenet.android.core.common.Readiness.Level.HIGH -> if (dark) 0xFF30D158 else 0xFF1FA34A
+        app.tenet.android.core.common.Readiness.Level.GOOD -> if (dark) 0xFF64D2FF else 0xFF1E88D9
+        app.tenet.android.core.common.Readiness.Level.MODERATE -> if (dark) 0xFFFFB340 else 0xFFE08600
+        app.tenet.android.core.common.Readiness.Level.LOW -> if (dark) 0xFFFF6961 else 0xFFD93A30
+    },
+)
+
+/** 270° gauge with the score in the middle. */
+@Composable
+private fun ReadinessRing(score: Int, color: androidx.compose.ui.graphics.Color, modifier: Modifier = Modifier) {
+    val track = MaterialTheme.colorScheme.surfaceContainerHighest
+    val sweep by androidx.compose.animation.core.animateFloatAsState(270f * score / 100f, label = "readiness")
+    Box(modifier.semantics(mergeDescendants = true) { contentDescription = "Bereitschaft $score von 100" }, contentAlignment = Alignment.Center) {
+        androidx.compose.foundation.Canvas(Modifier.matchParentSize()) {
+            val stroke = androidx.compose.ui.graphics.drawscope.Stroke(width = 9.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+            val inset = stroke.width / 2
+            val arcSize = androidx.compose.ui.geometry.Size(size.width - stroke.width, size.height - stroke.width)
+            val topLeft = androidx.compose.ui.geometry.Offset(inset, inset)
+            drawArc(track, 135f, 270f, false, topLeft, arcSize, style = stroke)
+            drawArc(color, 135f, sweep, false, topLeft, arcSize, style = stroke)
+        }
+        Text("$score", style = MaterialTheme.typography.headlineMediumEmphasized)
     }
 }
 

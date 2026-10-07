@@ -36,6 +36,7 @@ import kotlinx.coroutines.launch
 
 /** Dashboard cards (App_Konzept.md 5.1); order and visibility are user settings. */
 enum class TodayCard(val label: String) {
+    READINESS("Bereitschaft"),
     DREAM("Traum"),
     NUTRITION("Ernährung"),
     SPORT("Sport"),
@@ -43,7 +44,7 @@ enum class TodayCard(val label: String) {
     STREAKS("Serien"),
 }
 
-val DefaultCardOrder = listOf(TodayCard.DREAM, TodayCard.NUTRITION, TodayCard.SPORT, TodayCard.JOURNAL, TodayCard.STREAKS)
+val DefaultCardOrder = listOf(TodayCard.READINESS, TodayCard.DREAM, TodayCard.NUTRITION, TodayCard.SPORT, TodayCard.JOURNAL, TodayCard.STREAKS)
 
 data class SessionSummary(
     val discipline: Discipline,
@@ -94,7 +95,15 @@ class TodayViewModel @Inject constructor(
     private val sportRepository: SportRepository,
     private val settingsRepository: UserSettingsRepository,
     private val weatherRepository: app.tenet.android.core.data.WeatherRepository,
+    private val readinessRepository: app.tenet.android.core.data.health.ReadinessRepository,
 ) : ViewModel() {
+
+    /** Today's readiness (Health Connect); refreshed whenever the page comes back. */
+    private val readinessTick = MutableStateFlow(0)
+    val readiness: StateFlow<app.tenet.android.core.data.health.ReadinessRepository.Today?> =
+        readinessTick
+            .mapLatest { runCatching { readinessRepository.today() }.getOrNull() }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private val date = MutableStateFlow(LocalDate.now())
     private val weatherTick = MutableStateFlow(0)
@@ -235,8 +244,10 @@ class TodayViewModel @Inject constructor(
         history,
         settingsRepository.settings,
     ) { (d, day), diaryMeta, history, settings ->
-        val order = (settings.todayCardOrder.mapNotNull { id -> TodayCard.entries.firstOrNull { it.name == id } } +
-            DefaultCardOrder).distinct()
+        val saved = settings.todayCardOrder.mapNotNull { id -> TodayCard.entries.firstOrNull { it.name == id } }
+        // New cards of an update: readiness goes on top, others at the end.
+        val order = ((if (saved.isNotEmpty() && TodayCard.READINESS !in saved) listOf(TodayCard.READINESS) else emptyList()) +
+            saved + DefaultCardOrder).distinct()
         val hidden = settings.todayHiddenCards.mapNotNull { id -> TodayCard.entries.firstOrNull { it.name == id } }.toSet()
         val diary = day.entries.firstOrNull { it.type == EntryType.DIARY }
         TodayUiState(
@@ -269,6 +280,7 @@ class TodayViewModel @Inject constructor(
     private var knownToday = LocalDate.now()
     fun refreshToday() {
         weatherTick.value++ // back in the app: fresh current temperature (cached 30 min)
+        readinessTick.value++
         val now = LocalDate.now()
         if (now != knownToday) {
             if (date.value == knownToday) date.value = now

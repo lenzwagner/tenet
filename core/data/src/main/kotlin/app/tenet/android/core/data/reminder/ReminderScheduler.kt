@@ -33,6 +33,11 @@ class ReminderScheduler @Inject constructor(
         scheduleDaily<TrainingReminderWorker>(TRAINING_WORK, enabled, minuteOfDay)
     }
 
+    /** Morning readiness report (score, resting pulse, HRV, sleep). */
+    fun scheduleReadinessReport(enabled: Boolean, minuteOfDay: Int) {
+        scheduleDaily<ReadinessWorker>(READINESS_WORK, enabled, minuteOfDay)
+    }
+
     private inline fun <reified W : androidx.work.ListenableWorker> scheduleDaily(name: String, enabled: Boolean, minuteOfDay: Int) {
         if (!enabled) {
             workManager.cancelUniqueWork(name)
@@ -65,11 +70,13 @@ class ReminderScheduler @Inject constructor(
         private const val DREAM_WORK = "journal_dream_reminder"
         private const val REALITY_WORK = "journal_reality_check"
         private const val TRAINING_WORK = "sport_training_reminder"
+        private const val READINESS_WORK = "health_readiness_report"
 
         /** Intent extra MainActivity reads to open the dream editor. */
         const val EXTRA_OPEN = "tenet_open"
         const val OPEN_DREAM = "dream"
         const val OPEN_SPORT = "sport"
+        const val OPEN_TODAY = "today"
         /** Launcher shortcuts (res/xml/shortcuts.xml). */
         const val OPEN_NOTE = "note"
         const val OPEN_MEAL = "meal"

@@ -9,6 +9,9 @@ import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
+import androidx.health.connect.client.records.RestingHeartRateRecord
+import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.metadata.Device
 import androidx.health.connect.client.records.metadata.Metadata
 import androidx.health.connect.client.units.Length
@@ -28,6 +31,9 @@ class SeedActivity : ComponentActivity() {
         HealthPermission.getWritePermission(ExerciseSessionRecord::class),
         HealthPermission.getWritePermission(DistanceRecord::class),
         HealthPermission.getWritePermission(HeartRateRecord::class),
+        HealthPermission.getWritePermission(SleepSessionRecord::class),
+        HealthPermission.getWritePermission(RestingHeartRateRecord::class),
+        HealthPermission.getWritePermission(HeartRateVariabilityRmssdRecord::class),
     )
 
     private val request = registerForActivityResult(PermissionController.createRequestPermissionResultContract()) { granted ->
@@ -79,8 +85,46 @@ class SeedActivity : ComponentActivity() {
                     ),
                 )
             }
+            // 30 nights: sleep with stages, resting pulse and HRV in the morning.
+            // Last night is shorter with a higher pulse and lower HRV (moderate readiness).
+            val zone = java.time.ZoneId.systemDefault()
+            val nights = (0L..30L).flatMap { daysAgo ->
+                val wake = java.time.LocalDate.now().minusDays(daysAgo).atTime(6, 45).atZone(zone).toInstant()
+                val hours = if (daysAgo == 0L) 6.2 else 7.2 + (daysAgo % 4) * 0.25
+                val start = wake.minusSeconds((hours * 3600).toLong())
+                val meta = { suffix: String -> Metadata.autoRecorded(Device(type = Device.TYPE_WATCH), clientRecordId = "seed-night-$daysAgo$suffix") }
+                val total = Duration.between(start, wake)
+                fun at(f: Double) = start.plusSeconds((total.seconds * f).toLong())
+                val stages = listOf(
+                    SleepSessionRecord.Stage(at(0.0), at(0.08), SleepSessionRecord.STAGE_TYPE_LIGHT),
+                    SleepSessionRecord.Stage(at(0.08), at(0.22), SleepSessionRecord.STAGE_TYPE_DEEP),
+                    SleepSessionRecord.Stage(at(0.22), at(0.55), SleepSessionRecord.STAGE_TYPE_LIGHT),
+                    SleepSessionRecord.Stage(at(0.55), at(0.72), SleepSessionRecord.STAGE_TYPE_REM),
+                    SleepSessionRecord.Stage(at(0.72), at(0.76), SleepSessionRecord.STAGE_TYPE_AWAKE),
+                    SleepSessionRecord.Stage(at(0.76), at(0.92), SleepSessionRecord.STAGE_TYPE_LIGHT),
+                    SleepSessionRecord.Stage(at(0.92), at(1.0), SleepSessionRecord.STAGE_TYPE_REM),
+                )
+                listOf(
+                    SleepSessionRecord(
+                        startTime = start, startZoneOffset = ZoneOffset.UTC, endTime = wake, endZoneOffset = ZoneOffset.UTC,
+                        stages = stages, metadata = meta("-sleep"),
+                    ),
+                    RestingHeartRateRecord(
+                        time = wake, zoneOffset = ZoneOffset.UTC,
+                        beatsPerMinute = if (daysAgo == 0L) 58 else 52L + daysAgo % 3,
+                        metadata = meta("-rhr"),
+                    ),
+                    HeartRateVariabilityRmssdRecord(
+                        time = wake.minusSeconds(1800), zoneOffset = ZoneOffset.UTC,
+                        heartRateVariabilityMillis = if (daysAgo == 0L) 44.0 else 58.0 + (daysAgo % 5),
+                        metadata = meta("-hrv"),
+                    ),
+                )
+            }
+            runCatching { client.insertRecords(nights) }
+                .onFailure { show("Fehler Nächte: ${it.message}"); return@launch }
             runCatching { client.insertRecords(records) }
-                .onSuccess { show("3 Testläufe geschrieben:\n10 km 55:00 (Puls 148)\n5 km 23:00 (Puls 172)\n15 km 1:28:00 (Puls 150)") }
+                .onSuccess { show("30 Nächte (Schlaf, Ruhepuls, HRV) +\n3 Testläufe geschrieben:\n10 km 55:00 (Puls 148)\n5 km 23:00 (Puls 172)\n15 km 1:28:00 (Puls 150)") }
                 .onFailure { show("Fehler: ${it.message}") }
         }
     }

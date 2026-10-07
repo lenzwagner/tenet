@@ -18,6 +18,7 @@ import java.time.LocalTime
 
 private const val CHANNEL_ID = "journal_reminders"
 internal const val TRAINING_CHANNEL = "training_reminders"
+internal const val READINESS_CHANNEL = "readiness_report"
 
 private val RealityChecks = listOf(
     "Träumst du gerade? Schau zweimal auf eine Uhr oder einen Text.",
@@ -67,7 +68,11 @@ internal fun notify(context: Context, id: Int, title: String, text: String, open
     }
     val manager = context.getSystemService(NotificationManager::class.java)
     if (manager.getNotificationChannel(channel) == null) {
-        val name = if (channel == TRAINING_CHANNEL) "Trainings-Erinnerungen" else "Journal-Erinnerungen"
+        val name = when (channel) {
+            TRAINING_CHANNEL -> "Trainings-Erinnerungen"
+            READINESS_CHANNEL -> "Morgen-Bericht"
+            else -> "Journal-Erinnerungen"
+        }
         manager.createNotificationChannel(NotificationChannel(channel, name, NotificationManager.IMPORTANCE_DEFAULT))
     }
     val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {

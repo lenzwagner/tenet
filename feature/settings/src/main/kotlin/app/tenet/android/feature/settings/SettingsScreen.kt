@@ -158,6 +158,7 @@ fun SettingsScreen(
     var colorSheet by remember { mutableStateOf<ColorSlot?>(null) }
     var timePickerVisible by remember { mutableStateOf(false) }
     var trainingTimeVisible by remember { mutableStateOf(false) }
+    var readinessTimeVisible by remember { mutableStateOf(false) }
     // Reminders need the notification permission on Android 13+.
     var pendingReminder by remember { mutableStateOf<(() -> Unit)?>(null) }
     val notificationPermission = rememberLauncherForActivityResult(
@@ -380,6 +381,28 @@ fun SettingsScreen(
                 item {
                     SettingsGroup { shapes ->
                         SwitchItem(
+                            shapes = shapes(0, 2),
+                            icon = Icons.Outlined.MonitorHeart,
+                            title = "Morgen-Bericht",
+                            supporting = "Bereitschaft mit Ruhepuls, HRV und Schlaf (Health Connect) ab ${formatMinute(settings.readinessReportMinute)}",
+                            checked = settings.readinessReport,
+                            onCheckedChange = { on ->
+                                if (on) withNotificationPermission { viewModel.setReadinessReport(true) } else viewModel.setReadinessReport(false)
+                            },
+                        )
+                        NavItem(
+                            shapes = shapes(1, 2),
+                            icon = Icons.Outlined.Schedule,
+                            title = "Uhrzeit Morgen-Bericht",
+                            supporting = formatMinute(settings.readinessReportMinute),
+                            onClick = { readinessTimeVisible = true },
+                        )
+                    }
+                }
+                item { Spacer(Modifier.height(12.dp)) }
+                item {
+                    SettingsGroup { shapes ->
+                        SwitchItem(
                             shapes = shapes(0, 3),
                             icon = Icons.Outlined.NightsStay,
                             title = "Traum morgens",
@@ -502,6 +525,32 @@ fun SettingsScreen(
             },
             onDismiss = { colorSheet = null },
         )
+    }
+
+    if (readinessTimeVisible) {
+        val pickerState = rememberTimePickerState(
+            initialHour = settings.readinessReportMinute / 60,
+            initialMinute = settings.readinessReportMinute % 60,
+            is24Hour = true,
+        )
+        TimePickerDialog(
+            onDismissRequest = { readinessTimeVisible = false },
+            title = { Text("Morgen-Bericht") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.setReadinessReport(settings.readinessReport, pickerState.hour * 60 + pickerState.minute)
+                        readinessTimeVisible = false
+                    },
+                    shapes = ButtonDefaults.shapes(),
+                ) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { readinessTimeVisible = false }, shapes = ButtonDefaults.shapes()) {
+                    Text("Abbrechen")
+                }
+            },
+        ) { TimePicker(state = pickerState) }
     }
 
     if (trainingTimeVisible) {
