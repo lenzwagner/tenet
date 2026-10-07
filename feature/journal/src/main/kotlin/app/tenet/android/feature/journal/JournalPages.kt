@@ -621,7 +621,7 @@ private fun DreamPatternsCard(state: JournalUiState) {
     val nightmares = state.dreamMeta.values.count { it.nightmare }
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            CardHeader(Icons.Outlined.Insights, "Muster", color = app.tenet.android.core.designsystem.theme.cardTint(app.tenet.android.core.designsystem.theme.HealthTint.SLEEP), meta = "${total} Träume")
+            CardHeader(Icons.Outlined.Insights, "Muster", color = app.tenet.android.core.designsystem.theme.cardTint(app.tenet.android.core.designsystem.theme.HealthTint.SLEEP), meta = if (total == 1) "1 Traum" else "$total Träume")
             Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
                 Stat("$total", "Träume")
                 Stat("${if (total == 0) 0 else lucid * 100 / total} %", "Luzid")

@@ -816,6 +816,7 @@ private fun ExerciseCard(
                         enableDismissFromStartToEnd = false,
                         onDismiss = { onDeleteSet(block.sessionExerciseId, row.set.id) },
                         backgroundContent = {
+                            if (dismiss.dismissDirection == androidx.compose.material3.SwipeToDismissBoxValue.Settled) return@SwipeToDismissBox
                             Box(
                                 Modifier.fillMaxSize()
                                     .background(MaterialTheme.colorScheme.errorContainer, MaterialTheme.shapes.small)

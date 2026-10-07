@@ -206,10 +206,13 @@ internal fun SwipeToDeleteBox(
             onDelete()
         },
         backgroundContent = {
+            // Only while swiping, with the card's own corners: at rest nothing
+            // may peek out behind the rounded card.
+            if (state.dismissDirection == androidx.compose.material3.SwipeToDismissBoxValue.Settled) return@SwipeToDismissBox
             Box(
                 Modifier
                     .fillMaxSize()
-                    .clip(MaterialTheme.shapes.medium)
+                    .clip(app.tenet.android.core.designsystem.theme.tenetCardShape)
                     .background(MaterialTheme.colorScheme.errorContainer)
                     .padding(horizontal = 24.dp),
                 contentAlignment = Alignment.CenterEnd,

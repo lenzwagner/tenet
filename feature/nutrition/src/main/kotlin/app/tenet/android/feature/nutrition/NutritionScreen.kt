@@ -571,6 +571,7 @@ private fun FoodLogRow(log: FoodLog, shapes: ListItemShapes, onDelete: () -> Uni
             onDelete()
         },
         backgroundContent = {
+            if (dismiss.dismissDirection == androidx.compose.material3.SwipeToDismissBoxValue.Settled) return@SwipeToDismissBox
             Box(
                 Modifier
                     .fillMaxSize()
