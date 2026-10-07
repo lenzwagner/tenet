@@ -72,7 +72,9 @@ Im Emulator nicht möglich.
 - [ ] Eigener Signaturschlüssel statt Debug-Keystore. Wechsel = einmal neu installieren, dabei gehen die Daten verloren.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.12)
+## Zuletzt erledigt (0.5.0 – 1.0.0.13)
+
+- 1.0.0.13: Farbverlauf oben bleibt beim Scrollen sichtbar (hinter Titelleiste und Bereichs-Umschalter), keine Trennlinie mehr unter der Titelleiste
 
 - 1.0.0.12: Seitenkopf wie Apple Health – Farbverlauf je Bereich reicht hinter die ersten Karten, scrollt beim Scrollen weg und blendet aus, großer Titel klappt in eine schmale Leiste mit kleinem Titel (Fotos entfernt); Laufplan: Einheiten in „Nächste Einheiten“ antippbar (Ablauf, Pace, Verpflegung); abwechslungsreiche Einheiten – Intervalle wechseln klassisch / progressiv (jede Wiederholung schneller) / Pyramide, Schwelle jede zweite Woche als Blöcke („3 × 9 min Schwelle“), Langläufe mit Renntempo-Finish ab Woche 3; Sprachführung kennt die neuen Formen; Pace je Kilometer bei durchgehenden Läufen; Tempo-Zonen E/M/T/I/R der aktuellen Woche im Plan; Zeitfelder markieren beim Antippen den Inhalt (überschreiben) und warnen bei unplausiblen Zeiten
 

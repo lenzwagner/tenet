@@ -135,8 +135,8 @@ private val WashHeight: Dp = 420.dp
 /**
  * Apple Health's page background: a soft diagonal colour wash in the
  * page's hues at the top, fading into the grey page background and
- * reaching behind the first cards. It moves up with the large title and
- * fades out as the page scrolls ([progress] 0 → 1). Put it on the page's
+ * reaching behind the first cards. It moves up with the large title as
+ * the page scrolls ([progress] 0 → 1) and stays visible at the top. Put it on the page's
  * root (behind header, tabs and list).
  */
 fun Modifier.pageWash(header: HeaderImage, progress: () -> Float): Modifier = composed {
@@ -148,8 +148,9 @@ fun Modifier.pageWash(header: HeaderImage, progress: () -> Float): Modifier = co
     val shiftPx = with(density) { LargeTitleHeight.toPx() }
     drawBehind {
         val p = progress().coerceIn(0f, 1f)
-        val alpha = (1f - p * 1.15f).coerceIn(0f, 1f)
-        if (alpha <= 0f) return@drawBehind
+        // The colour stays at the top while scrolling (behind the compact bar and the
+        // section tabs); it only moves up with the large title and gets a bit calmer.
+        val alpha = 1f - 0.25f * p
         translate(top = -p * shiftPx) {
             val area = Size(size.width, washPx)
             // The colour stops where the overlay is already solid page colour, so no
@@ -215,15 +216,6 @@ fun PageHeader(
                     Icon(Icons.Outlined.Search, contentDescription = "Suchen", tint = MaterialTheme.colorScheme.onBackground)
                 }
             }
-            // Hairline under the bar once the content scrolls beneath it.
-            Box(
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(0.5.dp)
-                    .graphicsLayer { alpha = progress() }
-                    .background(MaterialTheme.colorScheme.outlineVariant),
-            )
         }
         Box(
             Modifier
