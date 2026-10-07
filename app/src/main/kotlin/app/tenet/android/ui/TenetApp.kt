@@ -1,6 +1,7 @@
 package app.tenet.android.ui
 
 
+import androidx.compose.foundation.layout.ime
 import kotlinx.coroutines.flow.first
 import app.tenet.android.navigation.RecipeImportRoute
 import app.tenet.android.feature.nutrition.recipe.RecipeImportScreen
@@ -291,6 +292,10 @@ fun TenetApp(
                 },
                 modifier = Modifier
                     .fillMaxSize()
+                    // Every page ends above the keyboard: focused fields scroll into
+                    // view and bottom buttons stay reachable (inner imePaddings are
+                    // consumed here, so nothing is counted twice).
+                    .imePadding()
                     .nestedScroll(barScrollConnection)
                     .hazeSource(hazeState),
             ) {
@@ -727,6 +732,7 @@ fun TenetApp(
 }
             }
 
+            val imeVisible = androidx.compose.foundation.layout.WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
             val liveRun by app.tenet.android.feature.sport.run.RunTrackingService.state.collectAsState()
             val recording = liveRun?.status?.let { it != app.tenet.android.feature.sport.run.RunStatus.FINISHED } == true
             TenetNavigationBar(
@@ -735,7 +741,8 @@ fun TenetApp(
                 tabs = enabledTabs,
                 selected = currentTab,
                 onSelect = ::openTab,
-                visible = onTopLevel && !barHiddenByScroll,
+                // Like iOS: the tab bar steps aside while the keyboard is up.
+                visible = onTopLevel && !barHiddenByScroll && !imeVisible,
                 glass = settings.glassBar,
                 hazeState = hazeState,
             )

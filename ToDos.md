@@ -72,7 +72,9 @@ Im Emulator nicht möglich.
 - [ ] Eigener Signaturschlüssel statt Debug-Keystore. Wechsel = einmal neu installieren, dabei gehen die Daten verloren.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.10)
+## Zuletzt erledigt (0.5.0 – 1.0.0.11)
+
+- 1.0.0.11: Tastatur verdeckt keine Eingaben mehr – alle Seiten enden über der Tastatur (fokussiertes Feld scrollt ins Bild, Knöpfe unten bleiben erreichbar), Tab-Leiste weicht bei offener Tastatur aus; Bestzeit-Hinweis zeigt die Pace des Laufs und die 5-km-Zeit mit Pace („Das sind 4:10 /km. Entspricht etwa 19:11 auf 5 km (3:50 /km).“), damit die 5-km-Zeit nicht als Pace gelesen wird
 
 - 1.0.0.10: Laufplan-Einrichtung: Bestzeit und Zielzeit in drei Feldern (Std / Min / Sek, springt nach zwei Ziffern weiter) statt einem Feld ohne Doppelpunkt (aus 1:21:22 wurde 12122 Minuten); Tempo-Progression: die Trainings-Tempi werden Woche für Woche schneller, von der aktuellen Form zur Zielform (aus der Zielzeit, sonst ~1,5 % pro 4 Wochen, höchstens 10 %), Entlastungswochen halten das Tempo, Tapering-Wochen laufen auf Zielform; gilt auch für „Tempi an Form anpassen“; Vorschau zeigt Start- und End-Tempo; Wunschzeit mit Check beim Einrichten (realistisch / ehrgeizig / kaum zu schaffen + Vorschlag); Prognose heute und hochgerechnet auf den Wettkampftag auf der Laufen-Seite und im Plan, folgt jedem eingetragenen Lauf (Ziel-Bewertung im Plan jetzt gegen den Wettkampftag); Verpflegung je Lauf im Trainings-Detail: Kohlenhydrate vorher/unterwegs, Wasser vorher/unterwegs, Natrium bei > 2 h, nach Dauer, Art, Wettkampf und Körpergewicht
 

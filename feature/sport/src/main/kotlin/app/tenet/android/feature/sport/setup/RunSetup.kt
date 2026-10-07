@@ -209,7 +209,18 @@ fun RunSetupScreen(onDone: () -> Unit, viewModel: RunSetupViewModel = hiltViewMo
                         onValue = { viewModel.update { copy(recentTime = it) } },
                         label = "Zeit",
                     )
-                    s.form5kSec?.let { SetupHint("Entspricht etwa ${hms(it)} auf 5 km.") }
+                    // Pace of the entered race and the 5 km equivalent (total time and pace),
+                    // so "19:11" is not mistaken for a pace.
+                    val dist = s.recent.distanceM
+                    val time = parseHms(s.recentTime)
+                    if (dist != null && time != null) {
+                        val racePace = pace(time * 1000 / dist)
+                        val five = s.form5kSec
+                        SetupHint(
+                            if (dist == 5_000 || five == null) "Das sind $racePace."
+                            else "Das sind $racePace. Entspricht etwa ${hms(five)} auf 5 km (${pace(five / 5)})."
+                        )
+                    }
                 }
             }
             3 -> {
