@@ -349,10 +349,11 @@ private fun RoutineCard(
     val exercisesById = overview.exercises.associateBy { it.id }
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            CardHeader(Icons.Outlined.CalendarMonth, "Trainingsplan", meta = overview.plan?.name, action = {
+            CardHeader(Icons.Outlined.CalendarMonth, "Trainingsplan", action = {
                 PlanSwitchButton(plans) { onSwitchPlan(it.id) }
-                TextButton(shapes = ButtonDefaults.shapes(), onClick = onEdit) { Text("Bearbeiten") }
+                TextButton(shapes = ButtonDefaults.shapes(), onClick = onEdit) { Text("Bearbeiten", maxLines = 1, softWrap = false) }
             })
+            overview.plan?.let { Text(it.name, style = MaterialTheme.typography.titleMedium) }
             overview.plan?.let { plan ->
                 TrainingDaysRow(value = plan.trainingDays, onChange = { onTrainingDays(plan.id, it) })
             }

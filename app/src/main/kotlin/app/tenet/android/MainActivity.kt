@@ -1,5 +1,6 @@
 package app.tenet.android
 
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.setValue
@@ -164,6 +165,12 @@ class MainActivity : FragmentActivity() {
                 designStyle = settings.designStyle,
                 journalSerif = settings.journalSerif,
             ) {
+                // The window behind the screens (seen while swiping back) takes the
+                // page colour; the XML theme is always light, so dark mode flashed white.
+                val windowBg = androidx.compose.material3.MaterialTheme.colorScheme.background
+                LaunchedEffect(windowBg) {
+                    window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(windowBg.toArgb()))
+                }
                 when {
                     // Stored settings not read yet: plain surface instead of a wrong screen.
                     !settings.loaded -> androidx.compose.material3.Surface(Modifier.fillMaxSize()) {}

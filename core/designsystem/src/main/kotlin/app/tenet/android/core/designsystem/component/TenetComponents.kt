@@ -357,7 +357,8 @@ fun CardHeader(
             color = color,
             maxLines = 1,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
+            // The title keeps its width; only the grey info on the right gives way.
+            modifier = if (meta == null) Modifier.weight(1f) else Modifier,
         )
         if (meta != null) {
             Text(
@@ -365,7 +366,9 @@ fun CardHeader(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
-                modifier = Modifier.padding(start = 8.dp),
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                textAlign = TextAlign.End,
+                modifier = Modifier.padding(start = 8.dp).weight(1f),
             )
         }
         if (action != null) {
