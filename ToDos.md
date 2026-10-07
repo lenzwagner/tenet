@@ -72,7 +72,9 @@ Im Emulator nicht möglich.
 - [ ] Eigener Signaturschlüssel statt Debug-Keystore. Wechsel = einmal neu installieren, dabei gehen die Daten verloren.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.11)
+## Zuletzt erledigt (0.5.0 – 1.0.0.12)
+
+- 1.0.0.12: Seitenkopf wie Apple Health – Farbverlauf je Bereich reicht hinter die ersten Karten, scrollt beim Scrollen weg und blendet aus, großer Titel klappt in eine schmale Leiste mit kleinem Titel (Fotos entfernt); Laufplan: Einheiten in „Nächste Einheiten“ antippbar (Ablauf, Pace, Verpflegung); abwechslungsreiche Einheiten – Intervalle wechseln klassisch / progressiv (jede Wiederholung schneller) / Pyramide, Schwelle jede zweite Woche als Blöcke („3 × 9 min Schwelle“), Langläufe mit Renntempo-Finish ab Woche 3; Sprachführung kennt die neuen Formen; Pace je Kilometer bei durchgehenden Läufen; Tempo-Zonen E/M/T/I/R der aktuellen Woche im Plan; Zeitfelder markieren beim Antippen den Inhalt (überschreiben) und warnen bei unplausiblen Zeiten
 
 - 1.0.0.11: Tastatur verdeckt keine Eingaben mehr – alle Seiten enden über der Tastatur (fokussiertes Feld scrollt ins Bild, Knöpfe unten bleiben erreichbar), Tab-Leiste weicht bei offener Tastatur aus; Bestzeit-Hinweis zeigt die Pace des Laufs und die 5-km-Zeit mit Pace („Das sind 4:10 /km. Entspricht etwa 19:11 auf 5 km (3:50 /km).“), damit die 5-km-Zeit nicht als Pace gelesen wird
 

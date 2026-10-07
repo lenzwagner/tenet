@@ -1,5 +1,6 @@
 package app.tenet.android.feature.today
 
+import app.tenet.android.core.designsystem.header.pageWash
 import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.draw.clip
@@ -243,7 +244,7 @@ fun TodayScreen(
             )
         },
     ) { _ ->
-        Column(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().pageWash(HeaderImage.TODAY, { headerState.progress })) {
             PageHeader(
                 header = HeaderImage.TODAY,
                 title = title,
@@ -251,25 +252,6 @@ fun TodayScreen(
                 progress = { headerState.progress },
                 onSearch = onSearch,
             )
-            // Pinned date: fades in right below the status bar as the header collapses.
-            Box(Modifier.fillMaxWidth().clipToBounds()) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .collapsingHeight(36.dp) { headerState.progress }
-                        .graphicsLayer { alpha = headerState.progress }
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = dateText,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
             LazyColumn(
                 state = listState,
                 modifier = Modifier

@@ -1,5 +1,6 @@
 package app.tenet.android.feature.nutrition
 
+import app.tenet.android.core.designsystem.header.pageWash
 import app.tenet.android.core.designsystem.theme.TenetCard
 import app.tenet.android.core.designsystem.component.TenetFabMenu
 import app.tenet.android.core.designsystem.component.FabMenuAction
@@ -212,6 +213,7 @@ fun NutritionScreen(
         Column(
             Modifier
                 .fillMaxSize()
+                .pageWash(HeaderImage.NUTRITION, { headerState.progress })
                 .nestedScroll(headerState.nestedScrollConnection),
         ) {
             PageHeader(

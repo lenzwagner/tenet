@@ -265,6 +265,8 @@ object RunPlanMath {
         val weeksToRace = if (totalWeeks != null) totalWeeks - 1 - weekIndex else Int.MAX_VALUE
         // Taper weeks scale from the last build week's level.
         val peakWeek = if (tapering && totalWeeks != null) (totalWeeks - 1 - taperWeeks(goal)).coerceAtLeast(0) else weekIndex
+        val unload = (weekIndex + 1) % 4 == 0
+        val build = !tapering && !unload
         if (zone == RunZone.INTERVAL) {
             val length = intervalLength(goal)
             val reps = if (tapering) {
@@ -272,27 +274,90 @@ object RunPlanMath {
             } else {
                 intervalReps(weekIndex)
             }
+            val rest = if (length >= 1000) 120 else 90
+            // Build weeks rotate classic → progressive → pyramid; unload and taper stay classic.
+            val (blocks, title) = when {
+                build && weekIndex % 3 == 1 -> progressiveReps(reps, length, rest) to "$reps × $length m progressiv"
+                build && weekIndex % 3 == 2 -> pyramid(goal, reps) to pyramidTitle(goal, reps)
+                else -> listOf(RunWorkoutStructure.Block(reps, length, null, rest)) to zoneTitle(zone, reps, length)
+            }
             PlanUnit(
                 dayIndex = dayIndex,
                 zone = zone,
                 targetDurationSec = null,
-                targetDistanceM = reps * length,
-                intervalsJson = intervalSpecJson(reps, length, 90),
-                title = zoneTitle(zone, reps, length),
+                targetDistanceM = blocks.sumOf { (it.lengthM ?: 0) * it.reps },
+                intervalsJson = RunWorkoutStructure.blocksJson(blocks),
+                title = title,
             )
         } else {
             val factor = if (tapering) peakLoad(peakWeek) * taperFactor(goal, weeksToRace) else loadFactor(weekIndex)
             val duration = (baseDuration(goal, zone) * factor * volume).toInt()
                 .let { if (zone == RunZone.LONG) it.coerceAtMost(longRunCapSec(goal)) else it }
-            PlanUnit(
-                dayIndex = dayIndex,
-                zone = zone,
-                targetDurationSec = duration,
-                targetDistanceM = null,
-                intervalsJson = null,
-                title = zoneTitle(zone),
-            )
+            when {
+                // Every second build week: threshold as blocks instead of one piece (cruise intervals).
+                zone == RunZone.TEMPO && build && weekIndex % 2 == 1 && duration >= 16 * 60 -> {
+                    val reps = if (duration >= 27 * 60) 3 else 2
+                    val work = ((duration / reps) / 60) * 60
+                    PlanUnit(
+                        dayIndex = dayIndex,
+                        zone = zone,
+                        targetDurationSec = work * reps,
+                        targetDistanceM = null,
+                        intervalsJson = RunWorkoutStructure.blocksJson(listOf(RunWorkoutStructure.Block(reps, null, work, 90))),
+                        title = "$reps × ${work / 60} min Schwelle",
+                    )
+                }
+                // Race goals: long runs with a race-pace finish from week 3, every second build week.
+                zone == RunZone.LONG && build && weekIndex >= 2 && weekIndex % 2 == 0 && finishBase(goal) > 0 -> {
+                    val finish = (finishBase(goal) + 5 * 60 * ((weekIndex - 2) / 4)).coerceAtMost(finishBase(goal) * 2)
+                    PlanUnit(
+                        dayIndex = dayIndex,
+                        zone = zone,
+                        targetDurationSec = duration,
+                        targetDistanceM = null,
+                        intervalsJson = RunWorkoutStructure.finishJson(finish),
+                        title = "Langlauf · ${finish / 60} min Renntempo",
+                    )
+                }
+                else -> PlanUnit(
+                    dayIndex = dayIndex,
+                    zone = zone,
+                    targetDurationSec = duration,
+                    targetDistanceM = null,
+                    intervalsJson = null,
+                    title = zoneTitle(zone),
+                )
+            }
         }
+    }
+
+    /** Minutes of the race-pace finish of a long run (0 = none for this goal). */
+    private fun finishBase(goal: RunGoal): Int = when (goal) {
+        RunGoal.TEN_K -> 10 * 60
+        RunGoal.HALF -> 15 * 60
+        RunGoal.MARATHON -> 20 * 60
+        else -> 0
+    }
+
+    /** Same reps, each a little faster: from +4 s/km to −4 s/km around the target pace. */
+    fun progressiveReps(reps: Int, lengthM: Int, restSec: Int): List<RunWorkoutStructure.Block> =
+        (0 until reps).map { i ->
+            val delta = if (reps <= 1) 0 else (4 - 8.0 * i / (reps - 1)).let { kotlin.math.round(it).toInt() }
+            RunWorkoutStructure.Block(1, lengthM, null, restSec, delta)
+        }
+
+    /** Up and down the ladder; longer with more reps in later weeks. */
+    fun pyramid(goal: RunGoal, reps: Int): List<RunWorkoutStructure.Block> {
+        val steps = when (goal) {
+            RunGoal.HALF, RunGoal.MARATHON -> if (reps >= 5) listOf(600, 1000, 1600, 2000, 1600, 1000, 600) else listOf(600, 1000, 1600, 1000, 600)
+            else -> if (reps >= 5) listOf(400, 800, 1200, 1600, 1200, 800, 400) else listOf(400, 800, 1200, 800, 400)
+        }
+        return steps.map { RunWorkoutStructure.Block(1, it, null, if (it >= 1200) 120 else 90) }
+    }
+
+    private fun pyramidTitle(goal: RunGoal, reps: Int): String {
+        val steps = pyramid(goal, reps).map { it.lengthM ?: 0 }
+        return "Pyramide ${steps.first()}–${steps.max()} m"
     }
 
     /** Load of a build week ignoring its own unload dip (taper starts from the true peak). */

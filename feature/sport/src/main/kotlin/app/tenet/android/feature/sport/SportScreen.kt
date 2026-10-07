@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport
 
+import app.tenet.android.core.designsystem.header.pageWash
 import app.tenet.android.core.designsystem.header.PageTabs
 import app.tenet.android.core.designsystem.header.PageTab
 import app.tenet.android.core.designsystem.navigation.ReselectEffect
@@ -97,6 +98,7 @@ fun SportScreen(
         Column(
             Modifier
                 .fillMaxSize()
+                .pageWash(HeaderImage.SPORT, { headerState.progress })
                 .nestedScroll(headerState.nestedScrollConnection),
         ) {
             PageHeader(

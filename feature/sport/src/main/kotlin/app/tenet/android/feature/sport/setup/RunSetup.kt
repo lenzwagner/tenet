@@ -1,5 +1,9 @@
 package app.tenet.android.feature.sport.setup
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.focus.onFocusChanged
 import app.tenet.android.core.designsystem.theme.TenetCard
 import app.tenet.android.core.designsystem.component.TenetSwitch
 import androidx.compose.foundation.layout.Arrangement
@@ -216,7 +220,10 @@ fun RunSetupScreen(onDone: () -> Unit, viewModel: RunSetupViewModel = hiltViewMo
                     if (dist != null && time != null) {
                         val racePace = pace(time * 1000 / dist)
                         val five = s.form5kSec
-                        SetupHint(
+                        // Slower than 10 min/km or faster than 2:30 min/km is almost surely a typo.
+                        if (time * 1000 / dist !in 150..600) {
+                            Text("Bitte die Zeit prüfen – das wären $racePace.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+                        } else SetupHint(
                             if (dist == 5_000 || five == null) "Das sind $racePace."
                             else "Das sind $racePace. Entspricht etwa ${hms(five)} auf 5 km (${pace(five / 5)})."
                         )
@@ -374,14 +381,30 @@ private fun DurationFields(value: String, onValue: (String) -> Unit, label: Stri
 @Composable
 private fun TimePartField(value: String, label: String, max: Int, modifier: Modifier, onValue: (String) -> Unit) {
     val focus = androidx.compose.ui.platform.LocalFocusManager.current
+    // Tapping a field selects its content, so typing replaces it (a full "23" would
+    // otherwise swallow every new digit).
+    var field by remember { mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(value)) }
+    if (field.text != value) field = field.copy(text = value, selection = androidx.compose.ui.text.TextRange(value.length))
+    var focused by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(focused) {
+        if (focused) {
+            androidx.compose.runtime.withFrameNanos { }
+            field = field.copy(selection = androidx.compose.ui.text.TextRange(0, field.text.length))
+        }
+    }
     androidx.compose.material3.OutlinedTextField(
-        value = value,
+        value = field,
         onValueChange = { v ->
-            val digits = v.filter { it.isDigit() }.take(2)
+            // Was the old content selected (just tapped)? Then the typing replaces it.
+            val replacing = field.text.isNotEmpty() && field.selection.length == field.text.length
+            val digits = v.text.filter { it.isDigit() }.take(2)
             // Out of range (e.g. 75 minutes) is capped instead of silently wrong.
-            onValue(digits.toIntOrNull()?.let { if (it > max) max.toString() else digits } ?: "")
+            val clean = digits.toIntOrNull()?.let { if (it > max) max.toString() else digits } ?: ""
+            val grew = clean.length > field.text.length || replacing
+            field = v.copy(text = clean, selection = androidx.compose.ui.text.TextRange(clean.length))
+            onValue(clean)
             // Two digits typed: on to the next field, like a time picker.
-            if (digits.length == 2 && value.length < 2) focus.moveFocus(androidx.compose.ui.focus.FocusDirection.Next)
+            if (clean.length == 2 && grew) focus.moveFocus(androidx.compose.ui.focus.FocusDirection.Next)
         },
         label = { Text(label) },
         singleLine = true,
@@ -390,7 +413,7 @@ private fun TimePartField(value: String, label: String, max: Int, modifier: Modi
             imeAction = androidx.compose.ui.text.input.ImeAction.Next,
         ),
         textStyle = MaterialTheme.typography.titleMedium.copy(textAlign = androidx.compose.ui.text.style.TextAlign.Center),
-        modifier = modifier,
+        modifier = modifier.onFocusChanged { focused = it.isFocused },
     )
 }
 

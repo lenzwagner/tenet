@@ -35,6 +35,9 @@ data class PlanWeekVolume(val weekIndex: Int, val start: LocalDate, val plannedK
 
 data class DoneUnit(val unit: PlanUnitUi, val run: RunDao.RunSessionRow)
 
+/** One training zone with its pace range this week (E, M, T, I, R). */
+data class PaceZoneUi(val code: String, val name: String, val fastSec: Int, val slowSec: Int)
+
 data class RunPlanUi(
     val title: String,
     val goal: RunPlanMath.RunGoal,
@@ -56,6 +59,8 @@ data class RunPlanUi(
     val totalDoneKm: Float,
     val planId: String = "",
     val fit: PlanFit.Assessment? = null,
+    /** Pace zones of the current week (progression included). */
+    val zones: List<PaceZoneUi> = emptyList(),
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -172,7 +177,29 @@ class RunPlanDetailViewModel @Inject constructor(
                 taper = RunPlanMath.isTaperWeek(goal, w, weeks, d.detail?.taper == true),
             )
         }
+        // Zones of this week: the progression's 5 km anchor for the current week.
+        val planDetail = d.detail
+        val zones = planDetail?.current5kSec?.let { c5k ->
+            val taper = planDetail.taper
+            val g5k = RunPlanMath.goal5kSec(c5k, goal, planDetail.targetTimeSec, weeks, taper)
+            val a = app.tenet.android.core.common.PaceAnchor(5_000, RunPlanMath.anchor5kForWeek(c5k, g5k, currentWeek, weeks, goal, taper))
+            val m = app.tenet.android.core.common.PaceMethod.VDOT
+            fun p(z: app.tenet.android.core.common.RunZone, marathon: Boolean = false) =
+                app.tenet.android.core.common.RunPaceMath.targetPaceSecPerKm(z, a, m, goalIsMarathon = marathon)
+            val e = p(app.tenet.android.core.common.RunZone.EASY)
+            val mp = p(app.tenet.android.core.common.RunZone.LONG, marathon = true)
+            val t = p(app.tenet.android.core.common.RunZone.TEMPO)
+            val i = p(app.tenet.android.core.common.RunZone.INTERVAL)
+            listOf(
+                PaceZoneUi("E", "Easy", e - 10, e + 10),
+                PaceZoneUi("M", "Marathon", mp - 2, mp + 2),
+                PaceZoneUi("T", "Schwelle", t - 2, t + 2),
+                PaceZoneUi("I", "Intervall", i - 2, i + 2),
+                PaceZoneUi("R", "Reps", i - 17, i - 12),
+            )
+        }.orEmpty()
         return RunPlanUi(
+            zones = zones,
             title = d.plan.name,
             goal = goal,
             goalDate = goalDate,

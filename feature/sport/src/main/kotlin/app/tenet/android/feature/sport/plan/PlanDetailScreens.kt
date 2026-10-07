@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport.plan
 
+import androidx.compose.foundation.layout.Box
 import app.tenet.android.core.common.RunPlanMath
 import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.foundation.Canvas
@@ -89,6 +90,8 @@ fun RunPlanDetailScreen(
     planId: String,
     onBack: () -> Unit,
     onOpenRun: (String) -> Unit,
+    /** A planned unit: structure, paces, splits and fueling. */
+    onOpenWorkout: (String) -> Unit = {},
     viewModel: RunPlanDetailViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(planId) { viewModel.load(planId) }
@@ -119,13 +122,14 @@ fun RunPlanDetailScreen(
                     }
                 }
             }
+            if (s.zones.isNotEmpty()) item(key = "zones") { ZonesCard(s.zones) }
             item(key = "progress") { ProgressCard(s) }
             item(key = "weekly") { WeeklyVolumeCard(s) }
             // Only a real trend: at least two different prognoses.
             if (s.predictionHistory.map { it.second }.distinct().size >= 2) item(key = "trend") { PrognosisTrendCard(s.predictionHistory) }
             if (s.upcoming.isNotEmpty()) {
                 item(key = "next-h") { SectionTitle(Icons.Outlined.Event, "Nächste Einheiten") }
-                item(key = "next") { UnitList(s.upcoming) }
+                item(key = "next") { UnitList(s.upcoming, onOpenWorkout) }
             }
             item(key = "done-h") { SectionTitle(Icons.Outlined.CheckCircle, "Abgeschlossen · ${s.done.size}") }
             item(key = "done") {
@@ -193,6 +197,32 @@ private fun FitCard(s: RunPlanUi, fit: app.tenet.android.core.common.PlanFit.Ass
         }
     }
 }
+
+/** E / M / T / I / R with this week's pace ranges (they get faster with the plan). */
+@Composable
+private fun ZonesCard(zones: List<PaceZoneUi>) {
+    TenetCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Tempo-Zonen diese Woche", style = MaterialTheme.typography.titleMedium)
+            zones.forEach { z ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f + 0.12f * zones.indexOf(z)),
+                        modifier = Modifier.size(28.dp),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) { Text(z.code, style = MaterialTheme.typography.labelLarge) }
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Text(z.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    Text("${clock(z.fastSec)}–${clock(z.slowSec)} /km", style = MaterialTheme.typography.titleSmall)
+                }
+            }
+        }
+    }
+}
+
+private fun clock(sec: Int) = "%d:%02d".format(sec / 60, sec % 60)
 
 @Composable
 private fun PrognosisCard(s: RunPlanUi) {
@@ -350,16 +380,16 @@ private fun PrognosisTrendCard(points: List<Pair<LocalDate, Int>>) {
 }
 
 @Composable
-private fun UnitList(units: List<PlanUnitUi>) {
+private fun UnitList(units: List<PlanUnitUi>, onOpen: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
         units.forEachIndexed { i, u ->
             SegmentedListItem(
-                onClick = {},
+                onClick = { onOpen(u.id) },
                 shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(i, units.size),
                 colors = if (u.isRace) {
                     ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
                 } else {
-                    ListItemDefaults.segmentedColors()
+                    app.tenet.android.core.designsystem.theme.tenetListColors()
                 },
                 leadingContent = {
                     Icon(

@@ -469,6 +469,7 @@ fun TenetApp(
                         planId = entry.toRoute<RunPlanDetailRoute>().planId,
                         onBack = { navController.popBackStack() },
                         onOpenRun = { id -> navController.navigate(RunDetailRoute(id)) },
+                        onOpenWorkout = { id -> navController.navigate(RunWorkoutRoute(id)) },
                     )
                 }
 }

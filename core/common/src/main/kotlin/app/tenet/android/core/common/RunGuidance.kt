@@ -73,17 +73,18 @@ object RunGuidance {
         if (tempoSec <= 0) emptyList() else listOf(Phase.Warmup(warmupSec), Phase.Tempo(tempoSec, paceSecPerKm))
 
     fun parseIntervals(json: String?, paceSecPerKm: Int? = null, warmupSec: Int = 0): List<Phase> {
-        if (json.isNullOrBlank()) return emptyList()
-        val blocks = Regex("\\{[^}]*\\}").findAll(json).map { it.value }.toList()
+        val blocks = RunWorkoutStructure.parseBlocks(json)
+        if (blocks.isEmpty()) return emptyList()
+        val total = blocks.sumOf { it.reps }
         val phases = mutableListOf<Phase>()
-        for (block in blocks) {
-            fun num(key: String) = Regex("\"$key\"\\s*:\\s*(\\d+)").find(block)?.groupValues?.get(1)?.toIntOrNull()
-            val reps = num("reps") ?: continue
-            val length = num("lengthM") ?: continue
-            val rest = num("restSec") ?: 0
-            for (r in 1..reps) {
-                phases += Phase.Work(r, reps, length, paceSecPerKm)
-                if (rest > 0) phases += Phase.Rest(r, reps, rest)
+        var rep = 0
+        for (b in blocks) {
+            repeat(b.reps) {
+                rep++
+                val pace = paceSecPerKm?.let { it + b.deltaSec }
+                // Distance reps end by metres, time blocks (Schwellen-Blöcke) by time.
+                phases += if (b.lengthM != null) Phase.Work(rep, total, b.lengthM, pace) else Phase.Tempo(b.workSec ?: 0, pace)
+                if (b.restSec > 0) phases += Phase.Rest(rep, total, b.restSec)
             }
         }
         if (phases.lastOrNull() is Phase.Rest) phases.removeAt(phases.lastIndex)

@@ -1,5 +1,11 @@
 package app.tenet.android.core.designsystem.header
 
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.composed
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import android.os.Build
@@ -46,39 +52,16 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.tenet.android.core.designsystem.R
 
-/** Header photo per top-level page. */
-enum class HeaderImage(@DrawableRes internal val res: Int) {
-    TODAY(R.drawable.header_today),
-    SPORT(R.drawable.header_sport),
-    NUTRITION(R.drawable.header_naehrung),
-    JOURNAL(R.drawable.header_journal),
-    SETTINGS(R.drawable.header_settings),
-}
-
 /**
- * Decoded header photos, kept for the whole process: `painterResource`
- * decoded the 1080 × 720 JPEG on the main thread every time a tab was
- * composed again. [prewarm] decodes all five in the background at start.
+ * Top-level page. Each gets a soft colour wash at the top (like Apple
+ * Health) in its own hues: start (top left), middle and end (top right).
  */
-object HeaderImages {
-    private val cache = java.util.concurrent.ConcurrentHashMap<HeaderImage, androidx.compose.ui.graphics.ImageBitmap>()
-
-    fun get(context: android.content.Context, header: HeaderImage): androidx.compose.ui.graphics.ImageBitmap =
-        cache.getOrPut(header) { decode(context, header) }
-
-    /** Call off the main thread, e.g. right after launch. */
-    fun prewarm(context: android.content.Context) {
-        HeaderImage.entries.forEach { runCatching { get(context, it) } }
-    }
-
-    private fun decode(context: android.content.Context, header: HeaderImage): androidx.compose.ui.graphics.ImageBitmap {
-        val options = android.graphics.BitmapFactory.Options().apply {
-            // Opaque photos: GPU-backed bitmap, uploaded once instead of every draw.
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) inPreferredConfig = android.graphics.Bitmap.Config.HARDWARE
-        }
-        val bitmap = android.graphics.BitmapFactory.decodeResource(context.resources, header.res, options)
-        return bitmap.asImageBitmap()
-    }
+enum class HeaderImage(internal val wash: List<Long>) {
+    TODAY(listOf(0xFFFFB38A, 0xFFF59BC0, 0xFFB7A6F5)),
+    SPORT(listOf(0xFF8FE3B8, 0xFF7FD3E8, 0xFF9DB6F7)),
+    NUTRITION(listOf(0xFFFFCF7A, 0xFFFFA98C, 0xFFF59BB4)),
+    JOURNAL(listOf(0xFFB9A4F7, 0xFF9DB0F7, 0xFF8FD0EE)),
+    SETTINGS(listOf(0xFFB8C2D9, 0xFFA9B9E8, 0xFFC4B6E8)),
 }
 
 /**
@@ -123,7 +106,7 @@ class HeaderScrollState internal constructor(private val rangePx: Float) {
 }
 
 @Composable
-fun rememberHeaderScrollState(headerHeight: Dp = 184.dp): HeaderScrollState {
+fun rememberHeaderScrollState(headerHeight: Dp = LargeTitleHeight): HeaderScrollState {
     val rangePx = with(LocalDensity.current) { headerHeight.toPx() }
     return remember(rangePx) { HeaderScrollState(rangePx) }
 }
@@ -140,106 +123,140 @@ fun rememberHeaderScrollState(headerHeight: Dp = 184.dp): HeaderScrollState {
  * [progress] is a lambda and is only read in the layout / draw phases, so
  * scrolling never recomposes the header or the screen around it.
  */
+/** Height of the large title area that scrolls away. */
+val LargeTitleHeight: Dp = 68.dp
+
+/** Compact bar with the small centred title (always there, below the status bar). */
+private val CompactBarHeight: Dp = 44.dp
+
+/** How far the colour wash reaches down, behind the first cards. */
+private val WashHeight: Dp = 420.dp
+
+/**
+ * Apple Health's page background: a soft diagonal colour wash in the
+ * page's hues at the top, fading into the grey page background and
+ * reaching behind the first cards. It moves up with the large title and
+ * fades out as the page scrolls ([progress] 0 → 1). Put it on the page's
+ * root (behind header, tabs and list).
+ */
+fun Modifier.pageWash(header: HeaderImage, progress: () -> Float): Modifier = composed {
+    val bg = MaterialTheme.colorScheme.background
+    val dark = bg.luminance() < 0.5f
+    val colors = header.wash.map { Color(it).copy(alpha = if (dark) 0.40f else 0.78f) }
+    val density = LocalDensity.current
+    val washPx = with(density) { WashHeight.toPx() }
+    val shiftPx = with(density) { LargeTitleHeight.toPx() }
+    drawBehind {
+        val p = progress().coerceIn(0f, 1f)
+        val alpha = (1f - p * 1.15f).coerceIn(0f, 1f)
+        if (alpha <= 0f) return@drawBehind
+        translate(top = -p * shiftPx) {
+            val area = Size(size.width, washPx)
+            // The colour stops where the overlay is already solid page colour, so no
+            // half-covered pixel row can show at the bottom edge.
+            drawRect(
+                Brush.linearGradient(colors, start = Offset.Zero, end = Offset(size.width, washPx * 0.55f)),
+                size = Size(size.width, washPx * 0.88f),
+                alpha = alpha,
+            )
+            // Soft fade into the page colour, so there is no edge.
+            drawRect(
+                // Fully the page colour well before the wash ends: no visible edge.
+                Brush.verticalGradient(
+                    0f to Color.Transparent,
+                    0.3f to bg.copy(alpha = 0.2f),
+                    0.55f to bg.copy(alpha = 0.6f),
+                    0.75f to bg.copy(alpha = 0.92f),
+                    0.85f to bg,
+                    endY = washPx,
+                ),
+                size = area,
+                alpha = alpha,
+            )
+        }
+    }
+}
+
+/**
+ * Large-title header like iOS: a compact bar (search, small centred title
+ * that fades in) and the large title below it, which scrolls away as the
+ * page scrolls. Transparent – the colour wash comes from [pageWash] on
+ * the page root.
+ */
 @Composable
 fun PageHeader(
     header: HeaderImage,
     title: String,
     progress: () -> Float,
     modifier: Modifier = Modifier,
-    height: Dp = 184.dp,
+    height: Dp = LargeTitleHeight,
     subtitle: String? = null,
     onSearch: (() -> Unit)? = null,
 ) {
-    Box(
-        modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .statusBarsPadding()
-            .collapsingHeight(height) { 1f - progress() }
-            .clipToBounds(),
-    ) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            color = MaterialTheme.colorScheme.surfaceContainerHighest,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
-                .graphicsLayer {
-                    val p = progress()
-                    val scale = 1f - 0.04f * p
-                    scaleX = scale
-                    scaleY = scale
-                    alpha = 1f - p * p
-                },
-        ) {
-            Box {
-                val context = androidx.compose.ui.platform.LocalContext.current
-                val bitmap = androidx.compose.runtime.remember(header) { HeaderImages.get(context, header) }
-                Image(
-                    bitmap = bitmap,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            val p = progress()
-                            val scale = 1f + 0.08f * p
-                            scaleX = scale
-                            scaleY = scale
-                            // Blur via RenderEffect (API 31+) in the draw phase;
-                            // skipped entirely while the header is fully expanded.
-                            renderEffect = if (p > 0.01f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                val radius = (16.dp * p).toPx()
-                                BlurEffect(radius, radius, TileMode.Clamp)
-                            } else {
-                                null
-                            }
-                        },
-                )
-                // Bottom scrim carries the title.
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .background(HeaderScrim),
-                )
-                if (onSearch != null) {
-                    // Global search entry (App_Konzept.md 6), glassy on the photo.
-                    FilledTonalIconButton(
-                        onClick = onSearch,
-                        shapes = IconButtonDefaults.shapes(),
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = Color.Black.copy(alpha = 0.35f),
-                            contentColor = Color.White,
-                        ),
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(12.dp),
-                    ) {
-                        Icon(Icons.Outlined.Search, contentDescription = "Suchen")
-                    }
-                }
-                Column(
-                    Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = 20.dp, end = 20.dp, bottom = 16.dp),
+    Column(modifier.fillMaxWidth().statusBarsPadding()) {
+        Box(Modifier.fillMaxWidth().height(CompactBarHeight)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = 64.dp)
+                    .graphicsLayer { alpha = ((progress() - 0.6f) / 0.4f).coerceIn(0f, 1f) },
+            )
+            if (onSearch != null) {
+                androidx.compose.material3.IconButton(
+                    onClick = onSearch,
+                    shapes = IconButtonDefaults.shapes(),
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp),
                 ) {
-                    if (subtitle != null) {
-                        Text(
-                            text = subtitle,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = Color.White.copy(alpha = 0.87f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+                    Icon(Icons.Outlined.Search, contentDescription = "Suchen", tint = MaterialTheme.colorScheme.onBackground)
+                }
+            }
+            // Hairline under the bar once the content scrolls beneath it.
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(0.5.dp)
+                    .graphicsLayer { alpha = progress() }
+                    .background(MaterialTheme.colorScheme.outlineVariant),
+            )
+        }
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .collapsingHeight(height) { 1f - progress() }
+                .clipToBounds(),
+        ) {
+            Column(
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 20.dp, end = 20.dp, bottom = 4.dp)
+                    .graphicsLayer {
+                        val p = progress()
+                        alpha = (1f - p * 1.4f).coerceIn(0f, 1f)
+                        translationY = -p * 12.dp.toPx()
+                    },
+            ) {
+                if (subtitle != null) {
                     Text(
-                        text = title,
-                        style = MaterialTheme.typography.headlineLargeEmphasized,
-                        color = Color.White,
+                        text = subtitle,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.displaySmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }

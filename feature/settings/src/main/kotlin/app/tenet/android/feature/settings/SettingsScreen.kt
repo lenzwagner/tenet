@@ -1,5 +1,6 @@
 package app.tenet.android.feature.settings
 
+import app.tenet.android.core.designsystem.header.pageWash
 import androidx.compose.material.icons.outlined.NetworkCheck
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Key
@@ -204,7 +205,7 @@ fun SettingsScreen(
     Scaffold(
         contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
     ) { _ ->
-        Column(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().pageWash(HeaderImage.SETTINGS, { headerState.progress })) {
             PageHeader(
                 header = HeaderImage.SETTINGS,
                 title = "Einstellungen",

@@ -53,6 +53,11 @@ object RunPlanUiBuilder {
         val paces = RunWorkoutStructure.Paces(
             easy = anchor?.let { RunPaceMath.targetPaceSecPerKm(RunZone.EASY, it, method) },
             recovery = anchor?.let { RunPaceMath.targetPaceSecPerKm(RunZone.RECOVERY, it, method) },
+            // Goal race pace for race-pace finishes: the wish time, else the prediction from the form.
+            race = RunPlanMath.raceDistanceM(RunPlanMath.RunGoal.fromName(overview.detail?.goalId))?.let { dist ->
+                val time = overview.detail?.targetTimeSec ?: anchor?.let { app.tenet.android.core.common.RacePrediction.riegel(5_000, it.timeSec, dist) }
+                time?.let { it * 1000 / dist }
+            },
         )
         val zone = ZoneId.systemDefault()
         val units = overview.plannedUnits.mapNotNull { row ->

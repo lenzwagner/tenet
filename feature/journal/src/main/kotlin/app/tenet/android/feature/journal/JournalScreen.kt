@@ -1,5 +1,6 @@
 package app.tenet.android.feature.journal
 
+import app.tenet.android.core.designsystem.header.pageWash
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material.icons.outlined.CheckBox
@@ -132,6 +133,7 @@ fun JournalScreen(
         Column(
             Modifier
                 .fillMaxSize()
+                .pageWash(HeaderImage.JOURNAL, { headerState.progress })
                 .nestedScroll(headerState.nestedScrollConnection),
         ) {
             PageHeader(

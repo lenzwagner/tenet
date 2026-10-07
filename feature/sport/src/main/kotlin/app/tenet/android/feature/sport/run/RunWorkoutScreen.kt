@@ -289,6 +289,34 @@ fun RunWorkoutScreen(
                         ?: Text(if (s.kind == Kind.RECOVERY) "locker traben" else "nach Gefühl", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+            // Planned pace kilometre by kilometre (like a pace band).
+            val splits = app.tenet.android.core.common.RunWorkoutStructure.kmSplits(u.workout)
+            // Interval sessions already list each rep with its pace; mixed km averages would only confuse.
+            val continuous = u.workout.segments.none { it.kind == app.tenet.android.core.common.RunWorkoutStructure.Kind.RECOVERY }
+            if (splits.size >= 2 && !u.race && continuous) {
+                item(key = "splits-h") { SectionTitle(Icons.Outlined.Timeline, "Pace je Kilometer") }
+                item(key = "splits") {
+                    SegmentedRows(count = splits.size, containerColor = MaterialTheme.colorScheme.surfaceContainer) { i ->
+                        val sp = splits[i]
+                        Text(
+                            if (sp.distanceM >= 1000) "km ${sp.km}" else "km ${sp.km} · ${sp.distanceM} m",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            sp.kind.label,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(end = 12.dp),
+                        )
+                        Text(
+                            paceText(sp.paceSecPerKm),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = if (sp.kind == app.tenet.android.core.common.RunWorkoutStructure.Kind.WORK) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+            }
             item(key = "fuel") { fueling?.let { FuelCard(it) } }
             item(key = "why") {
                 TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {

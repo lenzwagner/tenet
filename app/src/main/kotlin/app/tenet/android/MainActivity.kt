@@ -114,13 +114,6 @@ class MainActivity : FragmentActivity() {
             window.isNavigationBarContrastEnforced = false
         }
 
-        // Header photos of the tabs, decoded off the main thread before they are shown.
-        if (savedInstanceState == null) {
-            lifecycleScope.launch(kotlinx.coroutines.Dispatchers.Default) {
-                app.tenet.android.core.designsystem.header.HeaderImages.prewarm(applicationContext)
-            }
-        }
-
         readOpenRequest(intent)
         // Entries left hidden by an undo snackbar that never finished.
         if (savedInstanceState == null) lifecycleScope.launch { entryRepository.purgeHidden() }
