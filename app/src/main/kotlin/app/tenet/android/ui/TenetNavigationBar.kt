@@ -71,35 +71,17 @@ fun TenetNavigationBar(
         val container = MaterialTheme.colorScheme.surfaceContainer
         val surface = MaterialTheme.colorScheme.surface
         Box(Modifier.fillMaxWidth()) {
-            // Soft backdrop behind the pill down to the screen edge: blur (or,
-            // without glass, a tint) that fades out from bottom to top.
+            // Backdrop behind the pill down to the screen edge: content fades
+            // into the page color (opaque at the bottom), no blurred smear.
             Box(
                 Modifier
                     .matchParentSize()
-                    .then(
-                        if (glass) {
-                            Modifier.hazeBlur(
-                                input = HazeInput.Backdrop(hazeState),
-                                style = HazeBlurStyle {
-                                    backgroundColor(surface)
-                                    blurRadius(12.dp)
-                                    colorEffects(listOf(HazeColorEffect.tint(surface.copy(alpha = 0.35f))))
-                                    progressive(
-                                        HazeProgressive.verticalGradient(
-                                            startIntensity = 0f,
-                                            endIntensity = 1f,
-                                        ),
-                                    )
-                                },
-                            )
-                        } else {
-                            Modifier.background(
-                                Brush.verticalGradient(
-                                    0f to surface.copy(alpha = 0f),
-                                    1f to surface.copy(alpha = 0.85f),
-                                ),
-                            )
-                        },
+                    .background(
+                        Brush.verticalGradient(
+                            0f to surface.copy(alpha = 0f),
+                            0.45f to surface.copy(alpha = 0.85f),
+                            1f to surface,
+                        ),
                     ),
             )
             TabPill(

@@ -1,10 +1,10 @@
 # Tenet – offene ToDos
 
-Stand: 07.10.2026, Version 1.0.0.16 (auf `main` gepusht, APK `tenet-1.0.0.16-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 07.10.2026, Version 1.0.0.17 (auf `main` gepusht, APK `tenet-1.0.0.17-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Übergabe (Session 06.–07.10.2026)
 
-**Stand:** 1.0.0.6 – 1.0.0.16 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
+**Stand:** 1.0.0.6 – 1.0.0.17 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
 
 **Wichtig vor dem nächsten Update am Handy:**
 - Seit 1.0.0.6 ist die Datenbank mit SQLCipher verschlüsselt (Rohschlüssel, im Android Keystore gewrappt, `no_backup/db.key`). Die alte Klartext-DB wird beim ersten Start einmal umgewandelt. Im Emulator geprüft, mit echten Daten noch nicht → vorher mit Google anmelden und synchronisieren.
@@ -96,7 +96,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Alte APKs im Projektordner aufräumen (~40 Stück, je ~10–18 MB, enthalten den NIM-Schlüssel)
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.16)
+## Zuletzt erledigt (0.5.0 – 1.0.0.17)
+
+- 1.0.0.17: Hinter der Tab-Leiste kein unscharfer Verlauf mehr – Inhalt blendet deckend in die Seitenfarbe aus (hell fast weiß, dunkel schwarz)
 
 - 1.0.0.16: Karten wie in Apple Health – Kopfzeile mit kleinem Piktogramm und Titel in der Kategorie-Farbe (Sport orange, Ernährung grün, Journal türkis, Schlaf/Traum lila, Serien orange, Körper pink, Wasser/Info blau), graue Info rechts und Pfeil bei antippbaren Karten; rundere Ecken; auf Heute, Sport (Gym, Calisthenics, Laufen, Plan, Fortschritt, Zusammenfassung), Ernährung (Ringe, Wasser, Mahlzeiten, Auswertung, Rezept, Optimierer) und Journal (Schlaf, An diesem Tag, Muster, Impuls)
 
