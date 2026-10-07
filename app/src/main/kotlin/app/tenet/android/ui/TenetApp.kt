@@ -260,7 +260,18 @@ fun TenetApp(
     val appSnackbar = rememberAppSnackbar()
     // Blur of the whole app while a sheet (new entry) floats above it.
     val backdropBlur = remember { mutableFloatStateOf(0f) }
-    CompositionLocalProvider(LocalAppSnackbar provides appSnackbar, LocalBackdropBlur provides backdropBlur) {
+    // Companion: the house button sends it home until the app is opened again.
+    var companionHome by remember { mutableStateOf(false) }
+    val companionControl = if (settings.companion) {
+        app.tenet.android.core.designsystem.header.CompanionControl(visible = !companionHome) { companionHome = !companionHome }
+    } else {
+        null
+    }
+    CompositionLocalProvider(
+        LocalAppSnackbar provides appSnackbar,
+        LocalBackdropBlur provides backdropBlur,
+        app.tenet.android.core.designsystem.header.LocalCompanionControl provides companionControl,
+    ) {
     Box(Modifier.fillMaxSize().backdropBlur({ backdropBlur.floatValue })) {
             NavHost(
                 navController = navController,
@@ -800,6 +811,22 @@ fun TenetApp(
                 glass = settings.glassBar,
                 hazeState = hazeState,
             )
+            // Above the tab bar: its chat panel covers the bar while open.
+            if (settings.companion) {
+                CompanionOverlay(
+                    visible = !companionHome,
+                    onNavigate = { dest ->
+                        when (dest) {
+                            app.tenet.android.core.data.companion.CompanionAgent.Destination.TODAY -> openTab(TopLevelTab.Today)
+                            app.tenet.android.core.data.companion.CompanionAgent.Destination.SPORT -> openTab(TopLevelTab.Sport)
+                            app.tenet.android.core.data.companion.CompanionAgent.Destination.JOURNAL -> openTab(TopLevelTab.Journal)
+                            app.tenet.android.core.data.companion.CompanionAgent.Destination.NUTRITION -> openTab(TopLevelTab.Nutrition)
+                            app.tenet.android.core.data.companion.CompanionAgent.Destination.SETTINGS -> openTab(TopLevelTab.Settings)
+                        }
+                    },
+                )
+            }
+
             // One snackbar host for the whole app, above the floating tab bar.
             SnackbarHost(
                 hostState = appSnackbar.host,

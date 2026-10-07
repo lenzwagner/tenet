@@ -1,5 +1,6 @@
 package app.tenet.android.feature.settings
 
+import androidx.compose.material.icons.outlined.SmartToy
 import app.tenet.android.core.designsystem.header.pageWash
 import androidx.compose.material.icons.outlined.NetworkCheck
 import androidx.compose.material.icons.outlined.Memory
@@ -284,6 +285,19 @@ fun SettingsScreen(
                             supporting = "Transluzente Navigationsleiste mit Unschärfe",
                             checked = settings.glassBar,
                             onCheckedChange = viewModel::setGlassBar,
+                        )
+                    }
+                }
+                item { Spacer(Modifier.height(12.dp)) }
+                item {
+                    SettingsGroup { shapes ->
+                        SwitchItem(
+                            shapes = shapes(0, 1),
+                            icon = Icons.Outlined.SmartToy,
+                            title = "Begleiter Tenny",
+                            supporting = "Läuft durch die App; antippen und per Text oder Sprache Essen eintragen, Notizen ergänzen oder Fragen stellen (nutzt die KI)",
+                            checked = settings.companion,
+                            onCheckedChange = viewModel::setCompanion,
                         )
                     }
                 }

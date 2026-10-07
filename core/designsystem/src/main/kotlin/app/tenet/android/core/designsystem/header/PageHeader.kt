@@ -1,5 +1,7 @@
 package app.tenet.android.core.designsystem.header
 
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.geometry.Size
@@ -185,6 +187,11 @@ fun Modifier.pageWash(header: HeaderImage, progress: () -> Float): Modifier = co
  * page scrolls. Transparent – the colour wash comes from [pageWash] on
  * the page root.
  */
+/** The companion's state for the house button in every page header (null = feature off). */
+class CompanionControl(val visible: Boolean, val onToggle: () -> Unit)
+
+val LocalCompanionControl = androidx.compose.runtime.compositionLocalOf<CompanionControl?> { null }
+
 @Composable
 fun PageHeader(
     header: HeaderImage,
@@ -208,6 +215,20 @@ fun PageHeader(
                     .padding(horizontal = 64.dp)
                     .graphicsLayer { alpha = ((progress() - 0.6f) / 0.4f).coerceIn(0f, 1f) },
             )
+            // House: sends the companion home (until the app opens again) or calls it back.
+            LocalCompanionControl.current?.let { companion ->
+                androidx.compose.material3.IconButton(
+                    onClick = companion.onToggle,
+                    shapes = IconButtonDefaults.shapes(),
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = if (onSearch != null) 56.dp else 8.dp),
+                ) {
+                    Icon(
+                        if (companion.visible) Icons.Outlined.Home else Icons.Filled.Home,
+                        contentDescription = if (companion.visible) "Tenny nach Hause schicken" else "Tenny zurückholen",
+                        tint = MaterialTheme.colorScheme.onBackground,
+                    )
+                }
+            }
             if (onSearch != null) {
                 androidx.compose.material3.IconButton(
                     onClick = onSearch,

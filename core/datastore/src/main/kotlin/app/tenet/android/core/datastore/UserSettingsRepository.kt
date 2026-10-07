@@ -41,6 +41,7 @@ class UserSettingsRepository @Inject constructor(
             // Default: the whole app in primary + secondary only.
             twoTone = prefs[KEY_TWO_TONE] ?: true,
             glassBar = prefs[KEY_GLASS_BAR] ?: true,
+            companion = prefs[KEY_COMPANION] ?: true,
             designStyle = app.tenet.android.core.common.DesignStyle.fromName(prefs[KEY_DESIGN_STYLE]),
             amoledMode = app.tenet.android.core.common.AmoledMode.fromName(prefs[KEY_AMOLED]),
             journalSerif = prefs[KEY_JOURNAL_SERIF] ?: false,
@@ -212,6 +213,10 @@ class UserSettingsRepository @Inject constructor(
         context.tenetDataStore.edit { it[KEY_GLASS_BAR] = enabled }
     }
 
+    suspend fun setCompanion(enabled: Boolean) {
+        context.tenetDataStore.edit { it[KEY_COMPANION] = enabled }
+    }
+
     suspend fun setModuleEnabled(module: AppModule, enabled: Boolean) {
         context.tenetDataStore.edit { prefs ->
             val current = prefs[KEY_MODULES] ?: AppModule.entries.map { it.name }.toSet()
@@ -225,6 +230,7 @@ class UserSettingsRepository @Inject constructor(
         val KEY_COLOR_STYLE = stringPreferencesKey("color_style")
         val KEY_TWO_TONE = booleanPreferencesKey("two_tone")
         val KEY_GLASS_BAR = booleanPreferencesKey("glass_bar")
+        val KEY_COMPANION = booleanPreferencesKey("companion")
         val KEY_AMOLED = stringPreferencesKey("amoled_mode")
         val KEY_DESIGN_STYLE = stringPreferencesKey("design_style")
         val KEY_JOURNAL_SERIF = booleanPreferencesKey("journal_serif")

@@ -28,6 +28,8 @@ data class UserSettings(
     val journalSerif: Boolean = false,
     /** Glassmorphism tab bar; false = opaque bar (fallback / accessibility). */
     val glassBar: Boolean = true,
+    /** Companion "Tenny" walking around the app (talk to it, let it log things). */
+    val companion: Boolean = true,
     val enabledModules: Set<AppModule> = AppModule.entries.toSet(),
     /** 1RM estimation formula used for progress displays (App_Konzept.md 5.2.1). */
     val oneRepMaxFormula: OneRepMaxFormula = OneRepMaxFormula.EPLEY,

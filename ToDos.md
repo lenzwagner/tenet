@@ -1,10 +1,10 @@
 # Tenet – offene ToDos
 
-Stand: 07.10.2026, Version 1.0.0.28 (auf `main` gepusht, APK `tenet-1.0.0.28-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 07.10.2026, Version 1.0.0.29 (auf `main` gepusht, APK `tenet-1.0.0.29-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Übergabe (Session 06.–07.10.2026)
 
-**Stand:** 1.0.0.6 – 1.0.0.28 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
+**Stand:** 1.0.0.6 – 1.0.0.29 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
 
 **Wichtig vor dem nächsten Update am Handy:**
 - Seit 1.0.0.6 ist die Datenbank mit SQLCipher verschlüsselt (Rohschlüssel, im Android Keystore gewrappt, `no_backup/db.key`). Die alte Klartext-DB wird beim ersten Start einmal umgewandelt. Im Emulator geprüft, mit echten Daten noch nicht → vorher mit Google anmelden und synchronisieren.
@@ -19,6 +19,7 @@ Stand: 07.10.2026, Version 1.0.0.28 (auf `main` gepusht, APK `tenet-1.0.0.28-rel
 **Design-Stand:** Stil „Klar“ (Standard; „Expressiv“ in Optionen → Darstellung → Stil): neutrale Flächen, Inter, iOS-Schalter/Segmente/Gruppen. Seitenkopf wie Apple Health: Farbverlauf je Bereich (`HeaderImage.wash`, `pageWash`, `SubPageWash`), großer Titel klappt in kleine Leiste; auf allen Haupt- und Unterseiten. Karten wie Health-Zusammenfassung: `CardHeader` (kleines Piktogramm + Titel in Kategorie-Farbe `HealthTint`, graue Info rechts, Chevron), 20-dp-Ecken (`tenetCardShape`), getönte Karten in „Klar“ weiß (`tenetAccentCardColors`).
 
 **Offene Ideen aus der Session (nicht begonnen):**
+- Tenny: weitere Aktionen (Training starten, Satz eintragen, Lauf nachtragen, Traum anlegen), Gesprächsverlauf, eigene Stimme/Antwort vorlesen
 - Übergänge vom Element aus (Rezept-Kachel/Notiz wächst in die Detailseite, Shared Element)
 - Feinere Haptik (Satz abhaken, Kalorienziel erreicht, Rekord)
 - Rekord-/Workout-Zusammenfassung als teilbares Bild
@@ -102,7 +103,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Alte APKs im Projektordner aufräumen (~40 Stück, je ~10–18 MB, enthalten den NIM-Schlüssel)
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.28)
+## Zuletzt erledigt (0.5.0 – 1.0.0.29)
+
+- 1.0.0.29: Begleiter „Tenny“ (Einstellungen → Darstellung, an/aus): animierte Figur läuft alle 1,5–4 min an einen neuen Platz, bleibt dort, lässt sich verschieben; Haus-Symbol im Kopf jeder Hauptseite schickt ihn bis zum nächsten App-Start weg (nochmal tippen holt ihn zurück); antippen öffnet eine Leiste für Text oder Sprache – per NVIDIA NIM trägt er Essen ein, Wasser, Gewicht, legt Notizen an oder ergänzt sie (z. B. Einkaufsliste), öffnet Bereiche und beantwortet Fragen zu Training, Ernährung, Gesundheit und Notizen (alles im Hintergrund, ohne Seitenwechsel); ohne KI versteht er einfache Essens-Sätze
 
 - 1.0.0.28: Feed auf „Heute“ kompakter; Startbildschirm-Widgets im selben Look (Glance): „Tagesübersicht“ (klein nur Wochenring, breit Ring + Schritte/Tagesform/Schlaf) und einzeln Schritte, Tagesform, Schlaf (2 × 1); aktualisieren sich bei jedem App-Start und alle 30 min; Vorschaubilder in der Widget-Auswahl
 
