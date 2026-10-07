@@ -627,6 +627,8 @@ private fun EditorScaffold(
                     }
                 }
             }
+
+            NoteImages(state.attachments, onRemove = viewModel::removeAttachment)
         }
         AnimatedVisibility(
             visible = formatBridge.active,
@@ -1019,6 +1021,40 @@ private fun FolderField(value: String, folders: List<String>, onChange: (String)
     }
 }
 
+/** Photos of a note at its very end, full width; the grid tile uses the first as its wallpaper. */
+@Composable
+private fun NoteImages(items: List<AttachmentUi>, onRemove: (AttachmentUi) -> Unit) {
+    val images = items.filter { it.mimeType.startsWith("image") }
+    if (images.isEmpty()) return
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        images.forEach { item ->
+            Box {
+                AsyncImage(
+                    model = item.uri,
+                    contentDescription = "Bild",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp)
+                        .clip(MaterialTheme.shapes.large),
+                )
+                FilledIconButton(
+                    onClick = { onRemove(item) },
+                    shapes = IconButtonDefaults.shapes(),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = Color.Black.copy(alpha = 0.5f),
+                        contentColor = Color.White,
+                    ),
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .size(32.dp),
+                ) { Icon(Icons.Outlined.Close, contentDescription = "Bild entfernen", modifier = Modifier.size(18.dp)) }
+            }
+        }
+    }
+}
+
 @Composable
 private fun Attachments(
     items: List<AttachmentUi>,
@@ -1028,40 +1064,10 @@ private fun Attachments(
     onToggleRecording: () -> Unit,
     onRemove: (AttachmentUi) -> Unit,
 ) {
-    val images = items.filter { !it.mimeType.startsWith("audio") }
     val memos = items.filter { it.mimeType.startsWith("audio") }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         memos.forEachIndexed { index, memo ->
             VoiceMemoRow(uri = memo.uri, index = index + 1, onRemove = { onRemove(memo) })
-        }
-        Row(
-            Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            images.forEach { item ->
-                Box {
-                    AsyncImage(
-                        model = item.uri,
-                        contentDescription = "Bild",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(96.dp)
-                            .clip(MaterialTheme.shapes.large),
-                    )
-                    FilledIconButton(
-                        onClick = { onRemove(item) },
-                        shapes = IconButtonDefaults.shapes(),
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = Color.Black.copy(alpha = 0.5f),
-                            contentColor = Color.White,
-                        ),
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(4.dp)
-                            .size(28.dp),
-                    ) { Icon(Icons.Outlined.Close, contentDescription = "Bild entfernen", modifier = Modifier.size(16.dp)) }
-                }
-            }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = onAddImage, shapes = ButtonDefaults.shapes(), enabled = !recording) {

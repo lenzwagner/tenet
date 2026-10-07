@@ -90,6 +90,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -230,9 +231,7 @@ internal fun NotesPage(state: JournalUiState, actions: EntryActions) {
                             hasVoice = state.attachments[note.id].orEmpty().any { it.mimeType.startsWith("audio") },
                             previewLines = 4,
                             fixedHeight = true,
-                            // With a photo the tile grows by the photo, so the preview below
-                            // still shows whole lines (a checkbox was cut in half before).
-                            modifier = Modifier.height(if (image != null) 340.dp else 240.dp).animateItem(),
+                            modifier = Modifier.height(240.dp).animateItem(),
                             selecting = selecting,
                             selected = note.id in selectedIds,
                             onSelect = { toggle(note.id) },
@@ -731,148 +730,162 @@ internal fun EntryCard(
         border = if (selected) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         modifier = modifier.fillMaxWidth(),
     ) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .then(if (fixedHeight) Modifier.fillMaxHeight() else Modifier)
-                .combinedClickable(
-                    onClick = { if (selecting && onSelect != null) onSelect() else actions.open(entry) },
-                    onLongClick = {
-                        if (onSelect != null) {
-                            haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                            onSelect()
-                        } else {
-                            menu = true
-                        }
-                    },
-                ),
-        ) {
-            if (image != null) {
+        // Grid tiles: the photo is the tile's wallpaper under a white (light) or
+        // black (dark) veil; lists show no photo (it sits at the end of the note).
+        val wallpaper = image?.takeIf { fixedHeight }
+        Box {
+            if (wallpaper != null) {
                 AsyncImage(
-                    model = image.uri,
+                    model = wallpaper.uri,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp)
-                        .clip(MaterialTheme.shapes.medium),
+                    modifier = Modifier.matchParentSize(),
+                )
+                val veil = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) Color.Black else Color.White
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .background(
+                            androidx.compose.ui.graphics.Brush.verticalGradient(
+                                0f to veil.copy(alpha = 0.55f),
+                                0.45f to veil.copy(alpha = 0.8f),
+                                1f to veil.copy(alpha = 0.92f),
+                            ),
+                        ),
                 )
             }
             Column(
                 Modifier
-                    .then(if (fixedHeight) Modifier.weight(1f) else Modifier)
-                    .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                    .fillMaxWidth()
+                    .then(if (fixedHeight) Modifier.fillMaxHeight() else Modifier)
+                    .combinedClickable(
+                        onClick = { if (selecting && onSelect != null) onSelect() else actions.open(entry) },
+                        onLongClick = {
+                            if (onSelect != null) {
+                                haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                onSelect()
+                            } else {
+                                menu = true
+                            }
+                        },
+                    ),
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (leading != null) {
-                        leading()
-                        Spacer(Modifier.width(10.dp))
-                    }
-                    Text(
-                        formatDate(entry.entryDate),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Clip,
-                        modifier = Modifier.weight(1f),
-                    )
-                    // Checklist progress up here: the card height is fixed in the grid,
-                    // a bar below the preview would be cut off.
-                    checklist?.let { (done, total) ->
-                        Surface(
-                            shape = CircleShape,
-                            color = if (done == total) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
-                            modifier = Modifier.semantics { contentDescription = "$done von $total erledigt" },
-                        ) {
-                            Text(
-                                "$done/$total",
-                                style = MaterialTheme.typography.labelMedium,
-                                maxLines = 1,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                            )
-                        }
-                        Spacer(Modifier.width(4.dp))
-                    }
-                    if (hasVoice) {
-                        Icon(Icons.Outlined.Mic, contentDescription = "Mit Sprachmemo", tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
-                    }
-                    if (entry.pinned) {
-                        Icon(Icons.Filled.PushPin, contentDescription = "Angeheftet", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                    }
-                    if (selecting) {
-                        app.tenet.android.core.designsystem.component.SelectionCheck(
-                            selected,
-                            Modifier.padding(12.dp),
-                        )
-                    } else Box {
-                        IconButton(onClick = { menu = true }, shapes = IconButtonDefaults.shapes()) {
-                            Icon(Icons.Outlined.MoreVert, contentDescription = "Mehr")
-                        }
-                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                            DropdownMenuItem(
-                                text = { Text(if (entry.pinned) "Lösen" else "Anheften") },
-                                leadingIcon = { Icon(Icons.Outlined.PushPin, contentDescription = null) },
-                                onClick = { menu = false; actions.togglePin(entry) },
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Löschen") },
-                                leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
-                                onClick = { menu = false; actions.delete(entry) },
-                            )
-                        }
-                    }
-                }
                 Column(
-                    Modifier.then(if (fixedHeight) Modifier.weight(1f) else Modifier).padding(end = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    Modifier
+                        .then(if (fixedHeight) Modifier.weight(1f) else Modifier)
+                        .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    if (entry.title.isNotBlank()) {
-                        JournalReading(enabled = serif) {
-                            Text(entry.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (leading != null) {
+                            leading()
+                            Spacer(Modifier.width(10.dp))
                         }
-                    }
-                    if (preview.isNotBlank()) {
-                        // Rendered Markdown (headings, lists, tappable checkboxes) as preview.
-                        // In fixed tiles it takes the space left and is cut there, so tags never are.
-                        val lines = if (fixedHeight && tags.isNotEmpty()) (previewLines - 1).coerceAtLeast(1) else previewLines
-                        Box(if (fixedHeight) Modifier.weight(1f, fill = false).clipToBounds() else Modifier) {
-                            JournalReading(enabled = serif) {
-                                MarkdownView(
-                                    body = entry.body,
-                                    // While selecting, the checklist is read-only.
-                                    onToggleCheck = { line -> if (!selecting) actions.toggleCheck(entry, line) },
-                                    onLink = { actions.open(entry) },
-                                    compact = true,
-                                    maxBlocks = lines,
-                                    maxLines = lines,
-                                )
-                            }
-                            // Selecting: a tap anywhere on the preview (checkboxes, links) only selects.
-                            if (selecting) {
-                                Box(
-                                    Modifier
-                                        .matchParentSize()
-                                        .combinedClickable(
-                                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                                            indication = null,
-                                            onClick = { onSelect?.invoke() },
-                                        ),
-                                )
-                            }
-                        }
-                    }
-                    extra?.invoke()
-                    if (tags.isNotEmpty()) {
                         Text(
-                            tags.joinToString("  ") { "#$it" },
+                            formatDate(entry.entryDate),
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            maxLines = if (fixedHeight) 1 else 2,
-                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Clip,
+                            modifier = Modifier.weight(1f),
                         )
+                        // Checklist progress up here: the card height is fixed in the grid,
+                        // a bar below the preview would be cut off.
+                        checklist?.let { (done, total) ->
+                            Surface(
+                                shape = CircleShape,
+                                color = if (done == total) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+                                modifier = Modifier.semantics { contentDescription = "$done von $total erledigt" },
+                            ) {
+                                Text(
+                                    "$done/$total",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    maxLines = 1,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                )
+                            }
+                            Spacer(Modifier.width(4.dp))
+                        }
+                        if (hasVoice) {
+                            Icon(Icons.Outlined.Mic, contentDescription = "Mit Sprachmemo", tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(4.dp))
+                        }
+                        if (entry.pinned) {
+                            Icon(Icons.Filled.PushPin, contentDescription = "Angeheftet", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                        }
+                        if (selecting) {
+                            app.tenet.android.core.designsystem.component.SelectionCheck(
+                                selected,
+                                Modifier.padding(12.dp),
+                            )
+                        } else Box {
+                            IconButton(onClick = { menu = true }, shapes = IconButtonDefaults.shapes()) {
+                                Icon(Icons.Outlined.MoreVert, contentDescription = "Mehr")
+                            }
+                            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                                DropdownMenuItem(
+                                    text = { Text(if (entry.pinned) "Lösen" else "Anheften") },
+                                    leadingIcon = { Icon(Icons.Outlined.PushPin, contentDescription = null) },
+                                    onClick = { menu = false; actions.togglePin(entry) },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Löschen") },
+                                    leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
+                                    onClick = { menu = false; actions.delete(entry) },
+                                )
+                            }
+                        }
+                    }
+                    Column(
+                        Modifier.then(if (fixedHeight) Modifier.weight(1f) else Modifier).padding(end = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        if (entry.title.isNotBlank()) {
+                            JournalReading(enabled = serif) {
+                                Text(entry.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                        if (preview.isNotBlank()) {
+                            // Rendered Markdown (headings, lists, tappable checkboxes) as preview.
+                            // In fixed tiles it takes the space left and is cut there, so tags never are.
+                            val lines = if (fixedHeight && tags.isNotEmpty()) (previewLines - 1).coerceAtLeast(1) else previewLines
+                            Box(if (fixedHeight) Modifier.weight(1f, fill = false).clipToBounds() else Modifier) {
+                                JournalReading(enabled = serif) {
+                                    MarkdownView(
+                                        body = entry.body,
+                                        // While selecting, the checklist is read-only.
+                                        onToggleCheck = { line -> if (!selecting) actions.toggleCheck(entry, line) },
+                                        onLink = { actions.open(entry) },
+                                        compact = true,
+                                        maxBlocks = lines,
+                                        maxLines = lines,
+                                    )
+                                }
+                                // Selecting: a tap anywhere on the preview (checkboxes, links) only selects.
+                                if (selecting) {
+                                    Box(
+                                        Modifier
+                                            .matchParentSize()
+                                            .combinedClickable(
+                                                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                                indication = null,
+                                                onClick = { onSelect?.invoke() },
+                                            ),
+                                    )
+                                }
+                            }
+                        }
+                        extra?.invoke()
+                        if (tags.isNotEmpty()) {
+                            Text(
+                                tags.joinToString("  ") { "#$it" },
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = if (fixedHeight) 1 else 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 }
             }
