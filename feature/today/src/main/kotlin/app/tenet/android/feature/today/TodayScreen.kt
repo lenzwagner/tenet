@@ -1,5 +1,10 @@
 package app.tenet.android.feature.today
 
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.automirrored.outlined.DirectionsWalk
 import androidx.compose.material.icons.outlined.MonitorHeart
 import app.tenet.android.core.designsystem.header.pageWash
 import app.tenet.android.core.designsystem.theme.TenetCard
@@ -192,6 +197,7 @@ fun TodayScreen(
     val listState = rememberReselectListState(headerState)
     val weather by viewModel.weather.collectAsStateWithLifecycle()
     val readiness by viewModel.readiness.collectAsStateWithLifecycle()
+    val feed by viewModel.feed.collectAsStateWithLifecycle()
     // With weather the year goes, so date and weather fit one line.
     val dateText = weather?.let { w ->
         state.date.format(DateTimeFormatter.ofPattern("EEEE, d. MMMM", Locale.GERMAN)) + " · " + w.emoji + " " +
@@ -274,6 +280,9 @@ fun TodayScreen(
                         onPreviousWeek = { viewModel.shiftWeek(-1) },
                         onNextWeek = { viewModel.shiftWeek(1) },
                     )
+                }
+                if (state.isToday) {
+                    item(key = "feed") { HealthFeed(feed, readiness?.result, readiness?.input?.sleep) }
                 }
                 items(cards, key = { it.name }) { card ->
                     Box(Modifier.animateItem()) {
@@ -674,6 +683,127 @@ private fun JournalCard(
                     Text("$others ${if (others == 1) "Notiz" else "Notizen"} an diesem Tag")
                 }
             }
+        }
+    }
+}
+
+/**
+ * Feed on top of "Heute" like Google Health: weekly activity ring on the
+ * left, steps (fresh on every app start), readiness and sleep on the right.
+ */
+@Composable
+private fun HealthFeed(
+    feed: TodayViewModel.Feed,
+    readiness: app.tenet.android.core.common.Readiness.Result?,
+    sleep: app.tenet.android.core.common.SleepNight?,
+) {
+    val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        WeekRing(feed.weekActiveMin, feed.weekGoalMin, Modifier.weight(1f))
+        Column(Modifier.weight(1.15f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            FeedPill(
+                icon = Icons.AutoMirrored.Outlined.DirectionsWalk,
+                label = "Schritte",
+                value = feed.steps?.let { java.text.NumberFormat.getIntegerInstance(Locale.GERMAN).format(it) } ?: "–",
+                colors = FeedColors.steps(dark),
+            )
+            FeedPill(
+                icon = Icons.Outlined.MonitorHeart,
+                label = "Tagesform",
+                value = readiness?.score?.toString() ?: "–",
+                colors = FeedColors.form(dark),
+                fill = readiness?.score?.div(100f),
+            )
+            FeedPill(
+                icon = Icons.Outlined.Bedtime,
+                label = sleep?.let { s ->
+                    val score = readiness?.contributors?.firstOrNull { it.kind == app.tenet.android.core.common.Readiness.Kind.SLEEP }?.score
+                    listOfNotNull(score?.toString(), score?.let { sleepLabel(it) }).joinToString(" · ").ifBlank { "Schlaf" }
+                } ?: "Schlaf",
+                value = sleep?.let { "${it.asleepMin / 60} h ${it.asleepMin % 60} min" } ?: "–",
+                colors = FeedColors.sleep(dark),
+                labelBelow = sleep != null,
+            )
+        }
+    }
+}
+
+private fun sleepLabel(score: Int) = when {
+    score >= 85 -> "Sehr gut"
+    score >= 70 -> "Gut"
+    score >= 50 -> "Mäßig"
+    else -> "Schlecht"
+}
+
+private data class PillColors(
+    val container: androidx.compose.ui.graphics.Color,
+    val fill: androidx.compose.ui.graphics.Color,
+    val content: androidx.compose.ui.graphics.Color,
+    val badge: androidx.compose.ui.graphics.Color,
+)
+
+private object FeedColors {
+    private fun c(v: Long) = androidx.compose.ui.graphics.Color(v)
+    fun steps(dark: Boolean) = if (dark) PillColors(c(0xFF00796B), c(0xFF00796B), c(0xFFB2F5EA), c(0xFF4FE3CF))
+    else PillColors(c(0xFFCFF3EC), c(0xFFCFF3EC), c(0xFF00564C), c(0xFF34C3AE))
+    fun form(dark: Boolean) = if (dark) PillColors(c(0xFF0B4F6C), c(0xFF0E7AA3), c(0xFFC5ECFF), c(0xFF7FD0F5))
+    else PillColors(c(0xFFD6EEFA), c(0xFFA9DCF5), c(0xFF0A4A66), c(0xFF0E7AA3))
+    fun sleep(dark: Boolean) = if (dark) PillColors(c(0xFF6E4FB5), c(0xFF6E4FB5), c(0xFFEADDFF), c(0xFFCDB6FF))
+    else PillColors(c(0xFFE8DEFA), c(0xFFE8DEFA), c(0xFF3D2A73), c(0xFF8B6CD9))
+}
+
+@Composable
+private fun FeedPill(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    colors: PillColors,
+    fill: Float? = null,
+    labelBelow: Boolean = false,
+) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .clip(MaterialTheme.shapes.extraLarge)
+            .background(colors.container),
+    ) {
+        // Tagesform: the brighter part shows the score like a bar.
+        fill?.let { Box(Modifier.fillMaxHeight().fillMaxWidth(it.coerceIn(0f, 1f)).background(colors.fill)) }
+        Row(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(44.dp).background(colors.badge, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = colors.container.takeIf { it.luminance() < 0.5f } ?: colors.content, modifier = Modifier.size(24.dp))
+            }
+            Spacer(Modifier.width(10.dp))
+            Column {
+                if (!labelBelow) Text(label, style = MaterialTheme.typography.labelLarge, color = colors.content)
+                Text(value, style = MaterialTheme.typography.titleLarge, color = colors.content, maxLines = 1)
+                if (labelBelow) Text(label, style = MaterialTheme.typography.labelMedium, color = colors.content.copy(alpha = 0.85f))
+            }
+        }
+    }
+}
+
+/** Active minutes this week against the WHO's 150 min. */
+@Composable
+private fun WeekRing(minutes: Int, goal: Int, modifier: Modifier = Modifier) {
+    val pct = (minutes * 100 / goal.coerceAtLeast(1))
+    val track = MaterialTheme.colorScheme.surfaceContainerHighest
+    val accent = androidx.compose.ui.graphics.Color(if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) 0xFF8AB4F8 else 0xFF1A73E8)
+    val sweep by androidx.compose.animation.core.animateFloatAsState(360f * (minutes.toFloat() / goal).coerceIn(0f, 1f), label = "week")
+    Box(modifier.aspectRatio(1f).semantics(mergeDescendants = true) { contentDescription = "Diese Woche $minutes von $goal Minuten aktiv" }, contentAlignment = Alignment.Center) {
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            val stroke = androidx.compose.ui.graphics.drawscope.Stroke(width = size.minDimension * 0.13f, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+            val inset = stroke.width / 2
+            val arc = androidx.compose.ui.geometry.Size(size.width - stroke.width, size.height - stroke.width)
+            val tl = androidx.compose.ui.geometry.Offset(inset, inset)
+            drawArc(track, 0f, 360f, false, tl, arc, style = stroke)
+            if (sweep > 0f) drawArc(accent, -90f, sweep, false, tl, arc, style = stroke)
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("Woche aktiv", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("$pct %", style = MaterialTheme.typography.displaySmall)
+            Text("$minutes von $goal min", style = MaterialTheme.typography.labelMedium, color = accent)
         }
     }
 }

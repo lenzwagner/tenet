@@ -1,10 +1,10 @@
 # Tenet – offene ToDos
 
-Stand: 07.10.2026, Version 1.0.0.26 (auf `main` gepusht, APK `tenet-1.0.0.26-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 07.10.2026, Version 1.0.0.27 (auf `main` gepusht, APK `tenet-1.0.0.27-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Übergabe (Session 06.–07.10.2026)
 
-**Stand:** 1.0.0.6 – 1.0.0.26 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
+**Stand:** 1.0.0.6 – 1.0.0.27 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
 
 **Wichtig vor dem nächsten Update am Handy:**
 - Seit 1.0.0.6 ist die Datenbank mit SQLCipher verschlüsselt (Rohschlüssel, im Android Keystore gewrappt, `no_backup/db.key`). Die alte Klartext-DB wird beim ersten Start einmal umgewandelt. Im Emulator geprüft, mit echten Daten noch nicht → vorher mit Google anmelden und synchronisieren.
@@ -43,6 +43,7 @@ Im Emulator nicht möglich.
 - [ ] Kalorienring: kurzer Impuls mit Haptik beim Schließen eines Rings (im Emulator nicht gesehen)
 - [ ] Notiz-Kachel mit echtem Foto: Schleier-Stärke hell/dunkel passend?
 - [ ] Bereitschaft mit echter Uhr: in Health Connect die neuen Rechte (Ruhepuls, HRV) erlauben; Werte plausibel? Morgen-Bericht kommt nach dem Aufwachen (im Emulator nicht ausgelöst)
+- [ ] Feed am Handy: in Health Connect „Schritte“ erlauben; Schritte aktuell nach App-Start?
 - [ ] Mehrfachauswahl Rezepte mit echten (eigenen + Saffron-)Rezepten löschen
 - [ ] Plan wechseln mit zwei echten Plänen (Gym/Laufen), Statistiken bleiben vollständig
 - [ ] „Übung tauschen“ öffnet halbhoch und lässt sich hochziehen
@@ -100,7 +101,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Alte APKs im Projektordner aufräumen (~40 Stück, je ~10–18 MB, enthalten den NIM-Schlüssel)
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.26)
+## Zuletzt erledigt (0.5.0 – 1.0.0.27)
+
+- 1.0.0.27: Feed oben auf „Heute“ wie Google Health – Wochenring „aktiv“ (Trainingsminuten der Woche von 150 min, WHO), daneben Schritte (bei jedem App-Start frisch aus Health Connect), Tagesform (Bereitschafts-Score als Balken) und Schlaf (Dauer, Schlafwert, Einordnung); neues Health-Connect-Recht Schritte; hcseed schreibt Schritte
 
 - 1.0.0.26: Einträge speichern sich selbst (0,8 s nach der letzten Änderung, auch Zurück speichert); Rückgängig-Knopf im Editor (Tippen wird in Schritte gruppiert, bis 100 Schritte); ✓ heißt jetzt „Fertig“ und schließt nur
 

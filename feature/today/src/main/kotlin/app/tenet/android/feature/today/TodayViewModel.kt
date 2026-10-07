@@ -96,7 +96,27 @@ class TodayViewModel @Inject constructor(
     private val settingsRepository: UserSettingsRepository,
     private val weatherRepository: app.tenet.android.core.data.WeatherRepository,
     private val readinessRepository: app.tenet.android.core.data.health.ReadinessRepository,
+    private val healthConnect: app.tenet.android.core.data.health.HealthConnectRepository,
 ) : ViewModel() {
+
+    /** Feed on top of "Heute": steps right now, active minutes this week. */
+    data class Feed(val steps: Long? = null, val weekActiveMin: Int = 0, val weekGoalMin: Int = 150)
+
+    private val feedTick = MutableStateFlow(0)
+
+    /** Steps are read fresh on every return to the app; the rest changes slowly. */
+    val feed: StateFlow<Feed> = kotlinx.coroutines.flow.combine(
+        feedTick,
+        weekCalendarRepository.observeSessionsBetween(WeekMath.weekStart(LocalDate.now()), LocalDate.now().plusDays(1)),
+    ) { _, sessions -> sessions }
+        .mapLatest { sessions ->
+            Feed(
+                steps = runCatching { healthConnect.stepsToday() }.getOrNull(),
+                weekActiveMin = sessions.map { it.session }.filter { it.endedAt != null }
+                    .sumOf { ((it.endedAt!! - it.startedAt) / 60_000L).coerceIn(0L, 240L) }.toInt(),
+            )
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Feed())
 
     /** Today's readiness (Health Connect); refreshed whenever the page comes back. */
     private val readinessTick = MutableStateFlow(0)
@@ -288,6 +308,7 @@ class TodayViewModel @Inject constructor(
     fun refreshToday() {
         weatherTick.value++ // back in the app: fresh current temperature (cached 30 min)
         readinessTick.value++
+        feedTick.value++
         val now = LocalDate.now()
         if (now != knownToday) {
             if (date.value == knownToday) date.value = now

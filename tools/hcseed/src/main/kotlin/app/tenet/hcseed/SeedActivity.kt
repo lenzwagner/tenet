@@ -12,6 +12,7 @@ import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
 import androidx.health.connect.client.records.RestingHeartRateRecord
 import androidx.health.connect.client.records.SleepSessionRecord
+import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.metadata.Device
 import androidx.health.connect.client.records.metadata.Metadata
 import androidx.health.connect.client.units.Length
@@ -34,6 +35,7 @@ class SeedActivity : ComponentActivity() {
         HealthPermission.getWritePermission(SleepSessionRecord::class),
         HealthPermission.getWritePermission(RestingHeartRateRecord::class),
         HealthPermission.getWritePermission(HeartRateVariabilityRmssdRecord::class),
+        HealthPermission.getWritePermission(StepsRecord::class),
     )
 
     private val request = registerForActivityResult(PermissionController.createRequestPermissionResultContract()) { granted ->
@@ -121,6 +123,17 @@ class SeedActivity : ComponentActivity() {
                     ),
                 )
             }
+            // Steps today: one block per hour since 7:00.
+            val day = java.time.LocalDate.now().atStartOfDay(zone).toInstant()
+            val steps = (7 until minOf(java.time.LocalTime.now().hour, 22)).map { h ->
+                StepsRecord(
+                    startTime = day.plusSeconds(h * 3600L), startZoneOffset = ZoneOffset.UTC,
+                    endTime = day.plusSeconds(h * 3600L + 3000), endZoneOffset = ZoneOffset.UTC,
+                    count = 700L + (h * 37) % 400,
+                    metadata = Metadata.autoRecorded(Device(type = Device.TYPE_PHONE), clientRecordId = "seed-steps-${java.time.LocalDate.now()}-$h"),
+                )
+            }
+            runCatching { client.insertRecords(steps) }
             runCatching { client.insertRecords(nights) }
                 .onFailure { show("Fehler Nächte: ${it.message}"); return@launch }
             runCatching { client.insertRecords(records) }

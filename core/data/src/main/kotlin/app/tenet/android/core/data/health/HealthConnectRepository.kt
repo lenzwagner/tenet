@@ -11,6 +11,8 @@ import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
 import androidx.health.connect.client.records.RestingHeartRateRecord
+import androidx.health.connect.client.records.StepsRecord
+import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.records.SleepSessionRecord
@@ -167,6 +169,25 @@ class HealthConnectRepository @Inject constructor(
                 )
             },
         )
+    }
+
+    /**
+     * Steps since midnight, summed by Health Connect over all sources without
+     * double counting (watch + phone). Null when off or not permitted.
+     */
+    suspend fun stepsToday(): Long? {
+        if (!_status.value.enabled || availability() != Availability.AVAILABLE) return null
+        val granted = runCatching { client.permissionController.getGrantedPermissions() }.getOrDefault(emptySet())
+        if (READ_STEPS !in granted) return null
+        val start = java.time.LocalDate.now().atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()
+        return runCatching {
+            client.aggregate(
+                AggregateRequest(
+                    metrics = setOf(StepsRecord.COUNT_TOTAL),
+                    timeRangeFilter = TimeRangeFilter.between(start, Instant.now()),
+                ),
+            )[StepsRecord.COUNT_TOTAL] ?: 0L
+        }.getOrNull()
     }
 
     /** Per wake-up day: resting heart rate and night HRV, for the readiness score. */
@@ -415,6 +436,7 @@ class HealthConnectRepository @Inject constructor(
         val READ_HR: String = HealthPermission.getReadPermission(HeartRateRecord::class)
         val READ_RESTING_HR: String = HealthPermission.getReadPermission(RestingHeartRateRecord::class)
         val READ_HRV: String = HealthPermission.getReadPermission(HeartRateVariabilityRmssdRecord::class)
+        val READ_STEPS: String = HealthPermission.getReadPermission(StepsRecord::class)
 
         /** Without these, nothing can be imported. */
         val REQUIRED: Set<String> = setOf(
@@ -433,6 +455,7 @@ class HealthConnectRepository @Inject constructor(
             READ_SLEEP,
             READ_RESTING_HR,
             READ_HRV,
+            READ_STEPS,
             HealthWriter.WRITE_WEIGHT,
             HealthWriter.WRITE_EXERCISE,
             HealthWriter.WRITE_DISTANCE,
