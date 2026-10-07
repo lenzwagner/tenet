@@ -1,5 +1,6 @@
 package app.tenet.android.feature.journal
 
+import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.ui.graphics.luminance
 import app.tenet.android.core.designsystem.header.sheetWash
 import app.tenet.android.core.designsystem.component.CardHeader
@@ -249,7 +250,9 @@ private fun EditorContent(
     startAction: String,
 ) {
     if (!sheet) {
-        EditorScaffold(state, viewModel, leave, onOpenEntry, autoDictate, startAction)
+        // Back stores the last keystrokes too (autosave waits a moment after typing).
+        BackHandler { viewModel.save() }
+        EditorScaffold(state, viewModel, { viewModel.save() }, onOpenEntry, autoDictate, startAction)
         return
     }
     // Swipe down, back or a tap next to the sheet: keep what was written, drop an empty entry.
@@ -513,11 +516,14 @@ private fun EditorScaffold(
                             }
                         })
                     }
+                    // Changes save themselves; undo steps back, ✓ closes.
+                    val canUndo by viewModel.canUndo.collectAsStateWithLifecycle()
+                    TooltipIconButton(Icons.AutoMirrored.Outlined.Undo, "Rückgängig", viewModel::undo, enabled = canUndo)
                     FilledIconButton(
                         onClick = { viewModel.save() },
                         shapes = IconButtonDefaults.shapes(),
                         modifier = Modifier.padding(end = 4.dp),
-                    ) { Icon(Icons.Outlined.Check, contentDescription = "Speichern") }
+                    ) { Icon(Icons.Outlined.Check, contentDescription = "Fertig") }
                 },
             )
         },
@@ -576,6 +582,8 @@ private fun EditorScaffold(
                 EntryType.NOTE -> Unit
             }
 
+            // Undo: the text editors keep their own state, so they start over from the restored body.
+            androidx.compose.runtime.key(state.revision) {
             JournalReading(enabled = state.type != EntryType.NOTE && LocalJournalSerif.current) {
                 BodyEditor(
                     body = state.body,
@@ -585,6 +593,7 @@ private fun EditorScaffold(
                     bridge = formatBridge,
                     startChecklist = startAction == START_LIST,
                 )
+            }
             }
 
             TagEditor(

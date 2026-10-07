@@ -128,16 +128,20 @@ class EntryRepository @Inject constructor(
     fun observeAttachmentsByEntry(): Flow<Map<String, List<Attachment>>> =
         entryDao.observeAllAttachments().map { list -> list.groupBy { it.entryId } }
 
-    suspend fun addAttachment(entryId: String, uri: String, mimeType: String) =
+    /** Stores an attachment and returns its new id. */
+    suspend fun addAttachment(entryId: String, uri: String, mimeType: String): String {
+        val id = UUID.randomUUID().toString()
         entryDao.upsertAttachment(
             Attachment(
-                id = UUID.randomUUID().toString(),
+                id = id,
                 entryId = entryId,
                 uri = uri,
                 mimeType = mimeType,
                 createdAt = System.currentTimeMillis(),
             ),
         )
+        return id
+    }
 
     suspend fun deleteAttachment(id: String) {
         entryDao.attachmentById(id)?.let { deleteLocalFile(it.uri) }

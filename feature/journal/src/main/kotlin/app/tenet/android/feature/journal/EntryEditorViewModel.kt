@@ -1,5 +1,10 @@
 package app.tenet.android.feature.journal
 
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
 import app.tenet.android.core.data.ai.AiFiller
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -62,6 +67,8 @@ data class EntryEditorState(
     val folder: String = "",
     val tags: List<String> = emptyList(),
     val attachments: List<AttachmentUi> = emptyList(),
+    /** Bumped by undo: text editors with their own state start over from [body]. */
+    val revision: Int = 0,
 )
 
 /** Diary context of the entry's day (App_Konzept.md 5.3 "Automatische Kontextinfos"). */
@@ -77,7 +84,7 @@ sealed interface LinkTarget {
     data class Create(val title: String) : LinkTarget
 }
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 @HiltViewModel
 class EntryEditorViewModel @Inject constructor(
     private val entryRepository: EntryRepository,
@@ -314,8 +321,42 @@ class EntryEditorViewModel @Inject constructor(
         }
     }
 
+    // ---- Undo ------------------------------------------------------------
+
+    /** Earlier states; typing is grouped into steps (a pause of 1 s starts a new one). */
+    private val history = ArrayDeque<EntryEditorState>()
+    private var lastSnapshotAt = 0L
+    private val _canUndo = MutableStateFlow(false)
+    val canUndo: StateFlow<Boolean> = _canUndo.asStateFlow()
+
     private fun update(block: EntryEditorState.() -> EntryEditorState) {
-        _state.value = _state.value.block()
+        val before = _state.value
+        val after = before.block()
+        if (after == before) return
+        if (!before.loading) {
+            val now = System.currentTimeMillis()
+            val typing = after.title != before.title || after.body != before.body
+            if (!typing || now - lastSnapshotAt > 1_000 || history.isEmpty()) {
+                history.addLast(before)
+                if (history.size > 100) history.removeFirst()
+                _canUndo.value = true
+            }
+            lastSnapshotAt = now
+        }
+        _state.value = after
+    }
+
+    /** One step back; attachments stay as they are (their files may be gone already). */
+    fun undo() {
+        val previous = history.removeLastOrNull() ?: return
+        _canUndo.value = history.isNotEmpty()
+        lastSnapshotAt = 0L
+        val current = _state.value
+        _state.value = previous.copy(
+            isNew = current.isNew,
+            attachments = current.attachments,
+            revision = current.revision + 1,
+        )
     }
 
     fun onTitle(value: String) = update { copy(title = value) }
@@ -376,14 +417,33 @@ class EntryEditorViewModel @Inject constructor(
         }
     }
 
-    fun save() {
-        val s = _state.value
-        // A new entry with nothing in it is not stored – just close.
-        val empty = s.title.isBlank() && s.body.replace("- [ ]", "").isBlank() && s.attachments.isEmpty()
-        if (entryId == null && empty) {
-            viewModelScope.launch { _saved.send(Unit) }
-            return
+    // ---- Saving ------------------------------------------------------------
+
+    /** Writes run one after another; set once the entry was deleted. */
+    private val saveMutex = kotlinx.coroutines.sync.Mutex()
+    private var closed = false
+
+    init {
+        // Autosave: shortly after the last change, without pressing anything.
+        viewModelScope.launch {
+            _state
+                .filter { !it.loading }
+                // Only user content counts (not what saving itself writes back).
+                .map { s -> s.copy(revision = 0, isNew = false, attachments = s.attachments.map { it.copy(id = null) }) }
+                .distinctUntilChanged()
+                .drop(1) // the freshly loaded state
+                .debounce(800)
+                .collect { persist() }
         }
+    }
+
+    private fun isEmpty(s: EntryEditorState) =
+        s.title.isBlank() && s.body.replace("- [ ]", "").isBlank() && s.attachments.isEmpty()
+
+    /** Stores the current state (no-op for a new, still empty entry). */
+    private suspend fun persist() = saveMutex.withLock {
+        val s = _state.value
+        if (closed || s.loading || (entryId == null && isEmpty(s))) return@withLock
         val now = System.currentTimeMillis()
         val id = entryId ?: newUuid().also { entryId = it }
         val entry = Entry(
@@ -391,7 +451,7 @@ class EntryEditorViewModel @Inject constructor(
             type = s.type,
             title = s.title.trim(),
             body = s.body,
-            createdAt = originalCreatedAt ?: now,
+            createdAt = originalCreatedAt ?: now.also { originalCreatedAt = it },
             updatedAt = now,
             entryDate = s.entryDate,
             pinned = s.pinned,
@@ -415,19 +475,32 @@ class EntryEditorViewModel @Inject constructor(
         } else {
             null
         }
+        entryRepository.save(entry, diaryMeta, dreamMeta)
+        entryRepository.setTags(id, s.tags, if (s.type == EntryType.DREAM) s.symbols else emptyList())
+        // Sync attachments: drop removed ones, add new ones (and remember their ids).
+        val keep = s.attachments.mapNotNull { it.id }.toSet()
+        (savedAttachmentIds - keep).forEach { entryRepository.deleteAttachment(it) }
+        val added = s.attachments.filter { it.id == null }.associate { it.uri to entryRepository.addAttachment(id, it.uri, it.mimeType) }
+        savedAttachmentIds = keep + added.values
+        if (s.isNew || added.isNotEmpty()) {
+            // Not through update(): this is no user edit (no undo step, no new autosave).
+            _state.value = _state.value.let { cur ->
+                cur.copy(isNew = false, attachments = cur.attachments.map { a -> if (a.id == null) a.copy(id = added[a.uri]) else a })
+            }
+        }
+    }
+
+    /** "Fertig": store now and close. */
+    fun save() {
         viewModelScope.launch {
-            entryRepository.save(entry, diaryMeta, dreamMeta)
-            entryRepository.setTags(id, s.tags, if (s.type == EntryType.DREAM) s.symbols else emptyList())
-            // Sync attachments: drop removed ones, add new ones.
-            val keep = s.attachments.mapNotNull { it.id }.toSet()
-            (savedAttachmentIds - keep).forEach { entryRepository.deleteAttachment(it) }
-            s.attachments.filter { it.id == null }.forEach { entryRepository.addAttachment(id, it.uri, it.mimeType) }
+            persist()
             _saved.send(Unit)
         }
     }
 
     /** Hides the entry and closes; returns its id for the undo snackbar. */
     fun delete(): String? {
+        closed = true
         val id = entryId
         if (id != null) entryRepository.hide(id)
         viewModelScope.launch { _saved.send(Unit) }
