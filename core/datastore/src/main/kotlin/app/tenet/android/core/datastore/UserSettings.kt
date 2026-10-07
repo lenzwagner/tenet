@@ -51,6 +51,8 @@ data class UserSettings(
     /** Morning readiness report (Health Connect). */
     val readinessReport: Boolean = false,
     val readinessReportMinute: Int = 7 * 60 + 30,
+    /** ISO date the readiness card was closed on (it moves to the end for that day). */
+    val readinessDismissedDate: String? = null,
     /** Custom meal section names keyed by MealType name (App_Konzept.md 5.4 "umbenennbar"). */
     val mealNames: Map<String, String> = emptyMap(),
     /** Daily water goal in ml. */

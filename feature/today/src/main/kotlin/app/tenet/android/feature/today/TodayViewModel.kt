@@ -263,7 +263,14 @@ class TodayViewModel @Inject constructor(
             nextPlanned = day.next,
             streaks = history.streaks,
             marks = history.marks,
-            cards = order.filter { it !in hidden },
+            // Closed today: the readiness card waits at the end until tomorrow.
+            cards = order.filter { it !in hidden }.let { visible ->
+                if (settings.readinessDismissedDate == d.toString() && TodayCard.READINESS in visible) {
+                    visible - TodayCard.READINESS + TodayCard.READINESS
+                } else {
+                    visible
+                }
+            },
             cardOrder = order,
             hidden = hidden,
             loading = false,
@@ -286,6 +293,10 @@ class TodayViewModel @Inject constructor(
             if (date.value == knownToday) date.value = now
             knownToday = now
         }
+    }
+
+    fun dismissReadiness() {
+        viewModelScope.launch { settingsRepository.setReadinessDismissed(LocalDate.now().toString()) }
     }
 
     fun saveCards(order: List<TodayCard>, hidden: Set<TodayCard>) {

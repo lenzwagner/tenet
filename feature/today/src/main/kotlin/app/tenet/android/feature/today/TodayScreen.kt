@@ -301,7 +301,9 @@ fun TodayScreen(
                                 locked = journalLocked,
                             ) }
                             TodayCard.STREAKS -> StreakCard(state.streaks)
-                            TodayCard.READINESS -> readiness?.takeIf { state.isToday }?.let { ReadinessCard(it.result) }
+                            TodayCard.READINESS -> readiness?.takeIf { state.isToday }?.let {
+                                ReadinessCard(it.result, onClose = viewModel::dismissReadiness.takeIf { _ -> state.cards.last() != TodayCard.READINESS })
+                            }
                         }
                     }
                 }
@@ -681,12 +683,21 @@ private fun JournalCard(
  * for today's training and the parts behind it (HRV, resting pulse, sleep, load).
  */
 @Composable
-private fun ReadinessCard(r: app.tenet.android.core.common.Readiness.Result) {
+private fun ReadinessCard(r: app.tenet.android.core.common.Readiness.Result, onClose: (() -> Unit)? = null) {
     val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val levelColor = readinessColor(r.level, dark)
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            CardTitle(Icons.Outlined.MonitorHeart, "Bereitschaft", HealthTint.BODY, meta = "Heute")
+            CardTitle(
+                Icons.Outlined.MonitorHeart,
+                "Bereitschaft",
+                HealthTint.BODY,
+                meta = "Heute",
+                // Close: the card moves to the end of the page for today.
+                action = onClose?.let { close ->
+                    { TooltipIconButton(icon = Icons.Rounded.Close, contentDescription = "Nach unten schieben", onClick = close) }
+                },
+            )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 ReadinessRing(r.score, levelColor, Modifier.size(88.dp))
                 Spacer(Modifier.width(16.dp))

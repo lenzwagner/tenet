@@ -1,10 +1,10 @@
 # Tenet – offene ToDos
 
-Stand: 07.10.2026, Version 1.0.0.23 (auf `main` gepusht, APK `tenet-1.0.0.23-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 07.10.2026, Version 1.0.0.24 (auf `main` gepusht, APK `tenet-1.0.0.24-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Übergabe (Session 06.–07.10.2026)
 
-**Stand:** 1.0.0.6 – 1.0.0.23 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
+**Stand:** 1.0.0.6 – 1.0.0.24 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
 
 **Wichtig vor dem nächsten Update am Handy:**
 - Seit 1.0.0.6 ist die Datenbank mit SQLCipher verschlüsselt (Rohschlüssel, im Android Keystore gewrappt, `no_backup/db.key`). Die alte Klartext-DB wird beim ersten Start einmal umgewandelt. Im Emulator geprüft, mit echten Daten noch nicht → vorher mit Google anmelden und synchronisieren.
@@ -100,7 +100,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Alte APKs im Projektordner aufräumen (~40 Stück, je ~10–18 MB, enthalten den NIM-Schlüssel)
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.23)
+## Zuletzt erledigt (0.5.0 – 1.0.0.24)
+
+- 1.0.0.24: Bereitschafts-Karte mit ✕ – weggeklickt rutscht sie für den Tag ans Ende von „Heute“, am nächsten Morgen steht sie wieder oben
 
 - 1.0.0.23: Bereitschaft wie Google Health/Fitbit – Score 0–100 aus HRV und Ruhepuls (gegen 30-Tage-Schnitt), Schlaf der letzten Nacht und Trainingslast (7 Tage gegen 4-Wochen-Schnitt); Karte oben auf „Heute“ mit Ring, Einordnung, Empfehlung und vier Kacheln; Morgen-Bericht als Mitteilung (Einstellungen → Erinnerungen, Standard 7:30, wartet bis 11 Uhr auf die Schlafdaten der Uhr); neue Health-Connect-Rechte Ruhepuls + HRV; hcseed schreibt 30 Nächte mit Schlaf, Ruhepuls und HRV
 

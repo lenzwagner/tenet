@@ -63,6 +63,7 @@ class UserSettingsRepository @Inject constructor(
             trainingReminderMinute = prefs[KEY_TRAINING_REMINDER_MINUTE] ?: (7 * 60),
             readinessReport = prefs[KEY_READINESS] ?: false,
             readinessReportMinute = prefs[KEY_READINESS_MINUTE] ?: (7 * 60 + 30),
+            readinessDismissedDate = prefs[KEY_READINESS_DISMISSED],
             mealNames = MEAL_KEYS.mapNotNull { (meal, key) -> prefs[key]?.let { meal to it } }.toMap(),
             waterGoalMl = prefs[KEY_WATER_GOAL] ?: 2500,
             journalLock = prefs[KEY_JOURNAL_LOCK] ?: false,
@@ -162,6 +163,10 @@ class UserSettingsRepository @Inject constructor(
         }
     }
 
+    suspend fun setReadinessDismissed(date: String) {
+        context.tenetDataStore.edit { it[KEY_READINESS_DISMISSED] = date }
+    }
+
     suspend fun setRealityChecks(enabled: Boolean) {
         context.tenetDataStore.edit { it[KEY_REALITY_CHECKS] = enabled }
     }
@@ -236,6 +241,7 @@ class UserSettingsRepository @Inject constructor(
         val KEY_TRAINING_REMINDER_MINUTE = intPreferencesKey("training_reminder_minute")
         val KEY_READINESS = booleanPreferencesKey("readiness_report")
         val KEY_READINESS_MINUTE = intPreferencesKey("readiness_report_minute")
+        val KEY_READINESS_DISMISSED = stringPreferencesKey("readiness_dismissed")
         val KEY_WATER_GOAL = intPreferencesKey("water_goal_ml")
         val KEY_JOURNAL_LOCK = booleanPreferencesKey("journal_lock")
         val KEY_SPORT_SETUP = stringSetPreferencesKey("sport_setup_done")
