@@ -968,7 +968,8 @@ private fun CardsSheet(
     val sheetState = rememberSheetState(skipPartiallyExpanded = true)
     val items = remember { mutableStateListOf<TodayCard>().apply { addAll(order) } }
     val off = remember { mutableStateListOf<TodayCard>().apply { addAll(hidden) } }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    // Swiping the sheet away keeps the changes (no separate save needed).
+    ModalBottomSheet(onDismissRequest = { onSave(items.toList(), off.toSet()) }, sheetState = sheetState) {
         Column(
             Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),

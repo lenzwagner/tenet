@@ -642,6 +642,6 @@ fun RecipeDetailScreen(
 @Composable
 private fun Modifier.drawWithWash(alpha: Float): Modifier {
     if (alpha <= 0f) return this
-    return this.graphicsLayer { this.alpha = alpha }
+    return this.graphicsLayer { this.alpha = alpha; clip = true }
         .sheetWash(app.tenet.android.core.designsystem.header.HeaderImage.NUTRITION)
 }

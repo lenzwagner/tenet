@@ -89,6 +89,7 @@ fun ExerciseDetailScreen(
         topBar = {
             TopAppBar(
                 colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
+                modifier = app.tenet.android.core.designsystem.header.washBar(),
                 navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", onBack) },
                 title = { Text(d?.exercise?.name ?: "Übung") },
                 subtitle = {

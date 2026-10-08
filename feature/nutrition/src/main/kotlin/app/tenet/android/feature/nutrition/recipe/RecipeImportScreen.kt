@@ -296,6 +296,10 @@ fun RecipeImportScreen(
 ) {
     LaunchedEffect(initialUrl) { viewModel.start(initialUrl) }
     LaunchedEffect(Unit) { viewModel.saved.collect(onSaved) }
+    // An imported recipe is kept when leaving (like everywhere else); "Verwerfen" drops it.
+    val sNow by viewModel.state.collectAsStateWithLifecycle()
+    val leave = { if (sNow.result != null && !sNow.saving) viewModel.save() else onBack() }
+    androidx.activity.compose.BackHandler(enabled = sNow.result != null && !sNow.saving) { leave() }
     val s by viewModel.state.collectAsStateWithLifecycle()
     @Suppress("DEPRECATION") val clipboard = LocalClipboardManager.current
 
@@ -304,7 +308,8 @@ fun RecipeImportScreen(
         topBar = {
             TopAppBar(
                 colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
-                navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", onBack) },
+                modifier = app.tenet.android.core.designsystem.header.washBar(),
+                navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", leave) },
                 title = { Text("Rezept importieren") },
                 subtitle = { Text(if (viewModel.signedIn) "Landet auch in Saffron" else "Als Gast nur auf diesem Handy") },
             )

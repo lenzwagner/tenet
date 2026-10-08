@@ -118,6 +118,7 @@ fun RecipeEditorScreen(
         topBar = {
             MediumFlexibleTopAppBar(
                 colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
+                modifier = app.tenet.android.core.designsystem.header.washBar(),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", { viewModel.saveOnLeave(onBack) }) },
                 title = { Text(if (state.isNew) "Neues Rezept" else "Rezept bearbeiten") },

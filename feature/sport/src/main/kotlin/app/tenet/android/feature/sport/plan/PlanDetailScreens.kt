@@ -106,6 +106,7 @@ fun RunPlanDetailScreen(
         topBar = {
             TopAppBar(
                 colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
+                modifier = app.tenet.android.core.designsystem.header.washBar(),
                 navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", onBack) },
                 title = { Text(state?.title ?: "Laufplan") },
                 subtitle = { state?.goalDate?.let { Text("Ziel am ${it.format(DATE)}") } },
@@ -437,6 +438,7 @@ fun GymPlanDetailScreen(
         topBar = {
             TopAppBar(
                 colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
+                modifier = app.tenet.android.core.designsystem.header.washBar(),
                 navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", onBack) },
                 title = { Text(state?.title ?: "Trainingsplan") },
                 subtitle = { Text("Fortschritt") },

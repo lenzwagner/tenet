@@ -144,6 +144,7 @@ fun CompanionOverlay(
     visible: Boolean,
     kind: app.tenet.android.core.designsystem.component.CompanionKind,
     onNavigate: (CompanionAgent.Destination) -> Unit,
+    name: String = kind.label,
     viewModel: CompanionViewModel = hiltViewModel(),
 ) {
     val busy by viewModel.busy.collectAsStateWithLifecycle()
@@ -242,7 +243,7 @@ fun CompanionOverlay(
                 facingLeft = facingLeft,
                 modifier = Modifier
                     .size(CreatureSize)
-                    .semantics { contentDescription = "${kind.label} – antippen zum Sprechen, ziehen zum Verschieben" }
+                    .semantics { contentDescription = "${name} – antippen zum Sprechen, ziehen zum Verschieben" }
                     .pointerInput(maxX, maxY) {
                         detectDragGestures(
                             onDragStart = { dragging = true },
@@ -272,12 +273,12 @@ fun CompanionOverlay(
             modifier = Modifier.align(Alignment.BottomCenter).imePadding().navigationBarsPadding(),
         ) {
             ChatPanel(
-                name = kind.label,
+                name = name,
                 kind = kind,
                 request = request,
                 busy = busy,
                 reply = reply,
-                onSend = { viewModel.send(it, kind.label) },
+                onSend = { viewModel.send(it, name) },
                 onClose = {
                     chatOpen = false
                     viewModel.clearReply()

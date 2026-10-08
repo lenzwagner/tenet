@@ -72,6 +72,7 @@ fun WeekCalendarScreen(
         topBar = {
             MediumFlexibleTopAppBar(
                 colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
+                modifier = app.tenet.android.core.designsystem.header.washBar(),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     TooltipIconButton(icon = Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Zurück", onClick = onBack)

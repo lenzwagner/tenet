@@ -280,11 +280,11 @@ internal fun DiaryPage(state: JournalUiState, actions: EntryActions, onNewDiaryO
         item(key = "mode") {
             SegmentedSelector(
                 segments = listOf(
-                    Segment("Liste", Icons.AutoMirrored.Outlined.ViewList),
                     Segment("Kalender", Icons.Outlined.CalendarMonth),
+                    Segment("Liste", Icons.AutoMirrored.Outlined.ViewList),
                 ),
-                selectedIndex = if (calendar) 1 else 0,
-                onSelect = { calendar = it == 1 },
+                selectedIndex = if (calendar) 0 else 1,
+                onSelect = { calendar = it == 0 },
             )
         }
         item(key = "week") { WeeklyGoal(weekCount) }

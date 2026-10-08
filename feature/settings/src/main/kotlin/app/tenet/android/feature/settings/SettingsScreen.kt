@@ -1,6 +1,7 @@
 package app.tenet.android.feature.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.EditCalendar
 import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.CalendarMonth
@@ -387,6 +388,8 @@ fun SettingsScreen(
                             CompanionPicker(
                                 selected = app.tenet.android.core.designsystem.component.CompanionKind.of(settings.companionKind),
                                 onSelect = { viewModel.setCompanionKind(it.name) },
+                                names = settings.companionNames,
+                                onRename = viewModel::setCompanionName,
                             )
                         }
                     }
@@ -1162,7 +1165,29 @@ private fun formatMinute(minuteOfDay: Int): String = "%02d:%02d".format(minuteOf
 private fun CompanionPicker(
     selected: app.tenet.android.core.designsystem.component.CompanionKind,
     onSelect: (app.tenet.android.core.designsystem.component.CompanionKind) -> Unit,
+    names: Map<String, String>,
+    onRename: (String, String) -> Unit,
 ) {
+    var editing by remember { mutableStateOf<app.tenet.android.core.designsystem.component.CompanionKind?>(null) }
+    var draft by remember { mutableStateOf("") }
+    editing?.let { pet ->
+        AlertDialog(
+            onDismissRequest = { editing = null },
+            title = { Text("Name für ${pet.label}") },
+            text = { OutlinedTextField(
+                value = draft, onValueChange = { draft = it.take(40) },
+                label = { Text("Individueller Name") },
+                placeholder = { Text(pet.label) },
+                supportingText = { Text("Leer lassen: ursprünglichen Namen verwenden") },
+                singleLine = true,
+            ) },
+            confirmButton = { TextButton(onClick = {
+                onRename(pet.name, draft)
+                editing = null
+            }) { Text("Speichern") } },
+            dismissButton = { TextButton(onClick = { editing = null }) { Text("Abbrechen") } },
+        )
+    }
     androidx.compose.foundation.lazy.LazyRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp),
@@ -1178,28 +1203,44 @@ private fun CompanionPicker(
                 // All cards the same size, whatever the text.
                 modifier = Modifier.width(116.dp).height(168.dp),
             ) {
-                Column(
-                    Modifier.fillMaxSize().padding(12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    app.tenet.android.core.designsystem.component.CompanionCreature(
-                        kind = kind,
-                        walking = isSelected,
-                        thinking = false,
-                        facingLeft = false,
-                        modifier = Modifier.size(64.dp),
-                    )
-                    Text(kind.label, style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        kind.description,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        minLines = 2,
-                        maxLines = 2,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    )
+                Box(Modifier.fillMaxSize()) {
+                    Column(
+                        Modifier.fillMaxSize().padding(start = 12.dp, end = 12.dp, top = 24.dp, bottom = 12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        app.tenet.android.core.designsystem.component.CompanionCreature(
+                            kind = kind,
+                            walking = isSelected,
+                            thinking = false,
+                            facingLeft = false,
+                            modifier = Modifier.size(64.dp),
+                        )
+                        Text(names[kind.name] ?: kind.label, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        Text(
+                            kind.description,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            minLines = 2,
+                            maxLines = 2,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        )
+                    }
+                    androidx.compose.material3.IconButton(
+                        onClick = {
+                            draft = names[kind.name].orEmpty()
+                            editing = kind
+                        },
+                        modifier = Modifier.align(Alignment.TopEnd).padding(top = 2.dp, end = 2.dp).size(48.dp),
+                    ) {
+                        Icon(
+                            Icons.Outlined.Edit,
+                            contentDescription = "${names[kind.name] ?: kind.label} umbenennen",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }

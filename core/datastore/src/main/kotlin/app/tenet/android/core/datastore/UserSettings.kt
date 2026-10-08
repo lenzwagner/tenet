@@ -36,6 +36,7 @@ data class UserSettings(
     val calendarWriteId: Long? = null,
     /** Which companion (CompanionKind name). */
     val companionKind: String = "TENNY",
+    val companionNames: Map<String, String> = emptyMap(),
     val enabledModules: Set<AppModule> = AppModule.entries.toSet(),
     /** 1RM estimation formula used for progress displays (App_Konzept.md 5.2.1). */
     val oneRepMaxFormula: OneRepMaxFormula = OneRepMaxFormula.EPLEY,

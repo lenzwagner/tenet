@@ -179,6 +179,7 @@ fun RunWorkoutScreen(
         topBar = {
             TopAppBar(
                 colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
+                modifier = app.tenet.android.core.designsystem.header.washBar(),
                 navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", onBack) },
                 title = { Text(unit?.title ?: "Training") },
                 subtitle = { unit?.let { Text("${it.date.format(DATE)} · Woche ${it.week + 1}") } },

@@ -131,6 +131,7 @@ fun CsWorkoutScreen(
         topBar = {
             TopAppBar(
                 colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
+                modifier = app.tenet.android.core.designsystem.header.washBar(),
                 navigationIcon = {
                     TooltipIconButton(icon = Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Zurück (Timer läuft weiter)", onClick = onBack)
                 },

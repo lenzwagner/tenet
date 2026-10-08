@@ -153,6 +153,7 @@ fun CaliPlanScreen(
         topBar = {
             TopAppBar(
                 colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
+                modifier = app.tenet.android.core.designsystem.header.washBar(),
                 navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", onBack) },
                 title = { Text(state?.title ?: "Trainingsplan") },
                 subtitle = { Text("Kraft-Block & Skills") },

@@ -101,6 +101,7 @@ fun WorkoutSummaryScreen(
         topBar = {
             TopAppBar(
                 colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
+                modifier = app.tenet.android.core.designsystem.header.washBar(),
                 navigationIcon = {
                     TooltipIconButton(if (fresh) Icons.Outlined.Close else Icons.AutoMirrored.Outlined.ArrowBack, if (fresh) "Schließen" else "Zurück", onClose)
                 },

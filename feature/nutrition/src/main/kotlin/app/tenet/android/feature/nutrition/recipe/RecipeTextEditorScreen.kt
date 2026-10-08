@@ -204,6 +204,7 @@ fun RecipeTextEditorScreen(
         topBar = {
             TopAppBar(
                 colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
+                modifier = app.tenet.android.core.designsystem.header.washBar(),
                 navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", leave) },
                 title = { Text("Rezept bearbeiten") },
                 subtitle = { if (s.saffron) Text("Änderungen gehen auch an Saffron") },

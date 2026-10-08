@@ -306,7 +306,25 @@ fun SubPageWash(header: HeaderImage, content: @Composable () -> Unit) {
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .pageWash(header) { 0f },
-    ) { content() }
+    ) {
+        androidx.compose.runtime.CompositionLocalProvider(LocalSubPageHeader provides header, content = content)
+    }
+}
+
+/** The wash of the sub page around (for its top bar). */
+val LocalSubPageHeader = androidx.compose.runtime.staticCompositionLocalOf<HeaderImage?> { null }
+
+/**
+ * Background of a sub page's top bar: the page colour plus exactly the slice of
+ * the wash behind it (the bar sits at the top of the screen, like the wash).
+ * Opaque, so content scrolling under the bar disappears, and seamless, so the
+ * wash never seems to start below a plain bar.
+ */
+fun washBar(): Modifier = Modifier.composed {
+    val header = LocalSubPageHeader.current
+    val bg = MaterialTheme.colorScheme.background
+    // AMOLED pages stay pure black.
+    if (header == null || bg == Color.Black) Modifier else Modifier.clipToBounds().background(bg).pageWash(header) { 0f }
 }
 
 /**
@@ -344,5 +362,6 @@ fun Modifier.sheetWash(header: HeaderImage): Modifier = composed {
 fun washTopBarColors(): androidx.compose.material3.TopAppBarColors =
     androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
         containerColor = Color.Transparent,
-        scrolledContainerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.94f),
+        // The bar's own background (washBar) covers the content scrolling under it.
+        scrolledContainerColor = Color.Transparent,
     )

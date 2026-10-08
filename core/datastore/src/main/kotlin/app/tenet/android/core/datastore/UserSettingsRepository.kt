@@ -45,6 +45,10 @@ class UserSettingsRepository @Inject constructor(
             calendarRead = prefs[KEY_CALENDAR_READ] ?: false,
             calendarWriteId = prefs[KEY_CALENDAR_WRITE]?.takeIf { it >= 0 },
             companionKind = prefs[KEY_COMPANION_KIND] ?: "TENNY",
+            companionNames = prefs.asMap().entries.mapNotNull { (key, value) ->
+                if (key.name.startsWith("pet_name_") && value is String && value.isNotBlank())
+                    key.name.removePrefix("pet_name_") to value else null
+            }.toMap(),
             designStyle = app.tenet.android.core.common.DesignStyle.fromName(prefs[KEY_DESIGN_STYLE]),
             amoledMode = app.tenet.android.core.common.AmoledMode.fromName(prefs[KEY_AMOLED]),
             journalSerif = prefs[KEY_JOURNAL_SERIF] ?: false,
@@ -234,6 +238,14 @@ class UserSettingsRepository @Inject constructor(
 
     suspend fun setCompanion(enabled: Boolean) {
         context.tenetDataStore.edit { it[KEY_COMPANION] = enabled }
+    }
+
+    suspend fun setCompanionName(kind: String, name: String) {
+        context.tenetDataStore.edit { prefs ->
+            val key = stringPreferencesKey("pet_name_$kind")
+            val cleaned = name.trim().take(40)
+            if (cleaned.isEmpty()) prefs.remove(key) else prefs[key] = cleaned
+        }
     }
 
     suspend fun setCompanionKind(kind: String) {

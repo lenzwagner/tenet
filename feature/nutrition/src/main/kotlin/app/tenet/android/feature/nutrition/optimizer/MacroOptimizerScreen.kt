@@ -89,6 +89,7 @@ fun MacroOptimizerScreen(
         topBar = {
             TopAppBar(
                 colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
+                modifier = app.tenet.android.core.designsystem.header.washBar(),
                 navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", onBack) },
                 title = { Text("Makro-Optimierer") },
                 subtitle = { Text("Was passt noch zu deinen Zielen?") },

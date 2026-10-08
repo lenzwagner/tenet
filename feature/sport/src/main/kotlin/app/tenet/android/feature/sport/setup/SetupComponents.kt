@@ -83,6 +83,7 @@ internal fun SetupScaffold(
         topBar = {
             TopAppBar(
                 colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
+                modifier = app.tenet.android.core.designsystem.header.washBar(),
                 navigationIcon = { TooltipIconButton(Icons.Outlined.Close, "Einrichtung schließen", onClose) },
                 title = { Text(title) },
                 subtitle = { Text("Schritt ${step + 1} von ${stepTitles.size}") },

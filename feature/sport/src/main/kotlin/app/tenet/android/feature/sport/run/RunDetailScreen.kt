@@ -159,6 +159,7 @@ fun RunDetailScreen(
         topBar = {
             TopAppBar(
                 colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
+                modifier = app.tenet.android.core.designsystem.header.washBar(),
                 navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", onBack) },
                 title = { Text("Lauf") },
                 subtitle = { session?.let { Text(formatStart(it.startedAt)) } },
