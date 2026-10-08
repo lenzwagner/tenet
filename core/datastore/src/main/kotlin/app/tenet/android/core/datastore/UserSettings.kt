@@ -30,6 +30,10 @@ data class UserSettings(
     val glassBar: Boolean = true,
     /** Companion "Tenny" walking around the app (talk to it, let it log things). */
     val companion: Boolean = true,
+    /** Phone calendar: show appointments in the week calendar. */
+    val calendarRead: Boolean = false,
+    /** Phone calendar to write planned workouts into (null = off). */
+    val calendarWriteId: Long? = null,
     /** Which companion (CompanionKind name). */
     val companionKind: String = "TENNY",
     val enabledModules: Set<AppModule> = AppModule.entries.toSet(),

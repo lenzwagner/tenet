@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport
 
+import androidx.compose.foundation.shape.RoundedCornerShape
 import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.runtime.getValue
 import java.util.Locale
@@ -199,7 +200,7 @@ private fun DayCard(day: WeekDayUi, showMonth: Boolean = true) {
                 }
             }
 
-            if (day.sessions.isEmpty() && day.planned.isEmpty()) {
+            if (day.sessions.isEmpty() && day.planned.isEmpty() && day.events.isEmpty()) {
                 Text(
                     text = "—",
                     style = MaterialTheme.typography.bodyMedium,
@@ -207,6 +208,8 @@ private fun DayCard(day: WeekDayUi, showMonth: Boolean = true) {
                 )
             }
 
+            // Phone calendar first: they decide when there is time to train.
+            day.events.forEach { event -> EventRow(event) }
             day.planned.forEach { planned ->
                 PlannedRow(planned)
             }
@@ -247,6 +250,22 @@ private fun SessionRow(session: WeekSessionUi) {
             },
             style = MaterialTheme.typography.labelLarge,
             color = if (session.running) color else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** An appointment from the phone calendar: calendar colour, time, title. */
+@Composable
+private fun EventRow(event: WeekEventUi) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(width = 4.dp, height = 18.dp).background(Color(event.color), RoundedCornerShape(2.dp)))
+        Spacer(Modifier.width(11.dp))
+        Text(
+            text = listOfNotNull(event.time ?: "Ganztägig", event.title).joinToString(" · "),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
         )
     }
 }

@@ -1,5 +1,9 @@
 package app.tenet.android.feature.settings
 
+import androidx.compose.foundation.background
+import androidx.compose.material.icons.outlined.EditCalendar
+import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.semantics.contentDescription
@@ -458,6 +462,11 @@ fun SettingsScreen(
                                 },
                             )
                         }
+                    }
+                }
+                item(key = "calendar") {
+                    SettingsCard(Icons.Outlined.CalendarMonth, "Kalender", app.tenet.android.core.designsystem.theme.HealthTint.INFO) {
+                        CalendarSettings(settings, viewModel)
                     }
                 }
                 item(key = "goals") {
@@ -1314,5 +1323,93 @@ private fun TodayCardEditor(
                 }
             }
         }
+    }
+}
+
+
+/** Phone calendar: show appointments in the week calendar, write planned workouts into one calendar. */
+@Composable
+private fun CalendarSettings(settings: app.tenet.android.core.datastore.UserSettings, viewModel: SettingsViewModel) {
+    val context = LocalContext.current
+    val calendars by viewModel.calendars.collectAsStateWithLifecycle()
+    var pick by remember { mutableStateOf(false) }
+    var afterGrant by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val permission = rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()) { result ->
+        if (result.values.all { it }) {
+            viewModel.loadCalendars()
+            afterGrant?.invoke()
+        }
+        afterGrant = null
+    }
+    fun withCalendar(then: () -> Unit) {
+        val granted = listOf(android.Manifest.permission.READ_CALENDAR, android.Manifest.permission.WRITE_CALENDAR).all {
+            androidx.core.content.ContextCompat.checkSelfPermission(context, it) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
+        if (granted) {
+            viewModel.loadCalendars()
+            then()
+        } else {
+            afterGrant = then
+            permission.launch(arrayOf(android.Manifest.permission.READ_CALENDAR, android.Manifest.permission.WRITE_CALENDAR))
+        }
+    }
+    androidx.compose.runtime.LaunchedEffect(Unit) { viewModel.loadCalendars() }
+    val target = calendars.firstOrNull { it.id == settings.calendarWriteId }
+    SettingsGroup { shapes ->
+        SwitchItem(
+            shapes = shapes(0, 2),
+            icon = Icons.Outlined.Event,
+            title = "Termine anzeigen",
+            supporting = "Termine aus deinem Handy-Kalender im Wochenkalender (Sport)",
+            checked = settings.calendarRead,
+            onCheckedChange = { on -> if (on) withCalendar { viewModel.setCalendarRead(true) } else viewModel.setCalendarRead(false) },
+        )
+        SwitchItem(
+            shapes = shapes(1, 2),
+            icon = Icons.Outlined.EditCalendar,
+            title = "Trainings eintragen",
+            supporting = if (settings.calendarWriteId != null) {
+                "In „${target?.name ?: "Kalender"}“ · nächste 14 Tage, aktualisiert sich bei jedem App-Start"
+            } else {
+                "Geplante Trainings als ganztägige Termine in deinen Kalender"
+            },
+            checked = settings.calendarWriteId != null,
+            onCheckedChange = { on -> if (on) withCalendar { pick = true } else viewModel.setCalendarWrite(null) },
+        )
+    }
+    if (pick) {
+        val writable = calendars.filter { it.writable }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { pick = false },
+            title = { Text("In welchen Kalender?") },
+            text = {
+                if (writable.isEmpty()) {
+                    Text("Kein beschreibbarer Kalender gefunden.")
+                } else {
+                    Column {
+                        writable.forEach { cal ->
+                            androidx.compose.material3.Surface(
+                                onClick = {
+                                    pick = false
+                                    viewModel.setCalendarWrite(cal.id)
+                                },
+                                color = Color.Transparent,
+                                shape = MaterialTheme.shapes.medium,
+                            ) {
+                                Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Box(Modifier.size(14.dp).background(Color(cal.color), androidx.compose.foundation.shape.CircleShape))
+                                    Spacer(Modifier.width(12.dp))
+                                    Column {
+                                        Text(cal.name, style = MaterialTheme.typography.bodyLarge)
+                                        Text(cal.account, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { pick = false }) { Text("Abbrechen") } },
+        )
     }
 }

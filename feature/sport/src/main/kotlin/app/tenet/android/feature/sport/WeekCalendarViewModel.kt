@@ -1,5 +1,8 @@
 package app.tenet.android.feature.sport
 
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.map
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.tenet.android.core.common.WeekMath
@@ -40,7 +43,12 @@ data class WeekDayUi(
     val isToday: Boolean,
     val sessions: List<WeekSessionUi> = emptyList(),
     val planned: List<WeekPlannedUi> = emptyList(),
+    /** Appointments from the phone calendar (Einstellungen → Kalender). */
+    val events: List<WeekEventUi> = emptyList(),
 )
+
+/** One appointment of the phone calendar. */
+data class WeekEventUi(val title: String, val time: String?, val color: Int)
 
 data class WeekCalendarUiState(
     val weekStart: LocalDate = WeekMath.weekStart(LocalDate.now()),
@@ -59,7 +67,11 @@ data class WeekCalendarUiState(
 @HiltViewModel
 class WeekCalendarViewModel @Inject constructor(
     private val repository: WeekCalendarRepository,
+    private val deviceCalendar: app.tenet.android.core.data.calendar.DeviceCalendarRepository,
+    settings: app.tenet.android.core.datastore.UserSettingsRepository,
 ) : ViewModel() {
+
+    private val showEvents = settings.settings.map { it.calendarRead }.distinctUntilChanged()
 
     private val anchor = MutableStateFlow(LocalDate.now())
     private val today = LocalDate.now()
@@ -67,12 +79,21 @@ class WeekCalendarViewModel @Inject constructor(
     val uiState: StateFlow<WeekCalendarUiState> = anchor
         .flatMapLatest { date ->
             val start = WeekMath.weekStart(date)
+            val events = showEvents.mapLatest { on -> if (on) runCatching { deviceCalendar.events(start, start.plusDays(6)) }.getOrDefault(emptyMap()) else emptyMap() }
             combine(
                 repository.observeSessionsBetween(start, start.plusDays(7)),
                 repository.observePlannedBetween(start, start.plusDays(6)),
                 repository.observeActivePlanHeads(),
-            ) { sessions, planned, heads ->
-                buildState(start, sessions, planned).copy(
+                events,
+            ) { sessions, planned, heads, ev ->
+                val fmt = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+                val built = buildState(start, sessions, planned)
+                built.copy(
+                    days = built.days.map { d ->
+                        d.copy(events = ev[d.date].orEmpty().map { e ->
+                            WeekEventUi(e.title, if (e.allDay) null else e.start.atZone(java.time.ZoneId.systemDefault()).format(fmt), e.color)
+                        })
+                    },
                     flexiblePlans = heads
                         .filter { app.tenet.android.core.common.TrainingDays.parse(it.plan.trainingDays).isEmpty() }
                         .map { WeekPlannedUi(it.workout.title, it.plan.discipline) },

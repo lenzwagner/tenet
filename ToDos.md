@@ -1,10 +1,10 @@
 # Tenet – offene ToDos
 
-Stand: 07.10.2026, Version 1.0.0.38 (auf `main` gepusht, APK `tenet-1.0.0.38-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 07.10.2026, Version 1.0.0.39 (auf `main` gepusht, APK `tenet-1.0.0.39-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Übergabe (Session 06.–07.10.2026)
 
-**Stand:** 1.0.0.6 – 1.0.0.38 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
+**Stand:** 1.0.0.6 – 1.0.0.39 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
 
 **Wichtig vor dem nächsten Update am Handy:**
 - Seit 1.0.0.6 ist die Datenbank mit SQLCipher verschlüsselt (Rohschlüssel, im Android Keystore gewrappt, `no_backup/db.key`). Die alte Klartext-DB wird beim ersten Start einmal umgewandelt. Im Emulator geprüft, mit echten Daten noch nicht → vorher mit Google anmelden und synchronisieren.
@@ -47,6 +47,7 @@ Im Emulator nicht möglich.
 - [ ] Widgets am Handy: Health Connect „Daten im Hintergrund lesen“ erlauben, sonst bleiben Schritte/Tagesform/Schlaf „–“
 - [ ] Feed am Handy: in Health Connect „Schritte“ erlauben; Schritte aktuell nach App-Start?
 - [ ] Begleiter am Handy: KI-Antwort kommt (vorher „nicht erreichbar“)? Sonst Einstellungen → KI → Modell testen
+- [ ] Kalender am Handy: Google-Kalender-Termine im Wochenkalender, Trainings erscheinen im Google Kalender
 - [ ] Mehrfachauswahl Rezepte mit echten (eigenen + Saffron-)Rezepten löschen
 - [ ] Plan wechseln mit zwei echten Plänen (Gym/Laufen), Statistiken bleiben vollständig
 - [ ] „Übung tauschen“ öffnet halbhoch und lässt sich hochziehen
@@ -104,7 +105,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Alte APKs im Projektordner aufräumen (~40 Stück, je ~10–18 MB, enthalten den NIM-Schlüssel)
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.38)
+## Zuletzt erledigt (0.5.0 – 1.0.0.39)
+
+- 1.0.0.39: Handy-Kalender (Einstellungen → Kalender): Termine im Wochenkalender anzeigen (Zeit · Titel in Kalenderfarbe); geplante Trainings der nächsten 14 Tage als ganztägige Termine in einen wählbaren Kalender eintragen, bei jedem App-Start aktualisiert, beim Ausschalten wieder entfernt
 
 - 1.0.0.38: Einstellungen → Heute: Karten per Griff (≡) verschieben, Reihenfolge gilt sofort auf der Seite
 

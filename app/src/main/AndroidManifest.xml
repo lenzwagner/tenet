@@ -3,6 +3,8 @@
 
     <!-- Voice memos in the journal. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
 
     <!-- Health Connect: read runs from watches and other fitness apps. -->
     <uses-permission android:name="android.permission.health.READ_EXERCISE" />

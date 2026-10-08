@@ -1,5 +1,6 @@
 package app.tenet.android
 
+import kotlinx.coroutines.flow.first
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
@@ -44,6 +45,8 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var healthConnect: HealthConnectRepository
     @Inject lateinit var entryRepository: EntryRepository
     @Inject lateinit var accounts: app.tenet.android.core.data.sync.AccountRepository
+    @Inject lateinit var deviceCalendar: app.tenet.android.core.data.calendar.DeviceCalendarRepository
+    @Inject lateinit var userSettings: app.tenet.android.core.datastore.UserSettingsRepository
 
     override fun onStart() {
         super.onStart()
@@ -53,6 +56,8 @@ class MainActivity : FragmentActivity() {
             healthConnect.syncIfDue()
             // Home screen widgets: fresh steps whenever the app was opened.
             app.tenet.android.widget.TenetWidgets.updateAll(applicationContext)
+            // Planned workouts into the phone calendar (plan changes follow on every start).
+            userSettings.settings.first().calendarWriteId?.let { runCatching { deviceCalendar.syncWorkouts(it) } }
         }
         // Signed in with Google: fetch what other devices changed.
         if (accounts.account.value != null) app.tenet.android.core.data.sync.SyncWorker.runSoon(this)

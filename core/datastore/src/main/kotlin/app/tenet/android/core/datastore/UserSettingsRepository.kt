@@ -42,6 +42,8 @@ class UserSettingsRepository @Inject constructor(
             twoTone = prefs[KEY_TWO_TONE] ?: true,
             glassBar = prefs[KEY_GLASS_BAR] ?: true,
             companion = prefs[KEY_COMPANION] ?: true,
+            calendarRead = prefs[KEY_CALENDAR_READ] ?: false,
+            calendarWriteId = prefs[KEY_CALENDAR_WRITE]?.takeIf { it >= 0 },
             companionKind = prefs[KEY_COMPANION_KIND] ?: "TENNY",
             designStyle = app.tenet.android.core.common.DesignStyle.fromName(prefs[KEY_DESIGN_STYLE]),
             amoledMode = app.tenet.android.core.common.AmoledMode.fromName(prefs[KEY_AMOLED]),
@@ -222,6 +224,14 @@ class UserSettingsRepository @Inject constructor(
         context.tenetDataStore.edit { it[KEY_GLASS_BAR] = enabled }
     }
 
+    suspend fun setCalendarRead(enabled: Boolean) {
+        context.tenetDataStore.edit { it[KEY_CALENDAR_READ] = enabled }
+    }
+
+    suspend fun setCalendarWrite(calendarId: Long?) {
+        context.tenetDataStore.edit { it[KEY_CALENDAR_WRITE] = calendarId ?: -1L }
+    }
+
     suspend fun setCompanion(enabled: Boolean) {
         context.tenetDataStore.edit { it[KEY_COMPANION] = enabled }
     }
@@ -244,6 +254,8 @@ class UserSettingsRepository @Inject constructor(
         val KEY_TWO_TONE = booleanPreferencesKey("two_tone")
         val KEY_GLASS_BAR = booleanPreferencesKey("glass_bar")
         val KEY_COMPANION = booleanPreferencesKey("companion")
+        val KEY_CALENDAR_READ = booleanPreferencesKey("calendar_read")
+        val KEY_CALENDAR_WRITE = androidx.datastore.preferences.core.longPreferencesKey("calendar_write_id")
         val KEY_COMPANION_KIND = stringPreferencesKey("companion_kind")
         val KEY_AMOLED = stringPreferencesKey("amoled_mode")
         val KEY_DESIGN_STYLE = stringPreferencesKey("design_style")

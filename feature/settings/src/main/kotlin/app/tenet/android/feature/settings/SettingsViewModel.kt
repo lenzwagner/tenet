@@ -39,7 +39,35 @@ class SettingsViewModel @Inject constructor(
     private val healthConnect: HealthConnectRepository,
     private val ai: AiAssistant,
     @ApplicationContext private val appContext: Context,
+    private val deviceCalendar: app.tenet.android.core.data.calendar.DeviceCalendarRepository,
 ) : ViewModel() {
+
+    // ---- Phone calendar -------------------------------------------------------
+
+    private val _calendars = MutableStateFlow<List<app.tenet.android.core.data.calendar.DeviceCalendarRepository.DeviceCalendar>>(emptyList())
+    val calendars: StateFlow<List<app.tenet.android.core.data.calendar.DeviceCalendarRepository.DeviceCalendar>> = _calendars
+
+    /** Reads the calendars on the phone (after the permission is granted). */
+    fun loadCalendars() {
+        viewModelScope.launch { _calendars.value = deviceCalendar.calendars() }
+    }
+
+    fun setCalendarRead(enabled: Boolean) {
+        viewModelScope.launch { repository.setCalendarRead(enabled) }
+    }
+
+    /** Write planned workouts into [calendarId]; null switches it off and removes them again. */
+    fun setCalendarWrite(calendarId: Long?) {
+        val before = settings.value.calendarWriteId
+        viewModelScope.launch {
+            repository.setCalendarWrite(calendarId)
+            if (before != null && before != calendarId) deviceCalendar.clearWorkouts(before)
+            if (calendarId != null) {
+                val n = deviceCalendar.syncWorkouts(calendarId)
+                android.widget.Toast.makeText(appContext, "$n Trainings in den Kalender eingetragen", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     // ---- AI assistant (NVIDIA NIM) ------------------------------------------
 
