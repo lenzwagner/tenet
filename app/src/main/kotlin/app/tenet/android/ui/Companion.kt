@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -103,6 +104,9 @@ class CompanionViewModel @Inject constructor(private val agent: CompanionAgent) 
     private val _request = MutableStateFlow<String?>(null)
     /** What is being worked on right now (shown instead of the input). */
     val request: StateFlow<String?> = _request.asStateFlow()
+    private val _step = MutableStateFlow<String?>(null)
+    /** The real step the agent is on (once the model has decided), else null. */
+    val step: StateFlow<String?> = _step.asStateFlow()
     private val _reply = MutableStateFlow<String?>(null)
     val reply: StateFlow<String?> = _reply.asStateFlow()
     /** Something was stored: close the chat and confirm briefly. */
@@ -117,8 +121,9 @@ class CompanionViewModel @Inject constructor(private val agent: CompanionAgent) 
         _busy.value = true
         _request.value = text
         _reply.value = null
+        _step.value = null
         viewModelScope.launch {
-            val r = runCatching { agent.handle(text, name) }.getOrElse { CompanionAgent.Reply("Ups, das ging schief: ${it.message}") }
+            val r = runCatching { agent.handle(text, name) { _step.value = it } }.getOrElse { CompanionAgent.Reply("Ups, das ging schief: ${it.message}") }
             if (r.acted) {
                 _reply.value = null
                 _request.value = null
@@ -127,6 +132,7 @@ class CompanionViewModel @Inject constructor(private val agent: CompanionAgent) 
                 _reply.value = r.text
             }
             _busy.value = false
+            _step.value = null
             r.navigate?.let { _navigate.send(it) }
         }
     }
@@ -150,15 +156,32 @@ fun CompanionOverlay(
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val reply by viewModel.reply.collectAsStateWithLifecycle()
     val request by viewModel.request.collectAsStateWithLifecycle()
+    val step by viewModel.step.collectAsStateWithLifecycle()
     var chatOpen by remember { mutableStateOf(false) }
+    // Closed while working: the creature carries on and says so in a small bubble when done.
+    var bubble by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(bubble) {
+        if (bubble != null) {
+            delay(if (reply != null) 6_000 else 2_500)
+            bubble = null
+        }
+    }
     LaunchedEffect(Unit) { viewModel.navigate.collect(onNavigate) }
     // A task done (food logged, note extended …): the chat closes, a snackbar confirms.
     val snackbar = app.tenet.android.core.designsystem.component.LocalAppSnackbar.current
     LaunchedEffect(Unit) {
         viewModel.done.collect { text ->
-            chatOpen = false
-            snackbar?.show(text)
+            if (chatOpen) {
+                chatOpen = false
+                snackbar?.show(text)
+            } else {
+                bubble = "Fertig ✓"
+            }
         }
+    }
+    // An answer that arrives with the chat closed: the bubble points to it.
+    LaunchedEffect(reply) {
+        if (reply != null && !chatOpen) bubble = "Antwort ist da"
     }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -262,8 +285,47 @@ fun CompanionOverlay(
                             }
                         }
                     }
-                    .pointerInput(Unit) { detectTapGestures { chatOpen = !chatOpen } },
+                    .pointerInput(Unit) {
+                        detectTapGestures {
+                            chatOpen = !chatOpen
+                            bubble = null
+                        }
+                    },
             )
+            // Speech bubble above the creature, kept on screen at the edges.
+            androidx.compose.animation.AnimatedVisibility(
+                visible = bubble != null,
+                enter = fadeIn() + androidx.compose.animation.scaleIn(),
+                exit = fadeOut(),
+                modifier = Modifier
+                    .align(
+                        when {
+                            pos.value.x > 0.7f -> Alignment.TopEnd
+                            pos.value.x < 0.3f -> Alignment.TopStart
+                            else -> Alignment.TopCenter
+                        },
+                    )
+                    .offset(y = (-34).dp)
+                    .wrapContentSize(unbounded = true, align = Alignment.BottomCenter),
+            ) {
+                Surface(
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.inverseSurface,
+                    contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+                    shadowElevation = 4.dp,
+                    onClick = {
+                        if (reply != null) chatOpen = true
+                        bubble = null
+                    },
+                ) {
+                    Text(
+                        bubble.orEmpty(),
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                }
+            }
         }
 
         AnimatedVisibility(
@@ -276,6 +338,7 @@ fun CompanionOverlay(
                 name = name,
                 kind = kind,
                 request = request,
+                step = step,
                 busy = busy,
                 reply = reply,
                 onSend = { viewModel.send(it, name) },
@@ -295,6 +358,7 @@ private fun ChatPanel(
     name: String,
     kind: app.tenet.android.core.designsystem.component.CompanionKind,
     request: String?,
+    step: String?,
     busy: Boolean,
     reply: String?,
     onSend: (String) -> Unit,
@@ -323,7 +387,12 @@ private fun ChatPanel(
             }
             // Working: the request and an animated "doing it" view take the input's place.
             if (busy) {
-                WorkingView(name, kind, request)
+                WorkingView(name, kind, request, step)
+                Text(
+                    "Du kannst das schließen – $name macht im Hintergrund weiter.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 return@Column
             }
             if (reply != null && request != null) {
@@ -377,8 +446,8 @@ private enum class Task(val steps: List<String>) {
             val question = t.trim().endsWith("?") ||
                 Regex("^(wie|was|wann|wo|warum|wieso|welche|wer|hab|habe|bin|ist|sind|kann|soll)\\b").containsMatchIn(t.trim())
             return when {
-                has("notiz", "liste", "aufschreib", "schreib", "einkauf", "merk dir", "ergänz") && !question -> NOTE
                 has("wasser", "getrunken", "trinken") && !question -> WATER
+                has("notiz", "liste", "aufschreib", "einkauf", "merk dir") && !question -> NOTE
                 has("wiege", "gewicht", " kg") && !question -> WEIGHT
                 question -> QUESTION
                 has("öffne", "zeig mir", "geh zu", "wechsel zu") -> OPEN
@@ -393,7 +462,7 @@ private enum class Task(val steps: List<String>) {
 
 /** While the agent works: the creature thinks, a wavy bar runs and the task's steps change. */
 @Composable
-private fun WorkingView(name: String, kind: app.tenet.android.core.designsystem.component.CompanionKind, request: String?) {
+private fun WorkingView(name: String, kind: app.tenet.android.core.designsystem.component.CompanionKind, request: String?, actual: String?) {
     val steps = remember(request) { Task.of(request).steps }
     var step by remember(request) { mutableStateOf(0) }
     LaunchedEffect(request) {
@@ -414,8 +483,9 @@ private fun WorkingView(name: String, kind: app.tenet.android.core.designsystem.
             request?.let {
                 Text("„$it“", style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             }
-            androidx.compose.animation.AnimatedContent(targetState = step, label = "step") { i ->
-                Text("$name ${steps[i]} …", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            // The real step as soon as the model has decided; until then a neutral guess.
+            androidx.compose.animation.AnimatedContent(targetState = actual ?: steps[step], label = "step") { s ->
+                Text("$name $s …", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             }
             androidx.compose.material3.LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth())
         }

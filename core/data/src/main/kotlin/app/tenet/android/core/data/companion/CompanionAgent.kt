@@ -50,7 +50,8 @@ class CompanionAgent @Inject constructor(
 
     val aiEnabled: Boolean get() = ai.config.value.usable
 
-    suspend fun handle(text: String, name: String = "Tenny"): Reply {
+    /** [onStep] gets what is being done right now ("trägt 300 ml Wasser ein"), for the working view. */
+    suspend fun handle(text: String, name: String = "Tenny", onStep: (String) -> Unit = {}): Reply {
         if (text.isBlank()) return Reply("Sag mir, was ich tun soll.")
         if (!aiEnabled) return offline(text)
         // chat(): retries when NIM is busy, turns thinking off and falls back to a second
@@ -69,6 +70,10 @@ class CompanionAgent @Inject constructor(
         val actions = answer.optJSONArray("actions") ?: JSONArray()
         for (i in 0 until actions.length()) {
             val a = actions.optJSONObject(i) ?: continue
+            step(a)?.let {
+                onStep(it)
+                kotlinx.coroutines.delay(700)
+            }
             runCatching {
                 when (a.optString("type")) {
                     "log_food" -> done += logFood(a)
@@ -92,6 +97,21 @@ class CompanionAgent @Inject constructor(
             navigate,
             acted = stored.any { it.startsWith("✓") },
         )
+    }
+
+    /** The step an action stands for, from what the model actually decided (not guessed from the words). */
+    private fun step(a: JSONObject): String? = when (a.optString("type")) {
+        "log_food" -> {
+            val items = a.optJSONArray("items")
+            val names = (0 until (items?.length() ?: 0)).mapNotNull { items?.optJSONObject(it)?.optString("name")?.takeIf { n -> n.isNotBlank() } }
+            "trägt ${names.joinToString(", ").ifBlank { "das Essen" }} ins Ernährungstagebuch ein"
+        }
+        "add_water" -> "trägt ${a.optInt("ml")} ml Wasser ein"
+        "create_note" -> "legt die Notiz „${cap(a.optString("title")).ifBlank { "Ohne Titel" }}“ an"
+        "append_note" -> "ergänzt „${a.optString("title").ifBlank { "die Notiz" }}“"
+        "log_weight" -> "trägt dein Gewicht ein"
+        "navigate" -> "öffnet den Bereich"
+        else -> null
     }
 
     /** Without AI: simple food sentences still work ("100 g Haferflocken"). */
