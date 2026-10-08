@@ -60,6 +60,23 @@ fun CompanionCreature(
             blink = blink > 0.94f,
             dots = (bob * 3).toInt() % 3,
         )
+        // Soft floating shadow: a blurred ellipse under the feet that shrinks and fades
+        // a little as the body rises (bob / hop), so the creature seems to hover.
+        val rise = (f.wave + 1f) / 2f
+        val sw = size.width * (0.62f - rise * 0.08f)
+        val sh = size.height * 0.09f
+        val center = Offset(size.width / 2, size.height * 0.95f)
+        drawOval(
+            brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                0f to Color.Black.copy(alpha = 0.20f - rise * 0.06f),
+                0.6f to Color.Black.copy(alpha = 0.08f),
+                1f to Color.Transparent,
+                center = center,
+                radius = sw / 2,
+            ),
+            topLeft = Offset(center.x - sw / 2, center.y - sh / 2),
+            size = Size(sw, sh),
+        )
         scale(if (facingLeft) -1f else 1f, 1f, pivot = Offset(size.width / 2, size.height / 2)) {
             when (kind) {
                 CompanionKind.TENNY -> tenny(f)
