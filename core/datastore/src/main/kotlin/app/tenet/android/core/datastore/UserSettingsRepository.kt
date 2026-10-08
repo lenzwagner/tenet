@@ -88,6 +88,14 @@ class UserSettingsRepository @Inject constructor(
         )
     }
 
+    /** Shows or hides one card on "Heute" (Einstellungen → Heute). */
+    suspend fun setTodayCardHidden(id: String, hidden: Boolean) {
+        context.tenetDataStore.edit {
+            val now = it[KEY_TODAY_HIDDEN] ?: emptySet()
+            it[KEY_TODAY_HIDDEN] = if (hidden) now + id else now - id
+        }
+    }
+
     suspend fun setTodayCards(order: List<String>, hidden: Set<String>) {
         context.tenetDataStore.edit {
             it[KEY_TODAY_ORDER] = order.joinToString(",")

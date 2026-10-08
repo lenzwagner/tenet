@@ -227,6 +227,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { repository.setGlassBar(enabled) }
     }
 
+    fun setTodayCardVisible(id: String, visible: Boolean) {
+        viewModelScope.launch { repository.setTodayCardHidden(id, !visible) }
+    }
+
     fun setCompanion(enabled: Boolean) {
         viewModelScope.launch { repository.setCompanion(enabled) }
     }

@@ -1,10 +1,10 @@
 # Tenet – offene ToDos
 
-Stand: 07.10.2026, Version 1.0.0.34 (auf `main` gepusht, APK `tenet-1.0.0.34-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 07.10.2026, Version 1.0.0.35 (auf `main` gepusht, APK `tenet-1.0.0.35-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Übergabe (Session 06.–07.10.2026)
 
-**Stand:** 1.0.0.6 – 1.0.0.34 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
+**Stand:** 1.0.0.6 – 1.0.0.35 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
 
 **Wichtig vor dem nächsten Update am Handy:**
 - Seit 1.0.0.6 ist die Datenbank mit SQLCipher verschlüsselt (Rohschlüssel, im Android Keystore gewrappt, `no_backup/db.key`). Die alte Klartext-DB wird beim ersten Start einmal umgewandelt. Im Emulator geprüft, mit echten Daten noch nicht → vorher mit Google anmelden und synchronisieren.
@@ -104,7 +104,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Alte APKs im Projektordner aufräumen (~40 Stück, je ~10–18 MB, enthalten den NIM-Schlüssel)
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.34)
+## Zuletzt erledigt (0.5.0 – 1.0.0.35)
+
+- 1.0.0.35: Haus-Animation wieder wie in 1.0.0.33 (läuft zum Haus-Symbol, schlüpft hinein); Einstellungen-Karte „Heute“: Gesundheits-Übersicht, Bereitschaft, Traum, Ernährung, Sport, Journal und Serien einzeln an/aus (Gesundheits-Übersicht ist jetzt eine normale, verschieb- und ausblendbare Karte)
 
 - 1.0.0.34: Haus-Animation: großes Haus wächst aus dem Haus-Symbol, Begleiter hüpft hin und springt durch die Tür, Haus wackelt und schrumpft; zurück: Haus wächst, Begleiter springt heraus und hüpft an seinen Platz. Einstellungen in Kategorie-Karten mit farbigem Kopf (Konto & Sync, Darstellung, Farben, Begleiter, Benachrichtigungen, Ziele & Training, Gesundheit & KI, Bereiche, Datenschutz, Über Tenet); Begleiter-Kärtchen alle gleich groß
 

@@ -1,5 +1,6 @@
 package app.tenet.android.feature.settings
 
+import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Dashboard
@@ -294,6 +295,22 @@ fun SettingsScreen(
                                 checked = settings.glassBar,
                                 onCheckedChange = viewModel::setGlassBar,
                             )
+                        }
+                    }
+                }
+                item(key = "today") {
+                    SettingsCard(Icons.Outlined.Today, "Heute", app.tenet.android.core.designsystem.theme.HealthTint.ACTIVITY) {
+                        SettingsGroup { shapes ->
+                            TodayCardOptions.forEachIndexed { i, (id, label, icon) ->
+                                SwitchItem(
+                                    shapes = shapes(i, TodayCardOptions.size),
+                                    icon = icon,
+                                    title = label.first,
+                                    supporting = label.second,
+                                    checked = id !in settings.todayHiddenCards,
+                                    onCheckedChange = { viewModel.setTodayCardVisible(id, it) },
+                                )
+                            }
                         }
                     }
                 }
@@ -1175,3 +1192,15 @@ private fun CompanionPicker(
         }
     }
 }
+
+
+/** Cards of the "Heute" page (ids = TodayCard names in feature/today). */
+private val TodayCardOptions: List<Triple<String, Pair<String, String>, ImageVector>> = listOf(
+    Triple("FEED", "Gesundheits-Übersicht" to "Woche aktiv, Schritte, Tagesform, Schlaf", Icons.Outlined.MonitorHeart),
+    Triple("READINESS", "Bereitschaft" to "Score mit HRV, Ruhepuls, Schlaf und Belastung", Icons.Outlined.Speed),
+    Triple("DREAM", "Traum" to "Traum von letzter Nacht notieren", Icons.Outlined.NightsStay),
+    Triple("NUTRITION", "Ernährung" to "Kalorien- und Makro-Ringe", Icons.Outlined.TrackChanges),
+    Triple("SPORT", "Sport" to "Heutige und nächste Einheiten", Icons.Outlined.FitnessCenter),
+    Triple("JOURNAL", "Journal" to "Tagebuch-Eintrag und Stimmung", Icons.Outlined.AutoStories),
+    Triple("STREAKS", "Serien" to "Tage in Folge: Tagebuch, Ernährung, Training", Icons.Outlined.LocalFireDepartment),
+)

@@ -285,7 +285,6 @@ fun TodayScreen(
                     if (feed.missing.isNotEmpty()) {
                         item(key = "health-permissions") { HealthPermissionHint(onGranted = viewModel::refreshHealth) }
                     }
-                    item(key = "feed") { HealthFeed(feed, readiness?.result, readiness?.input?.sleep) }
                 }
                 items(cards, key = { it.name }) { card ->
                     Box(Modifier.animateItem()) {
@@ -313,6 +312,7 @@ fun TodayScreen(
                                 locked = journalLocked,
                             ) }
                             TodayCard.STREAKS -> StreakCard(state.streaks)
+                            TodayCard.FEED -> if (state.isToday) HealthFeed(feed, readiness?.result, readiness?.input?.sleep)
                             TodayCard.READINESS -> readiness?.takeIf { state.isToday }?.let {
                                 ReadinessCard(it.result, onClose = viewModel::dismissReadiness.takeIf { _ -> state.cards.last() != TodayCard.READINESS })
                             }

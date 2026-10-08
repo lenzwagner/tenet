@@ -36,6 +36,7 @@ import kotlinx.coroutines.launch
 
 /** Dashboard cards (App_Konzept.md 5.1); order and visibility are user settings. */
 enum class TodayCard(val label: String) {
+    FEED("Gesundheits-Übersicht"),
     READINESS("Bereitschaft"),
     DREAM("Traum"),
     NUTRITION("Ernährung"),
@@ -44,7 +45,7 @@ enum class TodayCard(val label: String) {
     STREAKS("Serien"),
 }
 
-val DefaultCardOrder = listOf(TodayCard.READINESS, TodayCard.DREAM, TodayCard.NUTRITION, TodayCard.SPORT, TodayCard.JOURNAL, TodayCard.STREAKS)
+val DefaultCardOrder = listOf(TodayCard.FEED, TodayCard.READINESS, TodayCard.DREAM, TodayCard.NUTRITION, TodayCard.SPORT, TodayCard.JOURNAL, TodayCard.STREAKS)
 
 data class SessionSummary(
     val discipline: Discipline,
@@ -273,7 +274,7 @@ class TodayViewModel @Inject constructor(
     ) { (d, day), diaryMeta, history, settings ->
         val saved = settings.todayCardOrder.mapNotNull { id -> TodayCard.entries.firstOrNull { it.name == id } }
         // New cards of an update: readiness goes on top, others at the end.
-        val order = ((if (saved.isNotEmpty() && TodayCard.READINESS !in saved) listOf(TodayCard.READINESS) else emptyList()) +
+        val order = ((if (saved.isNotEmpty()) listOf(TodayCard.FEED, TodayCard.READINESS).filter { it !in saved } else emptyList()) +
             saved + DefaultCardOrder).distinct()
         val hidden = settings.todayHiddenCards.mapNotNull { id -> TodayCard.entries.firstOrNull { it.name == id } }.toSet()
         val diary = day.entries.firstOrNull { it.type == EntryType.DIARY }
