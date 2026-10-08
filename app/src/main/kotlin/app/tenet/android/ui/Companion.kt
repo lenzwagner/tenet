@@ -115,6 +115,9 @@ class CompanionViewModel @Inject constructor(private val agent: CompanionAgent) 
     private val _navigate = Channel<CompanionAgent.Destination>(Channel.BUFFERED)
     val navigate = _navigate.receiveAsFlow()
 
+    /** Open questions and their answers, so "4" after "Wie war deine Stimmung?" completes the entry. */
+    private val history = mutableListOf<CompanionAgent.Turn>()
+
     /** Runs in the background: the page stays where it is. */
     fun send(text: String, name: String) {
         if (text.isBlank() || _busy.value) return
@@ -123,7 +126,11 @@ class CompanionViewModel @Inject constructor(private val agent: CompanionAgent) 
         _reply.value = null
         _step.value = null
         viewModelScope.launch {
-            val r = runCatching { agent.handle(text, name) { _step.value = it } }.getOrElse { CompanionAgent.Reply("Ups, das ging schief: ${it.message}") }
+            val r = runCatching { agent.handle(text, name, history.toList()) { _step.value = it } }
+                .getOrElse { CompanionAgent.Reply("Ups, das ging schief: ${it.message}") }
+            // Done: the topic is closed. Asked back or answered: keep it for the next message.
+            if (r.acted) history.clear() else history += CompanionAgent.Turn(text, r.text)
+            while (history.size > 6) history.removeAt(0)
             if (r.acted) {
                 _reply.value = null
                 _request.value = null
@@ -171,12 +178,14 @@ fun CompanionOverlay(
     val snackbar = app.tenet.android.core.designsystem.component.LocalAppSnackbar.current
     LaunchedEffect(Unit) {
         viewModel.done.collect { text ->
-            if (chatOpen) {
-                chatOpen = false
-                snackbar?.show(text)
-            } else {
-                bubble = "Fertig ✓"
-            }
+            // Every addition gets the toast; with the chat closed the creature also says so.
+            if (!chatOpen) bubble = "Fertig ✓"
+            chatOpen = false
+            val lines = text.lines().filter { it.isNotBlank() }
+            snackbar?.show(
+                lines.singleOrNull()
+                    ?: "✓ ${lines.size} Einträge · " + lines.joinToString(", ") { it.removePrefix("✓").trim().substringBefore(" · ") },
+            )
         }
     }
     // An answer that arrives with the chat closed: the bubble points to it.

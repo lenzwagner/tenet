@@ -1,10 +1,10 @@
 # Tenet – offene ToDos
 
-Stand: 07.10.2026, Version 1.0.0.52 (auf `main` gepusht, APK `tenet-1.0.0.52-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 07.10.2026, Version 1.0.0.53 (auf `main` gepusht, APK `tenet-1.0.0.53-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Übergabe (Session 06.–07.10.2026)
 
-**Stand:** 1.0.0.6 – 1.0.0.52 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
+**Stand:** 1.0.0.6 – 1.0.0.53 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
 
 **Wichtig vor dem nächsten Update am Handy:**
 - Seit 1.0.0.6 ist die Datenbank mit SQLCipher verschlüsselt (Rohschlüssel, im Android Keystore gewrappt, `no_backup/db.key`). Die alte Klartext-DB wird beim ersten Start einmal umgewandelt. Im Emulator geprüft, mit echten Daten noch nicht → vorher mit Google anmelden und synchronisieren.
@@ -105,7 +105,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Alte APKs im Projektordner aufräumen (~40 Stück, je ~10–18 MB, enthalten den NIM-Schlüssel)
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.52)
+## Zuletzt erledigt (0.5.0 – 1.0.0.53)
+
+- 1.0.0.53: Begleiter kann alles eintragen: Tagebuch mit Stimmung/Energie/Schlaf (fragt fehlende Skalen nach, ergänzt den Tageseintrag), Traum ja/nein mit Inhalt, Klarheit, luzid/Albtraum, Rezept-Import per Link, Gym- und Calisthenics-Training (Übungen aus dem Katalog, Sätze/Wdh./kg/Sekunden, fragt fehlende Angaben nach, erfindet keine Übungen), Lauf (km + Dauer, fragt nach); Gesprächsverlauf für Rückfragen; Toast bei jedem Hinzufügen (mehrere → „N Einträge“), bei geschlossenem Chat zusätzlich „Fertig ✓“; Listen-Einträge landen nur in der genannten Liste (sonst neue); Ersatzmodelle aktualisiert (Mistral 7B 404)
 
 - 1.0.0.52: Neuer Toast/Snackbar-Look app-weit (schwebende Karte mit Icon-Chip, Titel fett + Details darunter, tonaler Rückgängig-Knopf); Pet-Eingabe mehrzeilig (Cursor erreicht jedes Wort); Tagebuch öffnet standardmäßig im Kalender
 

@@ -638,6 +638,68 @@ class SportRepository @Inject constructor(
 
     // ---- Exercise library ----------------------------------------------
 
+    /** One set told afterwards: weight (kg, gym or added load), reps or seconds (holds). */
+    data class LoggedSet(val weightKg: Float? = null, val reps: Int? = null, val seconds: Int? = null)
+
+    /**
+     * A finished session told afterwards ("heute Bankdrücken 3×8 mit 60 kg"), e.g. by
+     * the companion: exercises are matched by name in the [discipline]'s catalogue,
+     * all sets stored as done. Returns the matched names and the unknown ones.
+     */
+    suspend fun logPastSession(
+        discipline: Discipline,
+        exercises: List<Pair<String, List<LoggedSet>>>,
+        minutes: Int?,
+        endedAt: Long = System.currentTimeMillis(),
+        notes: String = "",
+    ): Pair<List<String>, List<String>> {
+        val catalog = dao.observeExercises(discipline).first()
+        fun key(t: String) = t.lowercase(java.util.Locale.GERMAN).replace(Regex("[^a-zäöüß0-9]"), "")
+        fun match(name: String): Exercise? {
+            val k = key(name)
+            if (k.isEmpty()) return null
+            return catalog.firstOrNull { key(it.name) == k }
+                ?: catalog.filter { key(it.name).contains(k) || k.contains(key(it.name)) }.minByOrNull { kotlin.math.abs(key(it.name).length - k.length) }
+        }
+        val found = exercises.mapNotNull { (name, sets) -> match(name)?.let { it to sets } }
+        val unknown = exercises.map { it.first }.filter { match(it) == null }
+        if (found.isEmpty()) return emptyList<String>() to unknown
+        val id = newUuid()
+        val duration = (minutes ?: (found.sumOf { it.second.size.coerceAtLeast(1) } * 3)).coerceIn(1, 600)
+        dao.insertSession(
+            WorkoutSession(
+                id = id,
+                discipline = discipline,
+                startedAt = endedAt - duration * 60_000L,
+                endedAt = endedAt,
+                notes = notes,
+            ),
+        )
+        found.forEachIndexed { order, (exercise, sets) ->
+            val se = SessionExercise(newUuid(), id, exercise.id, order)
+            dao.insertSessionExercises(listOf(se))
+            val timed = exercise.measureType == MeasureType.DURATION || exercise.measureType == MeasureType.HOLD
+            val list = sets.ifEmpty { listOf(LoggedSet()) }
+            dao.insertSets(
+                list.mapIndexed { i, set ->
+                    SetEntry(
+                        id = newUuid(),
+                        sessionExerciseId = se.id,
+                        sortOrder = i,
+                        type = SetType.WORKING,
+                        weight = if (discipline == Discipline.GYM) set.weightKg ?: 0f else 0f,
+                        reps = if (timed) 0 else set.reps ?: 0,
+                        durationSec = if (timed) set.seconds ?: set.reps else set.seconds,
+                        completed = true,
+                        addedWeight = if (discipline != Discipline.GYM) set.weightKg else null,
+                    )
+                },
+            )
+        }
+        runCatching { healthWriter.writeWorkout(id) }
+        return found.map { it.first.name } to unknown
+    }
+
     suspend fun exerciseById(id: String): Exercise? = dao.exerciseById(id)
 
     suspend fun upsertExercise(exercise: Exercise) = dao.upsertExercise(exercise)
