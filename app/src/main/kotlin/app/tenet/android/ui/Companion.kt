@@ -172,40 +172,81 @@ fun CompanionOverlay(
         var dragging by remember { mutableStateOf(false) }
         val scope = rememberCoroutineScope()
 
-        // Going home: walk to the house button in the page header, then shrink into it;
-        // coming back: pop out of the house and walk back to the old spot.
+        // Going home: a big house grows out of the header's house button, the creature
+        // hops over and jumps through the door, the house wobbles and shrinks back.
+        // Coming back: the house grows, the creature pops out and hops to its old spot.
         val statusTop = androidx.compose.foundation.layout.WindowInsets.statusBars.getTop(density)
-        val house = Offset(
-            ((constraints.maxWidth - with(density) { 80.dp.toPx() } - sizePx / 2) / maxX).coerceIn(0f, 1f),
-            ((statusTop + with(density) { 22.dp.toPx() } - sizePx * 0.75f) / maxY).coerceIn(0f, 1f),
+        val houseSizePx = with(density) { HouseSize.toPx() }
+        val houseCenterX = constraints.maxWidth - with(density) { 80.dp.toPx() }
+        val houseTop = statusTop + with(density) { 6.dp.toPx() }
+        // Feet on the door sill.
+        val door = Offset(
+            ((houseCenterX - sizePx / 2) / maxX).coerceIn(0f, 1f),
+            ((houseTop + houseSizePx * 0.98f - sizePx) / maxY).coerceIn(0f, 1f),
         )
         val presence = remember { Animatable(if (visible) 1f else 0f) }
+        val houseScale = remember { Animatable(0f) }
+        var hop by remember { mutableStateOf(0f) }
         var lastSpot by remember { mutableStateOf(Offset(0.80f, 0.60f)) }
         // True from "go home" until it is back on its spot (also when called back halfway).
         var away by remember { mutableStateOf(!visible) }
+        val hopHeight = with(density) { 26.dp.toPx() }
+
+        /** Hops along a straight line: a small arc per hop, quicker over short distances. */
+        suspend fun hopTo(target: Offset) {
+            val from = pos.value
+            val distance = hypot((target.x - from.x) * maxX, (target.y - from.y) * maxY)
+            val hops = (distance / with(density) { 70.dp.toPx() }).roundToInt().coerceIn(2, 9)
+            facingLeft = target.x < from.x
+            walking = true
+            pos.animateTo(target, tween(hops * 230, easing = LinearEasing)) {
+                val f = if (distance == 0f) 1f else hypot((value.x - from.x) * maxX, (value.y - from.y) * maxY) / distance
+                hop = -kotlin.math.abs(sin(f * Math.PI * hops)).toFloat() * hopHeight
+            }
+            hop = 0f
+            walking = false
+        }
+
         LaunchedEffect(visible) {
             if (!visible && presence.value > 0f) {
                 chatOpen = false
                 if (!away) lastSpot = pos.value
                 away = true
-                facingLeft = house.x < pos.value.x
-                walking = true
-                val distance = hypot((house.x - pos.value.x) * maxX, (house.y - pos.value.y) * maxY)
-                pos.animateTo(house, tween((distance / 1.4f).roundToInt().coerceIn(500, 1600), easing = FastOutSlowInEasing))
-                walking = false
-                presence.animateTo(0f, tween(380, easing = FastOutSlowInEasing))
+                launch { houseScale.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.5f, stiffness = 260f)) }
+                hopTo(door)
+                // Last jump through the door.
+                presence.animateTo(0f, tween(320, easing = FastOutSlowInEasing))
+                houseScale.animateTo(1.12f, tween(110))
+                houseScale.animateTo(1f, tween(140))
+                delay(350)
+                houseScale.animateTo(0f, tween(260, easing = FastOutSlowInEasing))
             } else if (visible && away) {
                 if (presence.value < 1f) {
-                    pos.snapTo(house)
-                    presence.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.45f, stiffness = 300f))
+                    houseScale.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.5f, stiffness = 260f))
+                    pos.snapTo(door)
+                    presence.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.4f, stiffness = 320f))
                 }
-                facingLeft = lastSpot.x < pos.value.x
-                walking = true
-                val distance = hypot((lastSpot.x - pos.value.x) * maxX, (lastSpot.y - pos.value.y) * maxY)
-                pos.animateTo(lastSpot, tween((distance / 1.2f).roundToInt().coerceIn(500, 1800), easing = FastOutSlowInEasing))
-                walking = false
+                launch {
+                    delay(500)
+                    houseScale.animateTo(0f, tween(260, easing = FastOutSlowInEasing))
+                }
+                hopTo(lastSpot)
                 away = false
             }
+        }
+
+        // The big house (behind the creature).
+        if (houseScale.value > 0f) {
+            HouseDrawing(
+                Modifier
+                    .offset { IntOffset((houseCenterX - houseSizePx / 2).roundToInt(), houseTop.roundToInt()) }
+                    .size(HouseSize)
+                    .graphicsLayer {
+                        scaleX = houseScale.value
+                        scaleY = houseScale.value
+                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0.1f)
+                    },
+            )
         }
 
         // Roaming: after a few minutes, run to another spot and stay there a while.
@@ -225,14 +266,14 @@ fun CompanionOverlay(
 
         if (presence.value > 0f) Box(
             Modifier
-                .offset { IntOffset((pos.value.x * maxX).roundToInt(), (pos.value.y * maxY).roundToInt()) }
+                .offset { IntOffset((pos.value.x * maxX).roundToInt(), (pos.value.y * maxY + hop).roundToInt()) }
                 .graphicsLayer {
                     val p = presence.value
                     scaleX = p
                     scaleY = p
                     alpha = p.coerceIn(0f, 1f)
-                    // Slips "through the door": shrinks towards its feet and slightly up.
-                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0.2f)
+                    // Slips through the door: shrinks towards its feet.
+                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0.95f)
                 },
         ) {
             app.tenet.android.core.designsystem.component.CompanionCreature(
@@ -288,6 +329,29 @@ fun CompanionOverlay(
 }
 
 private val CreatureSize = 64.dp
+private val HouseSize = 96.dp
+
+/** The companion's home: chimney, red roof, cream walls, a window and an open door. */
+@Composable
+private fun HouseDrawing(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        val roof = Color(0xFFE35D4F)
+        val wall = Color(0xFFFFF3E0)
+        val wood = Color(0xFF8D5A3B)
+        drawRect(Color(0xFF9E9E9E), Offset(w * 0.66f, h * 0.10f), Size(w * 0.10f, h * 0.22f))
+        drawRoundRect(wall, Offset(w * 0.16f, h * 0.42f), Size(w * 0.68f, h * 0.56f), CornerRadius(w * 0.04f))
+        val r = androidx.compose.ui.graphics.Path().apply {
+            moveTo(w * 0.04f, h * 0.48f); lineTo(w * 0.5f, h * 0.06f); lineTo(w * 0.96f, h * 0.48f); close()
+        }
+        drawPath(r, roof)
+        drawRoundRect(Color(0xFF8FD3FF), Offset(w * 0.24f, h * 0.54f), Size(w * 0.16f, h * 0.14f), CornerRadius(w * 0.02f))
+        // Door, a dark opening with the door leaf swung open.
+        drawRoundRect(Color(0xFF2B1B12), Offset(w * 0.44f, h * 0.62f), Size(w * 0.24f, h * 0.36f), CornerRadius(w * 0.10f, w * 0.10f))
+        drawRoundRect(wood, Offset(w * 0.68f, h * 0.62f), Size(w * 0.08f, h * 0.36f), CornerRadius(w * 0.02f))
+    }
+}
 
 @Composable
 private fun ChatPanel(

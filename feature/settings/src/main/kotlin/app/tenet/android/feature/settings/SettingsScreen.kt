@@ -1,5 +1,10 @@
 package app.tenet.android.feature.settings
 
+import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Dashboard
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.ColorLens
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.outlined.SmartToy
@@ -236,299 +241,297 @@ fun SettingsScreen(
                     bottom = TenetDimens.bottomTabBarPadding,
                 ),
             ) {
-                item { SectionHeader("Konto") }
-                item { AccountGroup() }
-                item { SectionHeader("Darstellung", Modifier.padding(top = 16.dp)) }
-                item {
-                    // Theme mode inline as M3 segmented button (single choice).
-                    SegmentedSelector(
-                        segments = ThemeMode.entries.map { Segment(it.label, it.icon) },
-                        selectedIndex = ThemeMode.entries.indexOf(settings.themeMode),
-                        onSelect = { viewModel.setThemeMode(ThemeMode.entries[it]) },
-                        modifier = Modifier.padding(bottom = 8.dp),
-                    )
-                }
-                item {
-                    SettingsGroup {
-                        NavItem(
-                            shapes = it(0, 5),
-                            icon = Icons.Outlined.AutoAwesome,
-                            title = "Stil",
-                            supporting = "${settings.designStyle.label} · ${settings.designStyle.description}",
-                            onClick = { styleDialogVisible = true },
-                        )
-                        SwitchItem(
-                            shapes = it(1, 5),
-                            icon = Icons.Outlined.Palette,
-                            title = "Dynamic Color",
-                            supporting = "Farben aus dem Wallpaper übernehmen (Android 12+)",
-                            checked = settings.dynamicColor,
-                            onCheckedChange = viewModel::setDynamicColor,
-                        )
-                        NavItem(
-                            shapes = it(2, 5),
-                            icon = Icons.Outlined.DarkMode,
-                            title = "AMOLED-Schwarz",
-                            supporting = "${settings.amoledMode.label} · nur im dunklen Modus",
-                            onClick = { amoledDialogVisible = true },
-                        )
-                        SwitchItem(
-                            shapes = it(3, 5),
-                            icon = Icons.Outlined.AutoStories,
-                            title = "Serifenschrift im Journal",
-                            supporting = "Tagebuch und Träume in Newsreader, ruhiger zu lesen",
-                            checked = settings.journalSerif,
-                            onCheckedChange = viewModel::setJournalSerif,
-                        )
-                        SwitchItem(
-                            shapes = it(4, 5),
-                            icon = Icons.Outlined.BlurOn,
-                            title = "Glas-Leiste",
-                            supporting = "Transluzente Navigationsleiste mit Unschärfe",
-                            checked = settings.glassBar,
-                            onCheckedChange = viewModel::setGlassBar,
-                        )
+                item(key = "account") {
+                    SettingsCard(Icons.Outlined.AccountCircle, "Konto & Sync", app.tenet.android.core.designsystem.theme.HealthTint.INFO) {
+                        AccountGroup()
                     }
                 }
-                item { Spacer(Modifier.height(12.dp)) }
-                item {
-                    SettingsGroup { shapes ->
-                        SwitchItem(
-                            shapes = shapes(0, 1),
-                            icon = Icons.Outlined.SmartToy,
-                            title = "Begleiter",
-                            supporting = "Läuft durch die App; antippen und per Text oder Sprache Essen eintragen, Notizen ergänzen oder Fragen stellen (nutzt die KI)",
-                            checked = settings.companion,
-                            onCheckedChange = viewModel::setCompanion,
+                item(key = "look") {
+                    SettingsCard(Icons.Outlined.Palette, "Darstellung", app.tenet.android.core.designsystem.theme.HealthTint.SLEEP) {
+                        // Theme mode inline as M3 segmented button (single choice).
+                        SegmentedSelector(
+                            segments = ThemeMode.entries.map { Segment(it.label, it.icon) },
+                            selectedIndex = ThemeMode.entries.indexOf(settings.themeMode),
+                            onSelect = { viewModel.setThemeMode(ThemeMode.entries[it]) },
+                            modifier = Modifier.padding(bottom = 8.dp),
                         )
-                    }
-                }
-                if (settings.companion) {
-                    item {
-                        CompanionPicker(
-                            selected = app.tenet.android.core.designsystem.component.CompanionKind.of(settings.companionKind),
-                            onSelect = { viewModel.setCompanionKind(it.name) },
-                        )
-                    }
-                }
-
-                item { SectionHeader("Farben", Modifier.padding(top = 16.dp)) }
-                item {
-                    Column(Modifier.padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        ColorStylePicker(
-                            selected = settings.colorStyle,
-                            dynamicColor = settings.dynamicColor,
-                            primary = settings.primaryColor,
-                            secondary = settings.secondaryColor,
-                            darkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f,
-                            twoTone = settings.twoTone,
-                            onSelect = viewModel::setColorStyle,
-                        )
-                        Text(
-                            "Farbstil: ${settings.colorStyle.description}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 4.dp),
-                        )
-                    }
-                }
-                item {
-                    val note = if (settings.dynamicColor) " · schaltet Dynamic Color aus" else ""
-                    SettingsGroup { shapes ->
-                        SwitchItem(
-                            shapes = shapes(0, 3),
-                            icon = Icons.Outlined.Contrast,
-                            title = "Nur zwei Farben",
-                            supporting = if (settings.twoTone) "Primär- und Sekundärfarbe, überall gleich"
-                            else "Aus: jeder Bereich hat eine eigene, passende Farbe",
-                            checked = settings.twoTone,
-                            onCheckedChange = viewModel::setTwoTone,
-                        )
-                        ColorItem(
-                            shapes = shapes(1, 3),
-                            title = "Primärfarbe",
-                            argb = settings.primaryColor,
-                            fallback = MaterialTheme.colorScheme.primary,
-                            supporting = colorName(settings.primaryColor) + note,
-                            onClick = { colorSheet = ColorSlot.PRIMARY },
-                        )
-                        ColorItem(
-                            shapes = shapes(2, 3),
-                            title = "Sekundärfarbe",
-                            argb = settings.secondaryColor,
-                            fallback = MaterialTheme.colorScheme.secondary,
-                            supporting = (if (settings.secondaryColor == null) "Automatisch aus Primärfarbe" else colorName(settings.secondaryColor)) + note,
-                            onClick = { colorSheet = ColorSlot.SECONDARY },
-                        )
-                    }
-                }
-
-                item { SectionHeader("Module", Modifier.padding(top = 16.dp)) }
-                item {
-                    SettingsGroup { shapes ->
-                        AppModule.entries.forEachIndexed { index, module ->
+                        SettingsGroup {
+                            NavItem(
+                                shapes = it(0, 5),
+                                icon = Icons.Outlined.AutoAwesome,
+                                title = "Stil",
+                                supporting = "${settings.designStyle.label} · ${settings.designStyle.description}",
+                                onClick = { styleDialogVisible = true },
+                            )
                             SwitchItem(
-                                shapes = shapes(index, AppModule.entries.size),
-                                icon = module.icon,
-                                title = module.label,
-                                supporting = if (module in settings.enabledModules) "Aktiv" else "Ausgeblendet",
-                                checked = module in settings.enabledModules,
-                                onCheckedChange = { viewModel.setModuleEnabled(module, it) },
+                                shapes = it(1, 5),
+                                icon = Icons.Outlined.Palette,
+                                title = "Dynamic Color",
+                                supporting = "Farben aus dem Wallpaper übernehmen (Android 12+)",
+                                checked = settings.dynamicColor,
+                                onCheckedChange = viewModel::setDynamicColor,
+                            )
+                            NavItem(
+                                shapes = it(2, 5),
+                                icon = Icons.Outlined.DarkMode,
+                                title = "AMOLED-Schwarz",
+                                supporting = "${settings.amoledMode.label} · nur im dunklen Modus",
+                                onClick = { amoledDialogVisible = true },
+                            )
+                            SwitchItem(
+                                shapes = it(3, 5),
+                                icon = Icons.Outlined.AutoStories,
+                                title = "Serifenschrift im Journal",
+                                supporting = "Tagebuch und Träume in Newsreader, ruhiger zu lesen",
+                                checked = settings.journalSerif,
+                                onCheckedChange = viewModel::setJournalSerif,
+                            )
+                            SwitchItem(
+                                shapes = it(4, 5),
+                                icon = Icons.Outlined.BlurOn,
+                                title = "Glas-Leiste",
+                                supporting = "Transluzente Navigationsleiste mit Unschärfe",
+                                checked = settings.glassBar,
+                                onCheckedChange = viewModel::setGlassBar,
                             )
                         }
                     }
                 }
-
-                item { SectionHeader("Erinnerungen", Modifier.padding(top = 16.dp)) }
-                item {
-                    SettingsGroup { shapes ->
-                        SwitchItem(
-                            shapes = shapes(0, 2),
-                            icon = Icons.Outlined.FitnessCenter,
-                            title = "Trainingstage",
-                            supporting = "Morgens z. B. „Heute: Intervalle 3 × 1 km“ um ${formatMinute(settings.trainingReminderMinute)}",
-                            checked = settings.trainingReminder,
-                            onCheckedChange = { on ->
-                                if (on) withNotificationPermission { viewModel.setTrainingReminder(true) } else viewModel.setTrainingReminder(false)
-                            },
-                        )
-                        NavItem(
-                            shapes = shapes(1, 2),
-                            icon = Icons.Outlined.Schedule,
-                            title = "Uhrzeit Trainings-Erinnerung",
-                            supporting = formatMinute(settings.trainingReminderMinute),
-                            onClick = { trainingTimeVisible = true },
-                        )
+                item(key = "colors") {
+                    SettingsCard(Icons.Outlined.ColorLens, "Farben", app.tenet.android.core.designsystem.theme.HealthTint.BODY) {
+                        Column(Modifier.padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            ColorStylePicker(
+                                selected = settings.colorStyle,
+                                dynamicColor = settings.dynamicColor,
+                                primary = settings.primaryColor,
+                                secondary = settings.secondaryColor,
+                                darkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f,
+                                twoTone = settings.twoTone,
+                                onSelect = viewModel::setColorStyle,
+                            )
+                            Text(
+                                "Farbstil: ${settings.colorStyle.description}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 4.dp),
+                            )
+                        }
+                        val note = if (settings.dynamicColor) " · schaltet Dynamic Color aus" else ""
+                        SettingsGroup { shapes ->
+                            SwitchItem(
+                                shapes = shapes(0, 3),
+                                icon = Icons.Outlined.Contrast,
+                                title = "Nur zwei Farben",
+                                supporting = if (settings.twoTone) "Primär- und Sekundärfarbe, überall gleich"
+                                else "Aus: jeder Bereich hat eine eigene, passende Farbe",
+                                checked = settings.twoTone,
+                                onCheckedChange = viewModel::setTwoTone,
+                            )
+                            ColorItem(
+                                shapes = shapes(1, 3),
+                                title = "Primärfarbe",
+                                argb = settings.primaryColor,
+                                fallback = MaterialTheme.colorScheme.primary,
+                                supporting = colorName(settings.primaryColor) + note,
+                                onClick = { colorSheet = ColorSlot.PRIMARY },
+                            )
+                            ColorItem(
+                                shapes = shapes(2, 3),
+                                title = "Sekundärfarbe",
+                                argb = settings.secondaryColor,
+                                fallback = MaterialTheme.colorScheme.secondary,
+                                supporting = (if (settings.secondaryColor == null) "Automatisch aus Primärfarbe" else colorName(settings.secondaryColor)) + note,
+                                onClick = { colorSheet = ColorSlot.SECONDARY },
+                            )
+                        }
                     }
                 }
-                item { Spacer(Modifier.height(12.dp)) }
-                item {
-                    SettingsGroup { shapes ->
-                        SwitchItem(
-                            shapes = shapes(0, 2),
-                            icon = Icons.Outlined.MonitorHeart,
-                            title = "Morgen-Bericht",
-                            supporting = "Bereitschaft mit Ruhepuls, HRV und Schlaf (Health Connect) ab ${formatMinute(settings.readinessReportMinute)}",
-                            checked = settings.readinessReport,
-                            onCheckedChange = { on ->
-                                if (on) withNotificationPermission { viewModel.setReadinessReport(true) } else viewModel.setReadinessReport(false)
-                            },
-                        )
-                        NavItem(
-                            shapes = shapes(1, 2),
-                            icon = Icons.Outlined.Schedule,
-                            title = "Uhrzeit Morgen-Bericht",
-                            supporting = formatMinute(settings.readinessReportMinute),
-                            onClick = { readinessTimeVisible = true },
-                        )
+                item(key = "companion") {
+                    SettingsCard(Icons.Outlined.SmartToy, "Begleiter", app.tenet.android.core.designsystem.theme.HealthTint.STREAK) {
+                        SettingsGroup { shapes ->
+                            SwitchItem(
+                                shapes = shapes(0, 1),
+                                icon = Icons.Outlined.SmartToy,
+                                title = "Begleiter anzeigen",
+                                supporting = "Läuft durch die App; antippen und per Text oder Sprache Essen eintragen, Notizen ergänzen oder Fragen stellen (nutzt die KI)",
+                                checked = settings.companion,
+                                onCheckedChange = viewModel::setCompanion,
+                            )
+                        }
+                        if (settings.companion) {
+                            CompanionPicker(
+                                selected = app.tenet.android.core.designsystem.component.CompanionKind.of(settings.companionKind),
+                                onSelect = { viewModel.setCompanionKind(it.name) },
+                            )
+                        }
                     }
                 }
-                item { Spacer(Modifier.height(12.dp)) }
-                item {
-                    SettingsGroup { shapes ->
-                        SwitchItem(
-                            shapes = shapes(0, 3),
-                            icon = Icons.Outlined.NightsStay,
-                            title = "Traum morgens",
-                            supporting = "„Hast du heute geträumt?“ um ${formatMinute(settings.dreamReminderMinute)}",
-                            checked = settings.dreamReminder,
-                            onCheckedChange = { on ->
-                                if (on) withNotificationPermission { viewModel.setDreamReminder(true) } else viewModel.setDreamReminder(false)
-                            },
-                        )
-                        NavItem(
-                            shapes = shapes(1, 3),
-                            icon = Icons.Outlined.Schedule,
-                            title = "Uhrzeit Traum-Erinnerung",
-                            supporting = formatMinute(settings.dreamReminderMinute),
-                            onClick = { timePickerVisible = true },
-                        )
-                        SwitchItem(
-                            shapes = shapes(2, 3),
-                            icon = Icons.Outlined.Visibility,
-                            title = "Reality-Checks",
-                            supporting = "Tagsüber etwa alle 3 Stunden, fürs Luzidträumen",
-                            checked = settings.realityChecks,
-                            onCheckedChange = { on ->
-                                if (on) withNotificationPermission { viewModel.setRealityChecks(true) } else viewModel.setRealityChecks(false)
-                            },
-                        )
+                item(key = "notifications") {
+                    SettingsCard(Icons.Outlined.Notifications, "Benachrichtigungen", app.tenet.android.core.designsystem.theme.HealthTint.ACTIVITY) {
+                        SettingsGroup { shapes ->
+                            SwitchItem(
+                                shapes = shapes(0, 2),
+                                icon = Icons.Outlined.FitnessCenter,
+                                title = "Trainingstage",
+                                supporting = "Morgens z. B. „Heute: Intervalle 3 × 1 km“ um ${formatMinute(settings.trainingReminderMinute)}",
+                                checked = settings.trainingReminder,
+                                onCheckedChange = { on ->
+                                    if (on) withNotificationPermission { viewModel.setTrainingReminder(true) } else viewModel.setTrainingReminder(false)
+                                },
+                            )
+                            NavItem(
+                                shapes = shapes(1, 2),
+                                icon = Icons.Outlined.Schedule,
+                                title = "Uhrzeit Trainings-Erinnerung",
+                                supporting = formatMinute(settings.trainingReminderMinute),
+                                onClick = { trainingTimeVisible = true },
+                            )
+                        }
+                        SettingsDivider()
+                        SettingsGroup { shapes ->
+                            SwitchItem(
+                                shapes = shapes(0, 2),
+                                icon = Icons.Outlined.MonitorHeart,
+                                title = "Morgen-Bericht",
+                                supporting = "Bereitschaft mit Ruhepuls, HRV und Schlaf (Health Connect) ab ${formatMinute(settings.readinessReportMinute)}",
+                                checked = settings.readinessReport,
+                                onCheckedChange = { on ->
+                                    if (on) withNotificationPermission { viewModel.setReadinessReport(true) } else viewModel.setReadinessReport(false)
+                                },
+                            )
+                            NavItem(
+                                shapes = shapes(1, 2),
+                                icon = Icons.Outlined.Schedule,
+                                title = "Uhrzeit Morgen-Bericht",
+                                supporting = formatMinute(settings.readinessReportMinute),
+                                onClick = { readinessTimeVisible = true },
+                            )
+                        }
+                        SettingsDivider()
+                        SettingsGroup { shapes ->
+                            SwitchItem(
+                                shapes = shapes(0, 3),
+                                icon = Icons.Outlined.NightsStay,
+                                title = "Traum morgens",
+                                supporting = "„Hast du heute geträumt?“ um ${formatMinute(settings.dreamReminderMinute)}",
+                                checked = settings.dreamReminder,
+                                onCheckedChange = { on ->
+                                    if (on) withNotificationPermission { viewModel.setDreamReminder(true) } else viewModel.setDreamReminder(false)
+                                },
+                            )
+                            NavItem(
+                                shapes = shapes(1, 3),
+                                icon = Icons.Outlined.Schedule,
+                                title = "Uhrzeit Traum-Erinnerung",
+                                supporting = formatMinute(settings.dreamReminderMinute),
+                                onClick = { timePickerVisible = true },
+                            )
+                            SwitchItem(
+                                shapes = shapes(2, 3),
+                                icon = Icons.Outlined.Visibility,
+                                title = "Reality-Checks",
+                                supporting = "Tagsüber etwa alle 3 Stunden, fürs Luzidträumen",
+                                checked = settings.realityChecks,
+                                onCheckedChange = { on ->
+                                    if (on) withNotificationPermission { viewModel.setRealityChecks(true) } else viewModel.setRealityChecks(false)
+                                },
+                            )
+                        }
                     }
                 }
-
-                item { SectionHeader("Datenschutz", Modifier.padding(top = 16.dp)) }
-                item {
-                    SettingsGroup { shapes ->
-                        SwitchItem(
-                            shapes = shapes(0, 1),
-                            icon = Icons.Outlined.Fingerprint,
-                            title = "Journal sperren",
-                            supporting = if (journalLockAvailable) {
-                                "Fingerabdruck oder Displaysperre für Notizen, Tagebuch und Träume. " +
-                                    "Sperrt wieder nach 1 Minute im Hintergrund."
-                            } else {
-                                "Richte zuerst eine Displaysperre oder einen Fingerabdruck am Gerät ein."
-                            },
-                            checked = settings.journalLock,
-                            onCheckedChange = { on ->
-                                // Confirm with the lock itself, so nobody else can switch it off.
-                                if (journalLockAvailable) {
-                                    authenticate(if (on) "Journal-Sperre einschalten" else "Journal-Sperre ausschalten") { ok ->
-                                        if (ok) viewModel.setJournalLock(on)
+                item(key = "goals") {
+                    SettingsCard(Icons.Outlined.TrackChanges, "Ziele & Training", app.tenet.android.core.designsystem.theme.HealthTint.NUTRITION) {
+                        SettingsGroup { shapes ->
+                            NavItem(
+                                shapes = shapes(0, 3),
+                                icon = Icons.Outlined.TrackChanges,
+                                title = "Tagesziel Ernährung",
+                                supporting = "${goal.kcal.toInt()} kcal · " +
+                                    "E ${goal.protein.toInt()} · K ${goal.carbs.toInt()} · F ${goal.fat.toInt()} g",
+                                onClick = { goalSheetOpen = true },
+                            )
+                            NavItem(
+                                shapes = shapes(1, 3),
+                                icon = Icons.Outlined.Calculate,
+                                title = "1RM-Formel",
+                                supporting = "${settings.oneRepMaxFormula.label} · " +
+                                    settings.oneRepMaxFormula.description,
+                                onClick = { formulaDialogVisible = true },
+                            )
+                            NavItem(
+                                shapes = shapes(2, 3),
+                                icon = Icons.Outlined.Speed,
+                                title = "Zielpace-Methode (Laufen)",
+                                supporting = "${settings.paceMethod.label} · " + settings.paceMethod.description,
+                                onClick = { paceDialogVisible = true },
+                            )
+                        }
+                    }
+                }
+                item(key = "connections") {
+                    SettingsCard(Icons.Outlined.MonitorHeart, "Gesundheit & KI", app.tenet.android.core.designsystem.theme.HealthTint.MIND) {
+                        HealthConnectGroup(viewModel)
+                        SettingsDivider()
+                        AiGroup(viewModel)
+                    }
+                }
+                item(key = "modules") {
+                    SettingsCard(Icons.Outlined.Dashboard, "Bereiche", app.tenet.android.core.designsystem.theme.HealthTint.INFO) {
+                        SettingsGroup { shapes ->
+                            AppModule.entries.forEachIndexed { index, module ->
+                                SwitchItem(
+                                    shapes = shapes(index, AppModule.entries.size),
+                                    icon = module.icon,
+                                    title = module.label,
+                                    supporting = if (module in settings.enabledModules) "Aktiv" else "Ausgeblendet",
+                                    checked = module in settings.enabledModules,
+                                    onCheckedChange = { viewModel.setModuleEnabled(module, it) },
+                                )
+                            }
+                        }
+                    }
+                }
+                item(key = "privacy") {
+                    SettingsCard(Icons.Outlined.Lock, "Datenschutz", app.tenet.android.core.designsystem.theme.HealthTint.SLEEP) {
+                        SettingsGroup { shapes ->
+                            SwitchItem(
+                                shapes = shapes(0, 1),
+                                icon = Icons.Outlined.Fingerprint,
+                                title = "Journal sperren",
+                                supporting = if (journalLockAvailable) {
+                                    "Fingerabdruck oder Displaysperre für Notizen, Tagebuch und Träume. " +
+                                        "Sperrt wieder nach 1 Minute im Hintergrund."
+                                } else {
+                                    "Richte zuerst eine Displaysperre oder einen Fingerabdruck am Gerät ein."
+                                },
+                                checked = settings.journalLock,
+                                onCheckedChange = { on ->
+                                    // Confirm with the lock itself, so nobody else can switch it off.
+                                    if (journalLockAvailable) {
+                                        authenticate(if (on) "Journal-Sperre einschalten" else "Journal-Sperre ausschalten") { ok ->
+                                            if (ok) viewModel.setJournalLock(on)
+                                        }
                                     }
-                                }
-                            },
-                        )
+                                },
+                            )
+                        }
                     }
                 }
-
-                item { SectionHeader("Verbindungen", Modifier.padding(top = 16.dp)) }
-                item { HealthConnectGroup(viewModel) }
-                item { AiGroup(viewModel) }
-
-                item { SectionHeader("Ziele & Training", Modifier.padding(top = 16.dp)) }
-                item {
-                    SettingsGroup { shapes ->
-                        NavItem(
-                            shapes = shapes(0, 3),
-                            icon = Icons.Outlined.TrackChanges,
-                            title = "Tagesziel Ernährung",
-                            supporting = "${goal.kcal.toInt()} kcal · " +
-                                "E ${goal.protein.toInt()} · K ${goal.carbs.toInt()} · F ${goal.fat.toInt()} g",
-                            onClick = { goalSheetOpen = true },
-                        )
-                        NavItem(
-                            shapes = shapes(1, 3),
-                            icon = Icons.Outlined.Calculate,
-                            title = "1RM-Formel",
-                            supporting = "${settings.oneRepMaxFormula.label} · " +
-                                settings.oneRepMaxFormula.description,
-                            onClick = { formulaDialogVisible = true },
-                        )
-                        NavItem(
-                            shapes = shapes(2, 3),
-                            icon = Icons.Outlined.Speed,
-                            title = "Zielpace-Methode (Laufen)",
-                            supporting = "${settings.paceMethod.label} · " + settings.paceMethod.description,
-                            onClick = { paceDialogVisible = true },
-                        )
-                    }
-                }
-
-                item { SectionHeader("Über", Modifier.padding(top = 16.dp)) }
-                item {
-                    SettingsGroup { shapes ->
-                        SegmentedListItem(
-                            colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
-                            shapes = shapes(0, 1),
-                            leadingContent = { SettingsIcon(Icons.Outlined.Info) },
-                            trailingContent = {
-                                val version = remember {
-                                    runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "–"
-                                }
-                                Text(version)
-                            },
-                        ) { Text("Version") }
+                item(key = "about") {
+                    SettingsCard(Icons.Outlined.Info, "Über Tenet", app.tenet.android.core.designsystem.theme.HealthTint.INFO) {
+                        SettingsGroup { shapes ->
+                            SegmentedListItem(
+                                colors = settingsRowColors(),
+                                shapes = shapes(0, 1),
+                                leadingContent = { SettingsIcon(Icons.Outlined.Info) },
+                                trailingContent = {
+                                    val version = remember {
+                                        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "–"
+                                    }
+                                    Text(version)
+                                },
+                            ) { Text("Version") }
+                        }
                     }
                 }
             }
@@ -933,10 +936,66 @@ private fun formatSync(millis: Long): String =
 internal fun SettingsGroup(
     content: @Composable (@Composable (index: Int, count: Int) -> ListItemShapes) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
+    val inCard = LocalInSettingsCard.current
+    Column(verticalArrangement = Arrangement.spacedBy(if (inCard) 0.dp else app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
         content { index, count -> app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, count) }
     }
 }
+
+/** True inside a [SettingsCard]: rows lose their own background, the card is the group. */
+internal val LocalInSettingsCard = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+/** One category: a card with a coloured header (icon + title) and its settings below. */
+@Composable
+internal fun SettingsCard(
+    icon: ImageVector,
+    title: String,
+    tint: app.tenet.android.core.designsystem.theme.HealthTint,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
+) {
+    val color = app.tenet.android.core.designsystem.theme.cardTint(tint)
+    app.tenet.android.core.designsystem.theme.TenetCard(Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+        androidx.compose.runtime.CompositionLocalProvider(
+            LocalInSettingsCard provides true,
+            app.tenet.android.core.designsystem.theme.LocalCardTint provides color,
+        ) {
+            Column(Modifier.padding(bottom = 6.dp)) {
+                app.tenet.android.core.designsystem.component.CardHeader(
+                    icon, title, color = color,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 4.dp),
+                )
+                content()
+            }
+        }
+    }
+}
+
+/** Hairline between groups inside a card. */
+@Composable
+internal fun SettingsDivider() {
+    androidx.compose.material3.HorizontalDivider(
+        Modifier.padding(start = 64.dp, top = 2.dp, bottom = 2.dp),
+        thickness = 0.5.dp,
+        color = MaterialTheme.colorScheme.outlineVariant,
+    )
+}
+
+/** Row colours: transparent inside a [SettingsCard], the usual grouped look elsewhere. */
+@Composable
+internal fun settingsRowColors(): androidx.compose.material3.ListItemColors =
+    if (LocalInSettingsCard.current) {
+        androidx.compose.material3.ListItemDefaults.segmentedColors(
+            containerColor = Color.Transparent,
+            selectedContainerColor = Color.Transparent,
+            // A switched-on row keeps normal text colours (the switch shows the state).
+            selectedContentColor = MaterialTheme.colorScheme.onSurface,
+            selectedSupportingContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            selectedLeadingContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            selectedTrailingContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    } else {
+        app.tenet.android.core.designsystem.theme.tenetListColors()
+    }
 
 @Composable
 internal fun SettingsIcon(icon: ImageVector) {
@@ -944,8 +1003,8 @@ internal fun SettingsIcon(icon: ImageVector) {
         // iOS settings: white glyph on a small rounded square in the accent color.
         androidx.compose.material3.Surface(
             shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-            color = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
+            color = app.tenet.android.core.designsystem.theme.LocalCardTint.current ?: MaterialTheme.colorScheme.primary,
+            contentColor = Color.White,
             modifier = Modifier.size(30.dp),
         ) {
             androidx.compose.foundation.layout.Box(contentAlignment = androidx.compose.ui.Alignment.Center) { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) }
@@ -971,7 +1030,7 @@ private fun SwitchItem(
 ) {
     val haptics = LocalHapticFeedback.current
     SegmentedListItem(
-        colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
+        colors = settingsRowColors(),
         checked = checked,
         onCheckedChange = {
             haptics.performHapticFeedback(if (it) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff)
@@ -996,7 +1055,7 @@ private fun ColorItem(
     onClick: () -> Unit,
 ) {
     SegmentedListItem(
-        colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
+        colors = settingsRowColors(),
         onClick = onClick,
         shapes = shapes,
         leadingContent = {
@@ -1019,7 +1078,7 @@ internal fun NavItem(
     onClick: () -> Unit,
 ) {
     SegmentedListItem(
-        colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
+        colors = settingsRowColors(),
         onClick = onClick,
         shapes = shapes,
         leadingContent = { SettingsIcon(icon) },
@@ -1049,7 +1108,7 @@ private fun <T> ChoiceDialog(
             ) {
                 options.forEachIndexed { index, option ->
                     SegmentedListItem(
-                        colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
+                        colors = settingsRowColors(),
                         selected = option == selected,
                         onClick = { onSelect(option) },
                         shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, options.size),
@@ -1076,7 +1135,7 @@ private fun CompanionPicker(
 ) {
     androidx.compose.foundation.lazy.LazyRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp),
     ) {
         items(app.tenet.android.core.designsystem.component.CompanionKind.entries.size) { i ->
             val kind = app.tenet.android.core.designsystem.component.CompanionKind.entries[i]
@@ -1084,12 +1143,13 @@ private fun CompanionPicker(
             androidx.compose.material3.Surface(
                 onClick = { onSelect(kind) },
                 shape = MaterialTheme.shapes.extraLarge,
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
                 border = if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
-                modifier = Modifier.width(116.dp),
+                // All cards the same size, whatever the text.
+                modifier = Modifier.width(116.dp).height(168.dp),
             ) {
                 Column(
-                    Modifier.padding(12.dp),
+                    Modifier.fillMaxSize().padding(12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
@@ -1106,7 +1166,9 @@ private fun CompanionPicker(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        minLines = 2,
                         maxLines = 2,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     )
                 }
             }

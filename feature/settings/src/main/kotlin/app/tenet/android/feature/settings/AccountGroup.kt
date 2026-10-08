@@ -162,9 +162,9 @@ internal fun AccountGroup(viewModel: AccountViewModel = hiltViewModel()) {
         }
         acc == null -> TenetCard(
             Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+            colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
         ) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     SettingsIcon(Icons.Outlined.CloudSync)
                     Spacer(Modifier.width(16.dp))
@@ -191,7 +191,7 @@ internal fun AccountGroup(viewModel: AccountViewModel = hiltViewModel()) {
         else -> SettingsGroup { shapes ->
             TenetCard(
                 shape = shapes(0, 4).shape,
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
