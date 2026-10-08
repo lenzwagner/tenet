@@ -254,7 +254,7 @@ fun SettingsScreen(
                             segments = ThemeMode.entries.map { Segment(it.label, it.icon) },
                             selectedIndex = ThemeMode.entries.indexOf(settings.themeMode),
                             onSelect = { viewModel.setThemeMode(ThemeMode.entries[it]) },
-                            modifier = Modifier.padding(bottom = 8.dp),
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp),
                         )
                         SettingsGroup {
                             NavItem(
@@ -316,7 +316,7 @@ fun SettingsScreen(
                 }
                 item(key = "colors") {
                     SettingsCard(Icons.Outlined.ColorLens, "Farben", app.tenet.android.core.designsystem.theme.HealthTint.BODY) {
-                        Column(Modifier.padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             ColorStylePicker(
                                 selected = settings.colorStyle,
                                 dynamicColor = settings.dynamicColor,
