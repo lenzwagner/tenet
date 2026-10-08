@@ -1,10 +1,10 @@
 # Tenet – offene ToDos
 
-Stand: 07.10.2026, Version 1.0.0.42 (auf `main` gepusht, APK `tenet-1.0.0.42-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 07.10.2026, Version 1.0.0.43 (auf `main` gepusht, APK `tenet-1.0.0.43-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Übergabe (Session 06.–07.10.2026)
 
-**Stand:** 1.0.0.6 – 1.0.0.42 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
+**Stand:** 1.0.0.6 – 1.0.0.43 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
 
 **Wichtig vor dem nächsten Update am Handy:**
 - Seit 1.0.0.6 ist die Datenbank mit SQLCipher verschlüsselt (Rohschlüssel, im Android Keystore gewrappt, `no_backup/db.key`). Die alte Klartext-DB wird beim ersten Start einmal umgewandelt. Im Emulator geprüft, mit echten Daten noch nicht → vorher mit Google anmelden und synchronisieren.
@@ -105,7 +105,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Alte APKs im Projektordner aufräumen (~40 Stück, je ~10–18 MB, enthalten den NIM-Schlüssel)
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.42)
+## Zuletzt erledigt (0.5.0 – 1.0.0.43)
+
+- 1.0.0.43: Tagebuch-Kalender: einklappbare „Auswertung“ – Stimmung, Energie und Schlafqualität als Durchschnitt (Rot→Grün-Balken) und Verlauf, Stimmung nach Wochentag mit „am besten / am schwersten“, Zeitraum Woche, Monat, Gesamt oder frei gewählt
 
 - 1.0.0.42: Alle Unterseiten: Kopfleiste zeigt beim Scrollen den Verlauf-Ausschnitt statt einer weißen Fläche (nahtlos, Inhalt verschwindet darunter); Rezept-Import speichert beim Zurück, „Karten anpassen“ speichert beim Wegwischen
 

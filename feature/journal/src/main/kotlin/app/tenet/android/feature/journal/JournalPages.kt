@@ -303,6 +303,17 @@ internal fun DiaryPage(state: JournalUiState, actions: EntryActions, onNewDiaryO
                     },
                 )
             }
+            item(key = "diary-stats") {
+                DiaryStatsCard(
+                    remember(state.diary, state.diaryMeta) {
+                        state.diary.mapNotNull { e ->
+                            val m = state.diaryMeta[e.id] ?: return@mapNotNull null
+                            val d = runCatching { LocalDate.parse(e.entryDate) }.getOrNull() ?: return@mapNotNull null
+                            DiaryDay(d, m.mood, m.energy, m.sleepQuality)
+                        }.groupBy { it.date }.map { it.value.first() }
+                    },
+                )
+            }
         } else if (state.diary.isEmpty()) {
             item(key = "empty") {
                 EmptyState(
