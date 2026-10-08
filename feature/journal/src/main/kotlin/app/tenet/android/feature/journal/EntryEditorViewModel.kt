@@ -372,7 +372,19 @@ class EntryEditorViewModel @Inject constructor(
     fun onNightmare(value: Boolean) = update { copy(nightmare = value) }
     fun onRecurring(value: Boolean) = update { copy(recurring = value) }
     fun onPinned(value: Boolean) = update { copy(pinned = value) }
-    fun onColor(value: Int?) = update { copy(color = value) }
+    /** A colour as background replaces a chosen photo background (and the other way round). */
+    fun onColor(value: Int?) = update {
+        copy(color = value, attachments = if (value != null) attachments.filter { it.mimeType != NoteBackgrounds.MIME } else attachments)
+    }
+
+    /** Built-in photo background [index] (null = none). */
+    fun onBackground(index: Int?) = update {
+        val rest = attachments.filter { it.mimeType != NoteBackgrounds.MIME }
+        copy(
+            color = if (index != null) null else color,
+            attachments = if (index == null) rest else listOf(AttachmentUi(null, NoteBackgrounds.uri(index), NoteBackgrounds.MIME)) + rest,
+        )
+    }
     fun onFolder(value: String) = update { copy(folder = value) }
 
     /** Existing note folders as suggestions. */

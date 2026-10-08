@@ -222,7 +222,10 @@ internal fun NotesPage(state: JournalUiState, actions: EntryActions) {
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(notes, key = { it.id }) { note ->
-                        val image = state.attachments[note.id]?.firstOrNull { it.mimeType.startsWith("image") }
+                        // Tile wallpaper: a chosen background photo, else the note's first own photo.
+                        val image = state.attachments[note.id]?.let { list ->
+                            list.firstOrNull { it.mimeType == NoteBackgrounds.MIME } ?: list.firstOrNull { it.mimeType.startsWith("image") }
+                        }
                         EntryCard(
                             entry = note,
                             actions = actions,
@@ -748,7 +751,7 @@ internal fun EntryCard(
         Box {
             if (wallpaper != null) {
                 AsyncImage(
-                    model = wallpaper.uri,
+                    model = NoteBackgrounds.model(wallpaper.uri),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.matchParentSize(),
