@@ -806,6 +806,7 @@ internal fun EntryCard(
     val checklist = remember(entry.body) { checklistProgress(entry.body) }
     // Diary and dreams in the serif reading font if set; notes stay in the UI font.
     val serif = entry.type != EntryType.NOTE && LocalJournalSerif.current
+    val titleInHeader = !showDate && entry.title.isNotBlank()
 
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     TenetCard(
@@ -872,7 +873,14 @@ internal fun EntryCard(
                             softWrap = false,
                             overflow = TextOverflow.Clip,
                             modifier = Modifier.weight(1f),
-                        ) else Spacer(Modifier.weight(1f))
+                        ) else if (titleInHeader) {
+                            // Without a date the title moves up next to the progress and menu.
+                            Box(Modifier.weight(1f)) {
+                                JournalReading(enabled = serif) {
+                                    Text(entry.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                }
+                            }
+                        } else Spacer(Modifier.weight(1f))
                         // Checklist progress up here: the card height is fixed in the grid,
                         // a bar below the preview would be cut off.
                         checklist?.let { (done, total) ->
@@ -924,7 +932,7 @@ internal fun EntryCard(
                         Modifier.then(if (fixedHeight) Modifier.weight(1f) else Modifier).padding(end = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        if (entry.title.isNotBlank()) {
+                        if (entry.title.isNotBlank() && !titleInHeader) {
                             JournalReading(enabled = serif) {
                                 Text(entry.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             }
