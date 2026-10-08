@@ -1,6 +1,7 @@
 package app.tenet.android.ui
 
 
+import androidx.compose.foundation.background
 import app.tenet.android.core.designsystem.header.HeaderImage
 import app.tenet.android.core.designsystem.header.SubPageWash
 import androidx.compose.foundation.layout.ime
@@ -712,7 +713,8 @@ fun TenetApp(
                 }
 }
                 composable<RecipeDetailRoute> { entry ->
- SubPageWash(HeaderImage.NUTRITION) {
+ // The photo is the header here; the wash only appears in the top bar once scrolled.
+ androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(androidx.compose.material3.MaterialTheme.colorScheme.background)) {
  AreaTheme(AppArea.NUTRITION) {
                     val route = entry.toRoute<RecipeDetailRoute>()
                     val message by entry.savedStateHandle.getStateFlow<String?>(RECIPE_MESSAGE, null).collectAsStateWithLifecycle()

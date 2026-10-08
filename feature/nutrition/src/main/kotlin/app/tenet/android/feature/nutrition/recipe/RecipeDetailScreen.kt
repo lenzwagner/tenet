@@ -1,5 +1,6 @@
 package app.tenet.android.feature.nutrition.recipe
 
+import app.tenet.android.core.designsystem.header.sheetWash
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import app.tenet.android.core.designsystem.component.CardHeader
 import app.tenet.android.core.designsystem.theme.TenetCard
@@ -238,9 +239,13 @@ private fun RecipeTopBar(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    val bg by animateColorAsState(if (solid) MaterialTheme.colorScheme.surfaceContainer else Color.Transparent, label = "bar")
+    // Solid bar: the area's colour wash (like the other pages' headers), fading in.
+    val barAlpha by androidx.compose.animation.core.animateFloatAsState(if (solid) 1f else 0f, label = "bar")
     Row(
-        Modifier.fillMaxWidth().background(bg).statusBarsPadding().padding(horizontal = 8.dp, vertical = 4.dp),
+        Modifier
+            .fillMaxWidth()
+            .drawWithWash(barAlpha)
+            .statusBarsPadding().padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         BarButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", solid, onBack)
@@ -273,6 +278,20 @@ private fun BarButton(icon: androidx.compose.ui.graphics.vector.ImageVector, lab
             Box(contentAlignment = Alignment.Center) { Icon(icon, contentDescription = null, modifier = Modifier.size(22.dp)) }
         }
     }
+}
+
+@Composable
+private fun IngredientCheck(done: Boolean) {
+    androidx.compose.material3.Checkbox(checked = done, onCheckedChange = null)
+}
+
+@Composable
+private fun IngredientText(text: String, done: Boolean) {
+    Text(
+        text,
+        textDecoration = if (done) androidx.compose.ui.text.style.TextDecoration.LineThrough else null,
+        color = if (done) MaterialTheme.colorScheme.onSurfaceVariant else androidx.compose.ui.graphics.Color.Unspecified,
+    )
 }
 
 /** Cover photo, or all slideshow photos as an M3 carousel. */
@@ -476,26 +495,37 @@ fun RecipeDetailScreen(
                     Icon(Icons.Outlined.Add, contentDescription = "Mehr Portionen")
                 }
             }
+            // Ingredients as a shopping / cooking checklist (ticks last while the recipe is open).
+            var ticked by rememberSaveable(d.recipe.id) { mutableStateOf(setOf<String>()) }
+            val toggle = { key: String -> ticked = if (key in ticked) ticked - key else ticked + key }
             if (d.ingredientLines.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
                     d.ingredientLines.forEachIndexed { index, line ->
+                        val key = "l$index"
+                        val done = key in ticked
                         SegmentedListItem(
+                            onClick = { toggle(key) },
                             colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                             shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, d.ingredientLines.size),
-                        ) { Text(IngredientScaler.scale(line, factor.toDouble())) }
+                            leadingContent = { IngredientCheck(done) },
+                        ) { IngredientText(IngredientScaler.scale(line, factor.toDouble()), done) }
                     }
                 }
             }
             Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
                 d.ingredients.forEachIndexed { index, item ->
+                    val key = "i$index"
+                    val done = key in ticked
                     SegmentedListItem(
+                        onClick = { toggle(key) },
                         colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                         shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, d.ingredients.size),
+                        leadingContent = { IngredientCheck(done) },
                         trailingContent = {
                             Text("${(item.grams * factor).roundToInt()} g", style = MaterialTheme.typography.labelLarge)
                         },
                         supportingContent = item.product?.let { p -> { Text(p, maxLines = 1, overflow = TextOverflow.Ellipsis) } },
-                    ) { Text(item.displayName) }
+                    ) { IngredientText(item.displayName, done) }
                 }
             }
 
@@ -605,4 +635,13 @@ fun RecipeDetailScreen(
             },
         )
     }
+}
+
+
+/** The nutrition wash behind the solid top bar, [alpha] 0 = transparent over the photo. */
+@Composable
+private fun Modifier.drawWithWash(alpha: Float): Modifier {
+    if (alpha <= 0f) return this
+    return this.graphicsLayer { this.alpha = alpha }
+        .sheetWash(app.tenet.android.core.designsystem.header.HeaderImage.NUTRITION)
 }
