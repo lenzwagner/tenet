@@ -252,7 +252,8 @@ internal fun NotesPage(state: JournalUiState, actions: EntryActions) {
                     items(notes, key = { it.id }) { note ->
                         // Tile wallpaper: a chosen background photo, else the note's first own photo.
                         val image = state.attachments[note.id]?.let { list ->
-                            list.firstOrNull { it.mimeType == NoteBackgrounds.MIME } ?: list.firstOrNull { it.mimeType.startsWith("image") }
+                            NoteBackgrounds.wallpaperUri(list.map { it.uri to it.mimeType }, note.color)
+                                ?.let { uri -> list.first { it.uri == uri } }
                         }
                         EntryCard(
                             entry = note,

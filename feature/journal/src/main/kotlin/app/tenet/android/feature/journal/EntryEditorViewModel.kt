@@ -407,7 +407,17 @@ class EntryEditorViewModel @Inject constructor(
     fun removeSymbol(name: String) = update { copy(symbols = symbols - name) }
 
     fun addAttachment(uri: String, mimeType: String) = update {
-        copy(attachments = attachments + AttachmentUi(null, uri, mimeType))
+        // A new own photo becomes the note's background: built-in photo and colour step aside.
+        if (type == EntryType.NOTE && mimeType.startsWith("image")) {
+            copy(color = null, attachments = attachments.filter { it.mimeType != NoteBackgrounds.MIME } + AttachmentUi(null, uri, mimeType))
+        } else copy(attachments = attachments + AttachmentUi(null, uri, mimeType))
+    }
+
+    /** Own photo [uri] as background: moves it to the front, built-in photo and colour go. */
+    fun onOwnBackground(uri: String) = update {
+        val own = attachments.filter { it.mimeType != NoteBackgrounds.MIME }
+        val chosen = own.firstOrNull { it.uri == uri } ?: return@update this
+        copy(color = null, attachments = listOf(chosen) + (own - chosen))
     }
     fun removeAttachment(item: AttachmentUi) {
         // A recording that was never saved can go right away.

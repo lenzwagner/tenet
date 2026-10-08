@@ -447,7 +447,8 @@ private fun EditorScaffold(
         modifier = Modifier
             .then(if (!inSheet && !amoledDream) Modifier.sheetWash(app.tenet.android.core.designsystem.header.HeaderImage.JOURNAL) else Modifier)
             .noteBackground(
-                preset = state.attachments.firstNotNullOfOrNull { at -> at.takeIf { it.mimeType == NoteBackgrounds.MIME }?.let { NoteBackgrounds.indexOf(it.uri) } },
+                wallpaper = NoteBackgrounds.wallpaperUri(state.attachments.map { it.uri to it.mimeType }, state.color)
+                    .takeIf { state.type == EntryType.NOTE },
                 color = state.color.takeIf { state.type == EntryType.NOTE },
             )
             .nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -507,7 +508,7 @@ private fun EditorScaffold(
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
-                subtitle = { Text(formatDate(state.entryDate)) },
+                subtitle = { Text(formatDate(state.entryDate), maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis) },
                 actions = {
                     IconToggleButton(
                         checked = state.pinned,
@@ -636,9 +637,11 @@ private fun EditorScaffold(
                 FolderField(value = state.folder, folders = folders, onChange = viewModel::onFolder)
                 BackgroundPicker(
                     color = state.color,
-                    preset = state.attachments.firstNotNullOfOrNull { a -> a.takeIf { it.mimeType == NoteBackgrounds.MIME }?.let { NoteBackgrounds.indexOf(it.uri) } },
+                    wallpaper = NoteBackgrounds.wallpaperUri(state.attachments.map { it.uri to it.mimeType }, state.color),
+                    own = state.attachments.filter { it.mimeType.startsWith("image") }.map { it.uri },
                     onColor = viewModel::onColor,
                     onPreset = viewModel::onBackground,
+                    onOwn = viewModel::onOwnBackground,
                 )
             }
 
@@ -1006,42 +1009,65 @@ private fun DreamSection(
 
 // ---- Note color & attachments -----------------------------------------
 
-/** Background of a note: a colour or one of the beach photos (one at a time). */
+/** Background of a note: a colour, one of its own photos or a beach photo (one at a time). */
 @Composable
-private fun BackgroundPicker(color: Int?, preset: Int?, onColor: (Int?) -> Unit, onPreset: (Int?) -> Unit) {
+private fun BackgroundPicker(
+    color: Int?,
+    wallpaper: String?,
+    own: List<String>,
+    onColor: (Int?) -> Unit,
+    onPreset: (Int?) -> Unit,
+    onOwn: (String) -> Unit,
+) {
+    val preset = wallpaper?.let { NoteBackgrounds.indexOf(it) }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        ColorRow(selected = if (preset != null) -1 else color, onSelect = { c -> if (c == null) { onPreset(null); onColor(null) } else onColor(c) })
+        ColorRow(selected = if (wallpaper != null) -1 else color, onSelect = { c -> if (c == null) { onPreset(null); onColor(null) } else onColor(c) })
         Text("Bild", style = MaterialTheme.typography.labelLarge)
         androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(NoteBackgrounds.all.size) { i ->
-                val selected = i == preset
-                Box(
-                    Modifier
-                        .size(width = 56.dp, height = 84.dp)
-                        .clip(MaterialTheme.shapes.medium)
-                        .border(
-                            if (selected) 3.dp else 0.dp,
-                            if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                            MaterialTheme.shapes.medium,
-                        )
-                        .clickable { onPreset(if (selected) null else i) },
-                ) {
-                    AsyncImage(
-                        model = NoteBackgrounds.all[i],
-                        contentDescription = "Hintergrundbild ${i + 1}",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.matchParentSize(),
-                    )
-                    if (selected) {
-                        Icon(
-                            Icons.Outlined.Check,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.align(Alignment.Center).size(28.dp).background(Color.Black.copy(alpha = 0.35f), CircleShape).padding(4.dp),
-                        )
-                    }
+            // Own photos first, then the built-in ones.
+            items(own.size) { i ->
+                val uri = own[i]
+                BackgroundThumb(model = uri, label = "Eigenes Bild ${i + 1}", selected = uri == wallpaper && preset == null) {
+                    // An own photo stays the background until another one, a colour or a built-in photo is chosen.
+                    if (uri != wallpaper || preset != null) onOwn(uri)
                 }
             }
+            items(NoteBackgrounds.all.size) { i ->
+                val selected = i == preset
+                BackgroundThumb(model = NoteBackgrounds.all[i], label = "Hintergrundbild ${i + 1}", selected = selected) {
+                    onPreset(if (selected) null else i)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BackgroundThumb(model: Any, label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(width = 56.dp, height = 84.dp)
+            .clip(MaterialTheme.shapes.medium)
+            .border(
+                if (selected) 3.dp else 0.dp,
+                if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                MaterialTheme.shapes.medium,
+            )
+            .clickable(onClick = onClick),
+    ) {
+        AsyncImage(
+            model = model,
+            contentDescription = label,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.matchParentSize(),
+        )
+        if (selected) {
+            Icon(
+                Icons.Outlined.Check,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.align(Alignment.Center).size(28.dp).background(Color.Black.copy(alpha = 0.35f), CircleShape).padding(4.dp),
+            )
         }
     }
 }
@@ -1223,15 +1249,19 @@ const val START_DICTATE = "dictate"
  * white (dark: black) veil so text stays readable, or its colour as a calm tint.
  */
 @Composable
-private fun Modifier.noteBackground(preset: Int?, color: Int?): Modifier {
+private fun Modifier.noteBackground(wallpaper: String?, color: Int?): Modifier {
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val veil = if (dark) Color.Black else Color.White
+    val preset = wallpaper?.let { NoteBackgrounds.indexOf(it) }
+    // Own photos load asynchronously; built-in ones are drawables.
+    val painter = when {
+        preset != null -> androidx.compose.ui.res.painterResource(NoteBackgrounds.all[preset])
+        wallpaper != null -> coil3.compose.rememberAsyncImagePainter(wallpaper)
+        else -> null
+    }
     return when {
-        preset != null -> this
-            .paint(
-                androidx.compose.ui.res.painterResource(NoteBackgrounds.all[preset]),
-                contentScale = ContentScale.Crop,
-            )
+        painter != null -> this
+            .paint(painter, contentScale = ContentScale.Crop)
             .drawBehind {
                 drawRect(
                     androidx.compose.ui.graphics.Brush.verticalGradient(

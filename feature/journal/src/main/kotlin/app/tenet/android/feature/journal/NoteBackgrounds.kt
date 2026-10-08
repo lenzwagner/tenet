@@ -22,6 +22,14 @@ internal object NoteBackgrounds {
     /** Index of a preset uri, null for anything else. */
     fun indexOf(uri: String): Int? = uri.removePrefix(PREFIX).takeIf { uri.startsWith(PREFIX) }?.toIntOrNull()?.minus(1)?.takeIf { it in all.indices }
 
+    /**
+     * The note's wallpaper, one at a time: a chosen built-in photo, else (without a
+     * colour) the note's own first photo. Same in the tile and the open note.
+     */
+    fun wallpaperUri(uris: List<Pair<String, String>>, color: Int?): String? =
+        uris.firstOrNull { it.second == MIME }?.first
+            ?: if (color == null) uris.firstOrNull { it.second.startsWith("image") }?.first else null
+
     /** What Coil loads for an attachment uri: the drawable for presets, else the uri itself. */
     fun model(uri: String): Any = indexOf(uri)?.let { all[it] } ?: uri
 }
