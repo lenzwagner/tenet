@@ -409,7 +409,9 @@ private fun ChatPanel(
                     value = text,
                     onValueChange = { text = it },
                     placeholder = { Text("Nachricht an $name") },
-                    singleLine = true,
+                    // Longer messages wrap instead of scrolling sideways, so the cursor can reach every word.
+                    singleLine = false,
+                    maxLines = 5,
                     shape = MaterialTheme.shapes.extraLarge,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                     keyboardActions = KeyboardActions(onSend = { submit() }),

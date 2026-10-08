@@ -365,7 +365,7 @@ fun RecipeDetailScreen(
     val scroll = rememberScrollState()
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { app.tenet.android.core.designsystem.component.TenetSnackbarHost(snackbar) },
         contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
     ) { padding ->
         val d = detail

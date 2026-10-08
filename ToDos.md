@@ -1,10 +1,10 @@
 # Tenet – offene ToDos
 
-Stand: 07.10.2026, Version 1.0.0.51 (auf `main` gepusht, APK `tenet-1.0.0.51-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 07.10.2026, Version 1.0.0.52 (auf `main` gepusht, APK `tenet-1.0.0.52-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Übergabe (Session 06.–07.10.2026)
 
-**Stand:** 1.0.0.6 – 1.0.0.51 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
+**Stand:** 1.0.0.6 – 1.0.0.52 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
 
 **Wichtig vor dem nächsten Update am Handy:**
 - Seit 1.0.0.6 ist die Datenbank mit SQLCipher verschlüsselt (Rohschlüssel, im Android Keystore gewrappt, `no_backup/db.key`). Die alte Klartext-DB wird beim ersten Start einmal umgewandelt. Im Emulator geprüft, mit echten Daten noch nicht → vorher mit Google anmelden und synchronisieren.
@@ -105,7 +105,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Alte APKs im Projektordner aufräumen (~40 Stück, je ~10–18 MB, enthalten den NIM-Schlüssel)
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.51)
+## Zuletzt erledigt (0.5.0 – 1.0.0.52)
+
+- 1.0.0.52: Neuer Toast/Snackbar-Look app-weit (schwebende Karte mit Icon-Chip, Titel fett + Details darunter, tonaler Rückgängig-Knopf); Pet-Eingabe mehrzeilig (Cursor erreicht jedes Wort); Tagebuch öffnet standardmäßig im Kalender
 
 - 1.0.0.51: Begleiter arbeitet im Hintergrund weiter, wenn man den Chat schließt (Hinweis im Chat); fertig → kurze Sprechblase „Fertig ✓“ am Tier, Antwort → „Antwort ist da“ (antippen öffnet); Status zeigt den echten Schritt aus der KI-Entscheidung („trägt 300 ml Wasser ein“, „ergänzt „Einkaufsliste““), vorher neutral; Wasser/ml wird nicht mehr als Notiz geraten
 

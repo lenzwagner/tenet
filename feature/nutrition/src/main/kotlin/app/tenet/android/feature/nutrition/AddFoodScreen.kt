@@ -190,7 +190,7 @@ fun AddFoodScreen(
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { app.tenet.android.core.designsystem.component.TenetSnackbarHost(snackbar) },
         containerColor = if (sheet) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.background,
         contentWindowInsets = if (sheet) {
             WindowInsets.navigationBars.union(WindowInsets.ime)

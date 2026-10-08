@@ -85,7 +85,7 @@ fun MacroOptimizerScreen(
 
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { app.tenet.android.core.designsystem.component.TenetSnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
                 colors = app.tenet.android.core.designsystem.header.washTopBarColors(),

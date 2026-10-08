@@ -679,7 +679,7 @@ fun TenetApp(
                         )
                     }
                     }
-                    SnackbarHost(
+                    app.tenet.android.core.designsystem.component.TenetSnackbarHost(
                         hostState = sheetSnackbar.host,
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -833,7 +833,7 @@ fun TenetApp(
             }
 
             // One snackbar host for the whole app, above the floating tab bar.
-            SnackbarHost(
+            app.tenet.android.core.designsystem.component.TenetSnackbarHost(
                 hostState = appSnackbar.host,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)

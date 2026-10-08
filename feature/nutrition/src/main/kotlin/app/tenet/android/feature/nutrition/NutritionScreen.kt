@@ -188,7 +188,7 @@ fun NutritionScreen(
 
     Scaffold(
         contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
-        snackbarHost = { SnackbarHost(snackbar, Modifier.padding(bottom = TenetDimens.bottomTabBarPadding)) },
+        snackbarHost = { app.tenet.android.core.designsystem.component.TenetSnackbarHost(snackbar, Modifier.padding(bottom = TenetDimens.bottomTabBarPadding)) },
         floatingActionButton = {
             val recipesPage = pagerState.currentPage == 1
             // Recipes: import (like Saffron) or write one yourself.

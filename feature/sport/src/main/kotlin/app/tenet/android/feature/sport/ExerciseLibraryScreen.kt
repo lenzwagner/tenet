@@ -159,7 +159,7 @@ fun ExerciseLibraryScreen(
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { app.tenet.android.core.designsystem.component.TenetSnackbarHost(snackbarHostState) },
         topBar = {
             MediumFlexibleTopAppBar(
                 colors = app.tenet.android.core.designsystem.header.washTopBarColors(),

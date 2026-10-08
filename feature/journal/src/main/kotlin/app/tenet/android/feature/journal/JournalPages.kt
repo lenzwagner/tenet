@@ -340,7 +340,8 @@ private fun FolderList(folders: List<String>, counts: Map<String, Int>, onOpen: 
 
 @Composable
 internal fun DiaryPage(state: JournalUiState, actions: EntryActions, onNewDiaryOn: (String) -> Unit) {
-    var calendar by rememberSaveable { mutableStateOf(false) }
+    // The mood calendar is the diary's main view; the list is one tap away.
+    var calendar by rememberSaveable { mutableStateOf(true) }
     val listState = rememberReselectListState()
     val weekStart = LocalDate.now().minusDays(WEEKLY_ENTRY_GOAL - 1L)
     val weekCount = state.diary.map { it.entryDate }.distinct()

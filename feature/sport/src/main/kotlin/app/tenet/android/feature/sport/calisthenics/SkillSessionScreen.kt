@@ -176,7 +176,7 @@ fun SkillSessionScreen(
                 },
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { app.tenet.android.core.designsystem.component.TenetSnackbarHost(snackbarHostState) },
     ) { padding ->
         if (!state.loaded || step == null) {
             Column(
