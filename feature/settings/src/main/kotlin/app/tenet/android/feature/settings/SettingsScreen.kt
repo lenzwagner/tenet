@@ -1,5 +1,15 @@
 package app.tenet.android.feature.settings
 
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.zIndex
+import androidx.compose.material.icons.outlined.DragHandle
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Lock
@@ -300,18 +310,12 @@ fun SettingsScreen(
                 }
                 item(key = "today") {
                     SettingsCard(Icons.Outlined.Today, "Heute", app.tenet.android.core.designsystem.theme.HealthTint.ACTIVITY) {
-                        SettingsGroup { shapes ->
-                            TodayCardOptions.forEachIndexed { i, (id, label, icon) ->
-                                SwitchItem(
-                                    shapes = shapes(i, TodayCardOptions.size),
-                                    icon = icon,
-                                    title = label.first,
-                                    supporting = label.second,
-                                    checked = id !in settings.todayHiddenCards,
-                                    onCheckedChange = { viewModel.setTodayCardVisible(id, it) },
-                                )
-                            }
-                        }
+                        TodayCardEditor(
+                            savedOrder = settings.todayCardOrder,
+                            hidden = settings.todayHiddenCards,
+                            onVisible = viewModel::setTodayCardVisible,
+                            onOrder = viewModel::setTodayOrder,
+                        )
                     }
                 }
                 item(key = "colors") {
@@ -1204,3 +1208,111 @@ private val TodayCardOptions: List<Triple<String, Pair<String, String>, ImageVec
     Triple("JOURNAL", "Journal" to "Tagebuch-Eintrag und Stimmung", Icons.Outlined.AutoStories),
     Triple("STREAKS", "Serien" to "Tage in Folge: Tagebuch, Ernährung, Training", Icons.Outlined.LocalFireDepartment),
 )
+
+
+/** Effective order like on "Heute": saved order, new cards (feed, readiness) in front, the rest after. */
+private fun todayOrder(saved: List<String>): List<String> {
+    val known = TodayCardOptions.map { it.first }
+    val kept = saved.filter { it in known }
+    val front = if (kept.isNotEmpty()) listOf("FEED", "READINESS").filter { it !in kept } else emptyList()
+    return (front + kept + known).distinct()
+}
+
+/**
+ * "Heute" cards: switch to show or hide, drag the handle (≡) to move a card up or
+ * down; the page follows the new order right away.
+ */
+@Composable
+private fun TodayCardEditor(
+    savedOrder: List<String>,
+    hidden: Set<String>,
+    onVisible: (String, Boolean) -> Unit,
+    onOrder: (List<String>) -> Unit,
+) {
+    val items = remember { androidx.compose.runtime.mutableStateListOf<String>() }
+    var draggingId by remember { mutableStateOf<String?>(null) }
+    var dragOffset by remember { mutableStateOf(0f) }
+    var rowHeight by remember { mutableStateOf(1f) }
+    // Follow saved changes (e.g. from "Karten anpassen" on the page) when not dragging.
+    androidx.compose.runtime.LaunchedEffect(savedOrder) {
+        if (draggingId == null) {
+            items.clear()
+            items.addAll(todayOrder(savedOrder))
+        }
+    }
+    val haptics = LocalHapticFeedback.current
+    val byId = TodayCardOptions.associateBy { it.first }
+    Column {
+        items.forEach { id ->
+            val (_, label, icon) = byId.getValue(id)
+            val dragging = id == draggingId
+            val elevation by androidx.compose.animation.core.animateDpAsState(if (dragging) 8.dp else 0.dp, label = "lift")
+            androidx.compose.runtime.key(id) {
+                Surface(
+                    color = if (dragging) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent,
+                    shadowElevation = elevation,
+                    shape = MaterialTheme.shapes.large,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .zIndex(if (dragging) 1f else 0f)
+                        .onGloballyPositioned { rowHeight = it.size.height.toFloat() }
+                        .graphicsLayer { translationY = if (dragging) dragOffset else 0f },
+                ) {
+                    Row(
+                        Modifier.padding(start = 4.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        // Drag handle.
+                        Box(
+                            Modifier
+                                .size(40.dp)
+                                .pointerInput(id) {
+                                    detectDragGestures(
+                                        onDragStart = {
+                                            draggingId = id
+                                            dragOffset = 0f
+                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        },
+                                        onDragEnd = {
+                                            draggingId = null
+                                            dragOffset = 0f
+                                            onOrder(items.toList())
+                                        },
+                                        onDragCancel = {
+                                            draggingId = null
+                                            dragOffset = 0f
+                                        },
+                                    ) { change, drag ->
+                                        change.consume()
+                                        dragOffset += drag.y
+                                        val i = items.indexOf(id)
+                                        if (dragOffset > rowHeight / 2 && i < items.lastIndex) {
+                                            items.add(i + 1, items.removeAt(i))
+                                            dragOffset -= rowHeight
+                                            haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+                                        } else if (dragOffset < -rowHeight / 2 && i > 0) {
+                                            items.add(i - 1, items.removeAt(i))
+                                            dragOffset += rowHeight
+                                            haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+                                        }
+                                    }
+                                }
+                                .semantics { contentDescription = "${label.first} verschieben" },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(Icons.Outlined.DragHandle, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        SettingsIcon(icon)
+                        Spacer(Modifier.width(14.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(label.first, style = MaterialTheme.typography.bodyLarge)
+                            Text(label.second, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        TenetSwitch(checked = id !in hidden, onCheckedChange = { onVisible(id, it) })
+                    }
+                }
+            }
+        }
+    }
+}

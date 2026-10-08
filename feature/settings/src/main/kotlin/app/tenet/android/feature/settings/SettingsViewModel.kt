@@ -227,6 +227,11 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { repository.setGlassBar(enabled) }
     }
 
+    /** New order of the "Heute" cards (hidden ones keep their place). */
+    fun setTodayOrder(order: List<String>) {
+        viewModelScope.launch { repository.setTodayCards(order, settings.value.todayHiddenCards) }
+    }
+
     fun setTodayCardVisible(id: String, visible: Boolean) {
         viewModelScope.launch { repository.setTodayCardHidden(id, !visible) }
     }
