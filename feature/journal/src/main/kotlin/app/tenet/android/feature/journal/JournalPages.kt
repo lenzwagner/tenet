@@ -1,5 +1,8 @@
 package app.tenet.android.feature.journal
 
+import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material.icons.outlined.Bedtime
 import app.tenet.android.core.designsystem.component.CardHeader
@@ -121,10 +124,17 @@ private val ListPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, 
 
 @Composable
 internal fun NotesPage(state: JournalUiState, actions: EntryActions) {
-    var grid by rememberSaveable { mutableStateOf(true) }
+    // Kachel, Liste or – once there are folders – Ordner (folders as a list, tap one to open it).
+    var mode by rememberSaveable { mutableStateOf(NotesMode.GRID) }
+    if (mode == NotesMode.FOLDERS && state.folders.isEmpty()) mode = NotesMode.GRID
+    var openFolder by rememberSaveable { mutableStateOf<String?>(null) }
+    androidx.activity.compose.BackHandler(enabled = mode == NotesMode.FOLDERS && openFolder != null) { openFolder = null }
+    val grid = mode == NotesMode.GRID
     var tagFilter by rememberSaveable { mutableStateOf<String?>(null) }
     var folderFilter by rememberSaveable { mutableStateOf<String?>(null) }
+    val inFolders = mode == NotesMode.FOLDERS
     val notes = state.notes.filter {
+        if (inFolders) return@filter it.folder.orEmpty() == openFolder.orEmpty() && openFolder != null
         (tagFilter == null || tagFilter in state.tagsByEntry[it.id].orEmpty()) &&
             (folderFilter == null || it.folder == folderFilter)
     }
@@ -151,7 +161,19 @@ internal fun NotesPage(state: JournalUiState, actions: EntryActions) {
             Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            LazyRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (inFolders) Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                if (openFolder != null) {
+                    IconButton(onClick = { openFolder = null }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Alle Ordner")
+                    }
+                }
+                Text(
+                    openFolder?.ifEmpty { "Ohne Ordner" } ?: "Ordner",
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            } else LazyRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item {
                     FilterChip(
                         selected = tagFilter == null && folderFilter == null,
@@ -184,19 +206,25 @@ internal fun NotesPage(state: JournalUiState, actions: EntryActions) {
                     )
                 }
             }
-            IconToggleButton(
-                checked = grid,
-                onCheckedChange = { grid = it },
-                shapes = IconButtonDefaults.toggleableShapes(),
-            ) {
-                Icon(
-                    if (grid) Icons.AutoMirrored.Outlined.ViewList else Icons.Outlined.GridView,
-                    contentDescription = if (grid) "Als Liste" else "Als Raster",
-                )
+            NotesMode.entries.filter { it != NotesMode.FOLDERS || state.folders.isNotEmpty() }.forEach { m ->
+                IconToggleButton(
+                    checked = mode == m,
+                    onCheckedChange = {
+                        mode = m
+                        openFolder = null
+                    },
+                    shapes = IconButtonDefaults.toggleableShapes(),
+                ) { Icon(m.icon, contentDescription = m.label) }
             }
         }
 
         when {
+            inFolders && openFolder == null -> FolderList(
+                folders = state.folders,
+                counts = state.notes.groupingBy { it.folder.orEmpty() }.eachCount(),
+                onOpen = { openFolder = it },
+            )
+
             notes.isEmpty() -> EmptyState(
                 icon = Icons.AutoMirrored.Outlined.Notes,
                 title = when {
@@ -234,6 +262,7 @@ internal fun NotesPage(state: JournalUiState, actions: EntryActions) {
                             hasVoice = state.attachments[note.id].orEmpty().any { it.mimeType.startsWith("audio") },
                             previewLines = 4,
                             fixedHeight = true,
+                            showDate = false,
                             modifier = Modifier.height(240.dp).animateItem(),
                             selecting = selecting,
                             selected = note.id in selectedIds,
@@ -255,6 +284,7 @@ internal fun NotesPage(state: JournalUiState, actions: EntryActions) {
                                 image = state.attachments[note.id]?.firstOrNull { it.mimeType.startsWith("image") },
                                 hasVoice = state.attachments[note.id].orEmpty().any { it.mimeType.startsWith("audio") },
                                 previewLines = 3,
+                                showDate = false,
                                 selecting = selecting,
                                 selected = note.id in selectedIds,
                                 onSelect = { toggle(note.id) },
@@ -263,6 +293,42 @@ internal fun NotesPage(state: JournalUiState, actions: EntryActions) {
                     }
                 }
             }
+        }
+    }
+}
+
+private enum class NotesMode(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    GRID("Als Kacheln", Icons.Outlined.GridView),
+    LIST("Als Liste", Icons.AutoMirrored.Outlined.ViewList),
+    FOLDERS("Nach Ordnern", Icons.Outlined.Folder),
+}
+
+/** Folders as a list: name and number of notes; "Ohne Ordner" for the rest. */
+@Composable
+private fun FolderList(folders: List<String>, counts: Map<String, Int>, onOpen: (String) -> Unit) {
+    val rows = folders.sortedBy { it.lowercase() } + listOfNotNull("".takeIf { (counts[""] ?: 0) > 0 })
+    val listState = rememberReselectListState()
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = ListPadding,
+        verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap),
+    ) {
+        itemsIndexed(rows, key = { _, f -> "folder-row-$f" }) { i, folder ->
+            val n = counts[folder] ?: 0
+            SegmentedListItem(
+                onClick = { onOpen(folder) },
+                shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(i, rows.size),
+                leadingContent = {
+                    Icon(
+                        if (folder.isEmpty()) Icons.AutoMirrored.Outlined.Notes else Icons.Filled.Folder,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                },
+                supportingContent = { Text(if (n == 1) "1 Notiz" else "$n Notizen") },
+                trailingContent = { Icon(Icons.Outlined.ChevronRight, contentDescription = null) },
+            ) { Text(folder.ifEmpty { "Ohne Ordner" }) }
         }
     }
 }
@@ -732,6 +798,8 @@ internal fun EntryCard(
     selecting: Boolean = false,
     selected: Boolean = false,
     onSelect: (() -> Unit)? = null,
+    /** Notes leave the date out of the overview; it shows inside the note. */
+    showDate: Boolean = true,
 ) {
     var menu by remember { mutableStateOf(false) }
     val preview = remember(entry.body) { markdownPlain(entry.body) }
@@ -796,7 +864,7 @@ internal fun EntryCard(
                             leading()
                             Spacer(Modifier.width(10.dp))
                         }
-                        Text(
+                        if (showDate) Text(
                             formatDate(entry.entryDate),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -804,7 +872,7 @@ internal fun EntryCard(
                             softWrap = false,
                             overflow = TextOverflow.Clip,
                             modifier = Modifier.weight(1f),
-                        )
+                        ) else Spacer(Modifier.weight(1f))
                         // Checklist progress up here: the card height is fixed in the grid,
                         // a bar below the preview would be cut off.
                         checklist?.let { (done, total) ->

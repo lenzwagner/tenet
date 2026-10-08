@@ -1,10 +1,10 @@
 # Tenet – offene ToDos
 
-Stand: 07.10.2026, Version 1.0.0.46 (auf `main` gepusht, APK `tenet-1.0.0.46-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 07.10.2026, Version 1.0.0.47 (auf `main` gepusht, APK `tenet-1.0.0.47-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Übergabe (Session 06.–07.10.2026)
 
-**Stand:** 1.0.0.6 – 1.0.0.46 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
+**Stand:** 1.0.0.6 – 1.0.0.47 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
 
 **Wichtig vor dem nächsten Update am Handy:**
 - Seit 1.0.0.6 ist die Datenbank mit SQLCipher verschlüsselt (Rohschlüssel, im Android Keystore gewrappt, `no_backup/db.key`). Die alte Klartext-DB wird beim ersten Start einmal umgewandelt. Im Emulator geprüft, mit echten Daten noch nicht → vorher mit Google anmelden und synchronisieren.
@@ -105,7 +105,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Alte APKs im Projektordner aufräumen (~40 Stück, je ~10–18 MB, enthalten den NIM-Schlüssel)
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.46)
+## Zuletzt erledigt (0.5.0 – 1.0.0.47)
+
+- 1.0.0.47: Notizen ohne Datum in Kachel und Liste (nur noch in der Notiz selbst); Ansicht Kachel · Liste · Ordner (Ordner erscheint, sobald es welche gibt: Ordner als Liste mit Anzahl, antippen öffnet, Zurück-Pfeil); „Karten anpassen“ auf Heute mit Ziehgriff (≡) statt Pfeilen wie in den Einstellungen
 
 - 1.0.0.46: Begleiter-Auswahl als Karussell: das mittlere Tier im Fokus (groß, ausgewählt, läuft), Nachbarn kleiner und blasser, Wischen oder Antippen wählt, Punkte zeigen die Position
 

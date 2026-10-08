@@ -1,5 +1,10 @@
 package app.tenet.android.feature.today
 
+import androidx.compose.material.icons.outlined.DragHandle
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -980,29 +985,64 @@ private fun CardsSheet(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            // Drag the handle (≡) to move a card, like in Einstellungen → Heute.
+            var draggingCard by remember { mutableStateOf<TodayCard?>(null) }
+            var dragOffset by remember { mutableStateOf(0f) }
+            var rowHeight by remember { mutableStateOf(1f) }
+            val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
             Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
                 items.forEachIndexed { index, card ->
                     val visible = card !in off
-                    SegmentedListItem(
-                        shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, items.size),
-                        leadingContent = {
-                            TenetSwitch(checked = visible, onCheckedChange = { if (it) off.remove(card) else off.add(card) })
-                        },
-                        trailingContent = {
-                            Row {
-                                IconButton(
-                                    onClick = { items.add(index - 1, items.removeAt(index)) },
-                                    enabled = index > 0,
-                                    shapes = IconButtonDefaults.shapes(),
-                                ) { Icon(Icons.Outlined.KeyboardArrowUp, contentDescription = "${card.label} nach oben") }
-                                IconButton(
-                                    onClick = { items.add(index + 1, items.removeAt(index)) },
-                                    enabled = index < items.lastIndex,
-                                    shapes = IconButtonDefaults.shapes(),
-                                ) { Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = "${card.label} nach unten") }
-                            }
-                        },
-                    ) { Text(card.label) }
+                    val dragging = card == draggingCard
+                    androidx.compose.runtime.key(card) {
+                        SegmentedListItem(
+                            shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, items.size),
+                            modifier = Modifier
+                                .zIndex(if (dragging) 1f else 0f)
+                                .onGloballyPositioned { rowHeight = it.size.height.toFloat() + 2f }
+                                .graphicsLayer {
+                                    translationY = if (dragging) dragOffset else 0f
+                                    shadowElevation = if (dragging) 16f else 0f
+                                },
+                            leadingContent = {
+                                TenetSwitch(checked = visible, onCheckedChange = { if (it) off.remove(card) else off.add(card) })
+                            },
+                            trailingContent = {
+                                Box(
+                                    Modifier
+                                        .size(40.dp)
+                                        .pointerInput(card) {
+                                            detectDragGestures(
+                                                onDragStart = {
+                                                    draggingCard = card
+                                                    dragOffset = 0f
+                                                    haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                                },
+                                                onDragEnd = { draggingCard = null; dragOffset = 0f },
+                                                onDragCancel = { draggingCard = null; dragOffset = 0f },
+                                            ) { change, drag ->
+                                                change.consume()
+                                                dragOffset += drag.y
+                                                val i = items.indexOf(card)
+                                                if (dragOffset > rowHeight / 2 && i < items.lastIndex) {
+                                                    items.add(i + 1, items.removeAt(i))
+                                                    dragOffset -= rowHeight
+                                                    haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.SegmentFrequentTick)
+                                                } else if (dragOffset < -rowHeight / 2 && i > 0) {
+                                                    items.add(i - 1, items.removeAt(i))
+                                                    dragOffset += rowHeight
+                                                    haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.SegmentFrequentTick)
+                                                }
+                                            }
+                                        }
+                                        .semantics { contentDescription = "${card.label} verschieben" },
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(Icons.Outlined.DragHandle, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            },
+                        ) { Text(card.label) }
+                    }
                 }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
