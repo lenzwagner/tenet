@@ -874,7 +874,7 @@ internal fun EntryCard(
                             overflow = TextOverflow.Clip,
                             modifier = Modifier.weight(1f),
                         ) else if (titleInHeader) {
-                            // Without a date the title moves up next to the progress and menu.
+                            // Without a date the title moves up next to the menu.
                             Box(Modifier.weight(1f)) {
                                 JournalReading(enabled = serif) {
                                     Text(entry.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -883,7 +883,8 @@ internal fun EntryCard(
                         } else Spacer(Modifier.weight(1f))
                         // Checklist progress up here: the card height is fixed in the grid,
                         // a bar below the preview would be cut off.
-                        checklist?.let { (done, total) ->
+                        // Notes (no date) keep the header to the menu alone.
+                        checklist?.takeIf { showDate }?.let { (done, total) ->
                             Surface(
                                 shape = CircleShape,
                                 color = if (done == total) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,

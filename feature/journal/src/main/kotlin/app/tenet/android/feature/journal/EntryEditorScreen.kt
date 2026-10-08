@@ -1,5 +1,6 @@
 package app.tenet.android.feature.journal
 
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.paint
 import androidx.compose.foundation.border
@@ -480,9 +481,24 @@ private fun EditorScaffold(
                     }
                 },
                 title = {
-                    Text(
+                    // Notes: only their own title up here, editable in place (no "Neue Notiz").
+                    if (state.type == EntryType.NOTE) BasicTextField(
+                        value = state.title,
+                        onValueChange = viewModel::onTitle,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences),
+                        singleLine = true,
+                        textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        decorationBox = { inner ->
+                            if (state.title.isEmpty()) {
+                                Text("Titel", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f), maxLines = 1)
+                            }
+                            inner()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) else Text(
                         when (state.type) {
-                            EntryType.NOTE -> if (state.isNew) "Neue Notiz" else "Notiz"
+                            EntryType.NOTE -> ""
                             EntryType.DIARY -> if (state.isNew) "Neuer Tagebucheintrag" else "Tagebucheintrag"
                             EntryType.DREAM -> if (state.isNew) "Neuer Traum" else "Traum"
                         },
@@ -559,7 +575,7 @@ private fun EditorScaffold(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // Title like Google Keep: large text, no box.
-            JournalReading(enabled = state.type != EntryType.NOTE && LocalJournalSerif.current) {
+            if (state.type != EntryType.NOTE) JournalReading(enabled = LocalJournalSerif.current) {
                 BasicTextField(
                     value = state.title,
                     onValueChange = viewModel::onTitle,
