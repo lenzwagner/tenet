@@ -405,13 +405,6 @@ private fun OnThisDayCard(entries: List<Entry>, actions: EntryActions) {
     }
 }
 
-private val MoodColors = listOf(
-    Color(0xFFE5736F),
-    Color(0xFFF2A65A),
-    Color(0xFFE8C547),
-    Color(0xFF9CCB6B),
-    Color(0xFF4CAF7A),
-)
 
 /** Month heatmap: each day tinted by the average diary mood. */
 @Composable
@@ -465,11 +458,13 @@ private fun MoodCalendar(moods: Map<String, Float>, onDay: (LocalDate) -> Unit) 
                                 val mood = moods[date.toString()]
                                 val color = mood?.let { moodColors[(it.toInt() - 1).coerceIn(0, 4)] }
                                 val future = date.isAfter(today)
+                                // Mood day: its colour, fading to white in the middle so the number stays readable.
+                                val base = MaterialTheme.colorScheme.surface
                                 Surface(
                                     onClick = { onDay(date) },
                                     enabled = !future,
                                     shape = CircleShape,
-                                    color = color?.let { lerp(surface, it, 0.75f) } ?: surface,
+                                    color = color ?: surface,
                                     border = if (date == today) {
                                         androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
                                     } else {
@@ -477,7 +472,22 @@ private fun MoodCalendar(moods: Map<String, Float>, onDay: (LocalDate) -> Unit) 
                                     },
                                     modifier = Modifier.fillMaxSize(),
                                 ) {
-                                    Box(contentAlignment = Alignment.Center) {
+                                    Box(
+                                        Modifier.fillMaxSize().then(
+                                            if (color != null) {
+                                                Modifier.background(
+                                                    androidx.compose.ui.graphics.Brush.radialGradient(
+                                                        0f to base.copy(alpha = 0.92f),
+                                                        0.45f to base.copy(alpha = 0.7f),
+                                                        1f to Color.Transparent,
+                                                    ),
+                                                )
+                                            } else {
+                                                Modifier
+                                            },
+                                        ),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
                                         Text(
                                             "$day",
                                             style = MaterialTheme.typography.labelMedium,
@@ -492,15 +502,6 @@ private fun MoodCalendar(moods: Map<String, Float>, onDay: (LocalDate) -> Unit) 
                                 }
                             }
                         }
-                    }
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                MoodEmojis.forEachIndexed { i, emoji ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(shape = CircleShape, color = moodColors[i], modifier = Modifier.size(10.dp)) {}
-                        Spacer(Modifier.width(4.dp))
-                        Text(emoji, style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }

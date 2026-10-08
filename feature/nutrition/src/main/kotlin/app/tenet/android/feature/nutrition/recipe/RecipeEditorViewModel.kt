@@ -98,8 +98,22 @@ class RecipeEditorViewModel @Inject constructor(
         }
     }
 
+    /** Something was changed since loading: leaving stores it. */
+    private var dirty = false
+
     private fun update(block: RecipeEditorState.() -> RecipeEditorState) {
         _state.value = _state.value.block().copy(error = null)
+        dirty = true
+    }
+
+    /** Back: store the changes without leaving through the "saved" path; an untitled new recipe is dropped. */
+    fun saveOnLeave(onDone: () -> Unit) {
+        val s = _state.value
+        if (!dirty || s.title.isBlank()) return onDone()
+        viewModelScope.launch {
+            store()
+            onDone()
+        }
     }
 
     fun onTitle(v: String) = update { copy(title = v) }
@@ -246,7 +260,28 @@ class RecipeEditorViewModel @Inject constructor(
         )
         viewModelScope.launch {
             recipeRepository.save(recipe, s.ingredients)
+            dirty = false
             _saved.send(recipeId)
         }
+    }
+
+    private suspend fun store() {
+        val s = _state.value
+        recipeRepository.save(
+            Recipe(
+                id = recipeId,
+                title = s.title.trim(),
+                photoUri = s.photoUri,
+                servings = s.servings,
+                minutes = s.minutes.toIntOrNull(),
+                tags = s.tags.split(',').map { it.trim() }.filter { it.isNotEmpty() }.joinToString(","),
+                steps = s.steps.trim(),
+                favorite = favorite,
+                createdAt = createdAt,
+                updatedAt = System.currentTimeMillis(),
+            ),
+            s.ingredients,
+        )
+        dirty = false
     }
 }

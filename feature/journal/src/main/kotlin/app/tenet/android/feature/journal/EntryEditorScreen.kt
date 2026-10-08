@@ -1,5 +1,8 @@
 package app.tenet.android.feature.journal
 
+import app.tenet.android.core.designsystem.theme.harmonized
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.ui.graphics.luminance
 import app.tenet.android.core.designsystem.header.sheetWash
@@ -782,7 +785,10 @@ private fun DiarySection(
     onUsePrompt: (String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        ScaleSelector("Stimmung", state.mood, MoodEmojis) { it?.let(viewModel::onMood) }
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            MoodGradient(state.mood)
+            ScaleSelector("Stimmung", state.mood, MoodEmojis) { it?.let(viewModel::onMood) }
+        }
         ScaleSelector("Energie", state.energy, listOf("1", "2", "3", "4", "5"), optional = true) { viewModel.onEnergy(it) }
         ScaleSelector("Schlafqualität", state.sleepQuality, listOf("1", "2", "3", "4", "5"), optional = true) {
             viewModel.onSleep(it)
@@ -833,6 +839,30 @@ private fun DiarySection(
 }
 
 /** 1..5 as a connected single-select button group; [optional] allows deselecting. */
+/** Red → green scale above the mood buttons; a dot marks the chosen mood, its colour glows along. */
+@Composable
+private fun MoodGradient(mood: Int) {
+    val colors = MoodColors.map { it.harmonized() }
+    val pos by androidx.compose.animation.core.animateFloatAsState(((mood - 1).coerceIn(0, 4) + 0.5f) / 5f, label = "mood")
+    val ring = MaterialTheme.colorScheme.surface
+    Box(Modifier.fillMaxWidth().height(14.dp)) {
+        Box(
+            Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(CircleShape)
+                .background(Brush.horizontalGradient(colors)),
+        )
+        androidx.compose.foundation.Canvas(Modifier.matchParentSize()) {
+            val x = size.width * pos
+            val c = colors[(mood - 1).coerceIn(0, 4)]
+            drawCircle(ring, radius = size.height / 2 + 2.dp.toPx(), center = Offset(x, size.height / 2))
+            drawCircle(c, radius = size.height / 2, center = Offset(x, size.height / 2))
+        }
+    }
+}
+
 @Composable
 private fun ScaleSelector(
     label: String,

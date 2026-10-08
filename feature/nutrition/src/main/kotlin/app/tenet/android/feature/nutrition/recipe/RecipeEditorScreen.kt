@@ -95,6 +95,8 @@ fun RecipeEditorScreen(
 ) {
     LaunchedEffect(recipeId) { viewModel.load(recipeId) }
     LaunchedEffect(Unit) { viewModel.saved.collect(onSaved) }
+    // Back stores what was changed (no save button needed).
+    androidx.activity.compose.BackHandler { viewModel.saveOnLeave(onBack) }
     val state by viewModel.state.collectAsStateWithLifecycle(context = Dispatchers.Main.immediate)
     // ^ immediate: text fields must see their own edits in the same frame,
     // otherwise fast typing can drop characters.
@@ -117,7 +119,7 @@ fun RecipeEditorScreen(
             MediumFlexibleTopAppBar(
                 colors = app.tenet.android.core.designsystem.header.washTopBarColors(),
                 scrollBehavior = scrollBehavior,
-                navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", onBack) },
+                navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", { viewModel.saveOnLeave(onBack) }) },
                 title = { Text(if (state.isNew) "Neues Rezept" else "Rezept bearbeiten") },
                 subtitle = { Text("${state.kcalPerServing} kcal · ${state.proteinPerServing} g Eiweiß pro Portion") },
                 actions = {

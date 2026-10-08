@@ -326,6 +326,8 @@ class EntryEditorViewModel @Inject constructor(
     /** Earlier states; typing is grouped into steps (a pause of 1 s starts a new one). */
     private val history = ArrayDeque<EntryEditorState>()
     private var lastSnapshotAt = 0L
+    /** The user changed something (mood alone makes a diary entry worth keeping). */
+    private var edited = false
     private val _canUndo = MutableStateFlow(false)
     val canUndo: StateFlow<Boolean> = _canUndo.asStateFlow()
 
@@ -334,6 +336,7 @@ class EntryEditorViewModel @Inject constructor(
         val after = before.block()
         if (after == before) return
         if (!before.loading) {
+            edited = true
             val now = System.currentTimeMillis()
             val typing = after.title != before.title || after.body != before.body
             if (!typing || now - lastSnapshotAt > 1_000 || history.isEmpty()) {
@@ -443,7 +446,10 @@ class EntryEditorViewModel @Inject constructor(
     /** Stores the current state (no-op for a new, still empty entry). */
     private suspend fun persist() = saveMutex.withLock {
         val s = _state.value
-        if (closed || s.loading || (entryId == null && isEmpty(s))) return@withLock
+        // A new note needs content; a new diary or dream entry also counts once mood,
+        // sleep, energy or other fields were set.
+        val worthKeeping = !isEmpty(s) || (s.type != EntryType.NOTE && edited)
+        if (closed || s.loading || (entryId == null && !worthKeeping)) return@withLock
         val now = System.currentTimeMillis()
         val id = entryId ?: newUuid().also { entryId = it }
         val entry = Entry(

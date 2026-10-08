@@ -59,6 +59,15 @@ internal fun noteContainer(color: Int?): Color {
     return lerp(base, Color(color), if (dark) 0.28f else 0.38f)
 }
 
+/** Mood 1–5 from red (bad) to green (good); diary editor and mood calendar. */
+internal val MoodColors = listOf(
+    Color(0xFFE5736F),
+    Color(0xFFF2A65A),
+    Color(0xFFE8C547),
+    Color(0xFF9CCB6B),
+    Color(0xFF4CAF7A),
+)
+
 internal val DreamEmotions = listOf(
     "Freude", "Angst", "Trauer", "Wut", "Überraschung", "Ruhe",
     "Liebe", "Verwirrung", "Scham", "Ekel", "Neugier", "Freiheit",

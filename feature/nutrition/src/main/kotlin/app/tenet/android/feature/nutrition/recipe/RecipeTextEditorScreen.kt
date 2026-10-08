@@ -194,8 +194,9 @@ fun RecipeTextEditorScreen(
     val snackbar = remember { SnackbarHostState() }
     var confirmLeave by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) { viewModel.done.collect(onSaved) }
-    val leave = { if (s.dirty) confirmLeave = true else onBack() }
-    BackHandler(enabled = s.dirty && !s.saving) { confirmLeave = true }
+    // Leaving stores the changes (no "save?" question; also syncs Saffron).
+    val leave = { if (s.dirty && s.title.isNotBlank()) viewModel.save() else onBack() }
+    BackHandler(enabled = s.dirty && !s.saving) { leave() }
 
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
