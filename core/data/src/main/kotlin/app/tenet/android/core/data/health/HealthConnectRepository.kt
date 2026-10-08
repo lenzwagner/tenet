@@ -190,6 +190,13 @@ class HealthConnectRepository @Inject constructor(
         }.onFailure { android.util.Log.w("TenetHealth", "steps failed", it) }.getOrNull()
     }
 
+    /** Permissions Tenet asks for but the user has not granted (e.g. new ones after an update). */
+    suspend fun missingPermissions(): Set<String> {
+        if (!_status.value.enabled || availability() != Availability.AVAILABLE) return emptySet()
+        val granted = runCatching { client.permissionController.getGrantedPermissions() }.getOrDefault(PERMISSIONS)
+        return FEED_PERMISSIONS - granted
+    }
+
     /** Per wake-up day: resting heart rate and night HRV, for the readiness score. */
     data class HeartDay(val restingHr: Int?, val hrvMs: Double?)
 
@@ -210,14 +217,21 @@ class HealthConnectRepository @Inject constructor(
         } else {
             emptyMap()
         }
-        // Fallback: 5th percentile of the heart rate while asleep.
-        val nightHr: Map<java.time.LocalDate, Int> = if (READ_HR in granted && nights.isNotEmpty()) {
-            val samples = runCatching { readAll(HeartRateRecord::class, range, emptySet()) }.getOrDefault(emptyList())
-                .flatMap { it.samples }
-            nights.mapNotNull { (day, night) ->
-                val bpm = samples.filter { it.time >= night.start && it.time <= night.end }.map { it.beatsPerMinute.toInt() }.sorted()
-                if (bpm.size < 20) null else day to bpm[bpm.size / 20]
-            }.toMap()
+        // Fallback without a daily resting value: the night's lowest heart rate, summarised by
+        // Health Connect itself (reading every watch sample of a month took minutes).
+        val nightHr: Map<java.time.LocalDate, Int> = if (READ_HR in granted) {
+            nights.entries.sortedByDescending { it.key }.take(21)
+                .filter { it.key !in resting }
+                .mapNotNull { (day, night) ->
+                    runCatching {
+                        client.aggregate(
+                            AggregateRequest(
+                                metrics = setOf(HeartRateRecord.BPM_MIN),
+                                timeRangeFilter = TimeRangeFilter.between(night.start, night.end),
+                            ),
+                        )[HeartRateRecord.BPM_MIN]?.toInt()
+                    }.getOrNull()?.let { day to it }
+                }.toMap()
         } else {
             emptyMap()
         }
@@ -437,6 +451,11 @@ class HealthConnectRepository @Inject constructor(
         val READ_RESTING_HR: String = HealthPermission.getReadPermission(RestingHeartRateRecord::class)
         val READ_HRV: String = HealthPermission.getReadPermission(HeartRateVariabilityRmssdRecord::class)
         val READ_STEPS: String = HealthPermission.getReadPermission(StepsRecord::class)
+
+        /** What the "Heute" feed and the widgets need. */
+        val FEED_PERMISSIONS: Set<String> by lazy {
+            setOf(READ_STEPS, READ_SLEEP, READ_RESTING_HR, READ_HRV, READ_HR, "android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND")
+        }
 
         /** Without these, nothing can be imported. */
         val REQUIRED: Set<String> = setOf(

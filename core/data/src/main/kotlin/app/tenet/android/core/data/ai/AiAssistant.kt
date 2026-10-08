@@ -140,6 +140,8 @@ class AiAssistant @Inject constructor(
         timeoutMs: Int = 120_000,
         /** false: try [models] in order before the one chosen in the settings (speed over choice). */
         configuredFirst: Boolean = true,
+        /** An answer that fails this (empty, no JSON …) counts as failed: the next model is tried. */
+        accept: (String) -> Boolean = { it.isNotBlank() },
     ): String? {
         val cfg = _config.value
         if (!cfg.usable) {
@@ -190,9 +192,14 @@ class AiAssistant @Inject constructor(
                         JSONObject(response).getJSONArray("choices").getJSONObject(0)
                             .getJSONObject("message").optString("content")
                     }.onFailure { lastError = it.message }.getOrNull()
-                    when (result) {
-                        "RETRY" -> kotlinx.coroutines.delay(4_000L * attempt)
-                        null -> break // next model
+                    when {
+                        result == "RETRY" -> kotlinx.coroutines.delay(4_000L * attempt)
+                        result == null -> break // next model
+                        !accept(result) -> {
+                            // e.g. a reasoning model that spent all tokens thinking: empty content.
+                            lastError = "leere Antwort ($model)"
+                            break
+                        }
                         else -> return@withContext result
                     }
                 }

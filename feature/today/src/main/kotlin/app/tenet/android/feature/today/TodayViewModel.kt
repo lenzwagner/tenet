@@ -100,7 +100,13 @@ class TodayViewModel @Inject constructor(
 ) : ViewModel() {
 
     /** Feed on top of "Heute": steps right now, active minutes this week. */
-    data class Feed(val steps: Long? = null, val weekActiveMin: Int = 0, val weekGoalMin: Int = 150)
+    data class Feed(
+        val steps: Long? = null,
+        val weekActiveMin: Int = 0,
+        val weekGoalMin: Int = 150,
+        /** Health Connect permissions the feed needs but does not have. */
+        val missing: Set<String> = emptySet(),
+    )
 
     private val feedTick = MutableStateFlow(0)
 
@@ -112,6 +118,7 @@ class TodayViewModel @Inject constructor(
         .mapLatest { sessions ->
             Feed(
                 steps = runCatching { healthConnect.stepsToday() }.getOrNull(),
+                missing = runCatching { healthConnect.missingPermissions() }.getOrDefault(emptySet()),
                 weekActiveMin = sessions.map { it.session }.filter { it.endedAt != null }
                     .sumOf { ((it.endedAt!! - it.startedAt) / 60_000L).coerceIn(0L, 240L) }.toInt(),
             )
@@ -314,6 +321,12 @@ class TodayViewModel @Inject constructor(
             if (date.value == knownToday) date.value = now
             knownToday = now
         }
+    }
+
+    /** After the permission dialog: read everything again. */
+    fun refreshHealth() {
+        readinessTick.value++
+        feedTick.value++
     }
 
     fun dismissReadiness() {

@@ -40,6 +40,7 @@ class CompanionAgent @Inject constructor(
     private val sport: SportRepository,
     private val weekCalendar: WeekCalendarRepository,
     private val feed: TodayFeedRepository,
+    private val readiness: app.tenet.android.core.data.health.ReadinessRepository,
 ) {
     /** Where the app should go, when the user asked to open something. */
     enum class Destination { TODAY, SPORT, JOURNAL, NUTRITION, SETTINGS }
@@ -55,7 +56,10 @@ class CompanionAgent @Inject constructor(
         // chat(): retries when NIM is busy, turns thinking off and falls back to a second
         // model – the plain json() call gave up after 30 s on slower models.
         val prompt = SYSTEM.replace("\"Tenny\"", "\"$name\"") + "\n\nKONTEXT\n" + context() + "\n\nNACHRICHT DES NUTZERS (nur darauf reagieren): " + text
-        val answer = ai.chat(prompt, fastModels(), maxTokens = 600, timeoutMs = 30_000, configuredFirst = false)
+        val answer = ai.chat(
+            prompt, fastModels(), maxTokens = 700, timeoutMs = 30_000, configuredFirst = false,
+            accept = { AiAssistant.extractJson(it) != null },
+        )
 
             ?.let { AiAssistant.extractJson(it) }
             // No guessing from the sentence here: that once logged "Federweißer" for a question.
@@ -225,6 +229,14 @@ class CompanionAgent @Inject constructor(
         val goal = food.goal(iso).first()
         val water = food.observeWater(iso).first()
         val snap = runCatching { feed.snapshot() }.getOrNull()
+        val ready = runCatching { readiness.today() }.getOrNull()
+        val heart = ready?.input?.let { i ->
+            listOfNotNull(
+                i.restingHr?.let { "Ruhepuls heute $it bpm" + (i.restingHrBaseline?.let { b -> " (Schnitt ${b.roundToInt()})" } ?: "") },
+                i.hrvMs?.let { "HRV heute ${it.roundToInt()} ms" + (i.hrvBaselineMs?.let { b -> " (Schnitt ${b.roundToInt()})" } ?: "") },
+                i.sleep?.let { s -> "Schlaf Tief ${s.deepMin ?: "?"} min, REM ${s.remMin ?: "?"} min, wach ${s.awakeMin ?: "?"} min" },
+            ).joinToString(", ")
+        }.orEmpty().ifBlank { "keine Puls-/HRV-Daten (Health Connect-Rechte?)" }
         val sessions = weekCalendar.observeSessionsBetween(today.minusDays(14), today.plusDays(1)).first()
             .filter { it.session.endedAt != null }
             .joinToString("\n") { s ->
@@ -240,6 +252,7 @@ class CompanionAgent @Inject constructor(
         return """
             Heute: ${today.format(day)}, ${LocalTime.now().withSecond(0).withNano(0)} Uhr
             Ernährung heute: ${totals.kcal.roundToInt()} von ${goal.kcal.roundToInt()} kcal, Eiweiß ${totals.protein.roundToInt()}/${goal.protein.roundToInt()} g, Wasser $water ml
+            Herz: $heart
             Gesundheit: Schritte ${snap?.steps ?: "?"}, Tagesform ${snap?.form ?: "?"}/100, Schlaf ${snap?.sleepText ?: "?"}, Woche aktiv ${snap?.weekActiveMin ?: 0}/150 min
             Trainings der letzten 14 Tage:
             $sessions

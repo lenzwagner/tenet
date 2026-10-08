@@ -282,6 +282,9 @@ fun TodayScreen(
                     )
                 }
                 if (state.isToday) {
+                    if (feed.missing.isNotEmpty()) {
+                        item(key = "health-permissions") { HealthPermissionHint(onGranted = viewModel::refreshHealth) }
+                    }
                     item(key = "feed") { HealthFeed(feed, readiness?.result, readiness?.input?.sleep) }
                 }
                 items(cards, key = { it.name }) { card ->
@@ -683,6 +686,29 @@ private fun JournalCard(
                     Text("$others ${if (others == 1) "Notiz" else "Notizen"} an diesem Tag")
                 }
             }
+        }
+    }
+}
+
+/** Steps, pulse, HRV or background reading not allowed yet: one tap opens Health Connect's dialog. */
+@Composable
+private fun HealthPermissionHint(onGranted: () -> Unit) {
+    val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.health.connect.client.PermissionController.createRequestPermissionResultContract(),
+    ) { onGranted() }
+    TenetCard(Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Outlined.MonitorHeart, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.width(12.dp))
+            Text(
+                "Für Schritte, Puls, HRV und Schlaf fehlen Health-Connect-Rechte.",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(
+                onClick = { launcher.launch(app.tenet.android.core.data.health.HealthConnectRepository.PERMISSIONS) },
+                shapes = ButtonDefaults.shapes(),
+            ) { Text("Erlauben") }
         }
     }
 }
