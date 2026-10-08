@@ -13,6 +13,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.clip
+import kotlinx.coroutines.launch
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.zIndex
 import androidx.compose.material.icons.outlined.DragHandle
@@ -1190,20 +1192,44 @@ private fun CompanionPicker(
             dismissButton = { TextButton(onClick = { editing = null }) { Text("Abbrechen") } },
         )
     }
-    androidx.compose.foundation.lazy.LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-    ) {
-        items(app.tenet.android.core.designsystem.component.CompanionKind.entries.size) { i ->
-            val kind = app.tenet.android.core.designsystem.component.CompanionKind.entries[i]
-            val isSelected = kind == selected
+    // Carousel: the centred companion is in focus (full size, selected), the
+    // neighbours peek in smaller and faded; swiping or tapping one selects it.
+    val kinds = app.tenet.android.core.designsystem.component.CompanionKind.entries
+    val pager = androidx.compose.foundation.pager.rememberPagerState(initialPage = kinds.indexOf(selected).coerceAtLeast(0)) { kinds.size }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    LaunchedEffect(pager) {
+        androidx.compose.runtime.snapshotFlow { pager.settledPage }.collect { page ->
+            kinds.getOrNull(page)?.let { if (it != selected) onSelect(it) }
+        }
+    }
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val cardWidth = 168.dp
+        val side = ((maxWidth - cardWidth) / 2).coerceAtLeast(0.dp)
+        androidx.compose.foundation.pager.HorizontalPager(
+            state = pager,
+            pageSize = androidx.compose.foundation.pager.PageSize.Fixed(cardWidth),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = side, vertical = 12.dp),
+            pageSpacing = 4.dp,
+            modifier = Modifier.fillMaxWidth(),
+        ) { i ->
+            val kind = kinds[i]
+            val offset = kotlin.math.abs((pager.currentPage - i) + pager.currentPageOffsetFraction).coerceIn(0f, 1f)
+            val focus = 1f - offset
+            val isSelected = i == pager.currentPage && offset < 0.5f
             androidx.compose.material3.Surface(
-                onClick = { onSelect(kind) },
+                onClick = { if (i != pager.currentPage) scope.launch { pager.animateScrollToPage(i) } },
                 shape = MaterialTheme.shapes.extraLarge,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
                 border = if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
-                // All cards the same size, whatever the text.
-                modifier = Modifier.width(116.dp).height(168.dp),
+                modifier = Modifier
+                    .width(cardWidth)
+                    .height(196.dp)
+                    .graphicsLayer {
+                        val s = 0.78f + 0.22f * focus
+                        scaleX = s
+                        scaleY = s
+                        alpha = 0.45f + 0.55f * focus
+                    },
             ) {
                 Box(Modifier.fillMaxSize()) {
                     Column(
@@ -1216,9 +1242,9 @@ private fun CompanionPicker(
                             walking = isSelected,
                             thinking = false,
                             facingLeft = false,
-                            modifier = Modifier.size(64.dp),
+                            modifier = Modifier.size(84.dp),
                         )
-                        Text(names[kind.name] ?: kind.label, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        Text(names[kind.name] ?: kind.label, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                         Text(
                             kind.description,
                             style = MaterialTheme.typography.labelSmall,
@@ -1229,22 +1255,39 @@ private fun CompanionPicker(
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         )
                     }
-                    androidx.compose.material3.IconButton(
-                        onClick = {
-                            draft = names[kind.name].orEmpty()
-                            editing = kind
-                        },
-                        modifier = Modifier.align(Alignment.TopEnd).padding(top = 2.dp, end = 2.dp).size(48.dp),
-                    ) {
-                        Icon(
-                            Icons.Outlined.Edit,
-                            contentDescription = "${names[kind.name] ?: kind.label} umbenennen",
-                            modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    if (isSelected) {
+                        androidx.compose.material3.IconButton(
+                            onClick = {
+                                draft = names[kind.name].orEmpty()
+                                editing = kind
+                            },
+                            modifier = Modifier.align(Alignment.TopEnd).padding(top = 2.dp, end = 2.dp).size(48.dp),
+                        ) {
+                            Icon(
+                                Icons.Outlined.Edit,
+                                contentDescription = "${names[kind.name] ?: kind.label} umbenennen",
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
             }
+        }
+    }
+    // Dots: where in the row the focused companion is.
+    Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.Center) {
+        kinds.indices.forEach { i ->
+            Box(
+                Modifier
+                    .padding(horizontal = 3.dp)
+                    .size(if (i == pager.currentPage) 8.dp else 6.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(
+                        if (i == pager.currentPage) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                    ),
+            )
         }
     }
 }
