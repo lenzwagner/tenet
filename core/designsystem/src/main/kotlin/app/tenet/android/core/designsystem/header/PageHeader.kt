@@ -144,7 +144,8 @@ private val WashHeight: Dp = 420.dp
 fun Modifier.pageWash(header: HeaderImage, progress: () -> Float): Modifier = composed {
     val bg = MaterialTheme.colorScheme.background
     val dark = bg.luminance() < 0.5f
-    val colors = header.wash.map { Color(it).copy(alpha = if (dark) 0.40f else 0.78f) }
+    val strength = LocalWashStrength.current
+    val colors = header.wash.map { Color(it).copy(alpha = ((if (dark) 0.40f else 0.78f) * strength).coerceIn(0f, 1f)) }
     val density = LocalDensity.current
     val washPx = with(density) { WashHeight.toPx() }
     val shiftPx = with(density) { LargeTitleHeight.toPx() }
@@ -299,6 +300,9 @@ fun Modifier.collapsingHeight(fullHeight: Dp, fraction: () -> Float): Modifier =
  * the top (like the main pages, without the scroll coupling). Sub-page
  * Scaffolds and top bars are transparent, so the wash shows behind them.
  */
+/** How strong the colour wash at the top of pages is (Einstellungen → Darstellung): 0 = off, 1 = default. */
+val LocalWashStrength = androidx.compose.runtime.compositionLocalOf { 1f }
+
 @Composable
 fun SubPageWash(header: HeaderImage, content: @Composable () -> Unit) {
     Box(
@@ -335,7 +339,8 @@ fun washBar(): Modifier = Modifier.composed {
 fun Modifier.sheetWash(header: HeaderImage): Modifier = composed {
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val base = if (dark) Color.Black else Color.White
-    val colors = header.wash.map { Color(it).copy(alpha = if (dark) 0.32f else 0.40f) }
+    val strength = LocalWashStrength.current
+    val colors = header.wash.map { Color(it).copy(alpha = ((if (dark) 0.32f else 0.40f) * strength).coerceIn(0f, 1f)) }
     val density = LocalDensity.current
     val washPx = with(density) { WashHeight.toPx() }
     drawBehind {

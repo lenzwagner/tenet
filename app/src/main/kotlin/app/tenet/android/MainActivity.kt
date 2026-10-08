@@ -180,6 +180,9 @@ class MainActivity : FragmentActivity() {
                 LaunchedEffect(windowBg) {
                     window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(windowBg.toArgb()))
                 }
+                androidx.compose.runtime.CompositionLocalProvider(
+                    app.tenet.android.core.designsystem.header.LocalWashStrength provides settings.washStrength,
+                ) {
                 when {
                     // Stored settings not read yet: plain surface instead of a wrong screen.
                     !settings.loaded -> androidx.compose.material3.Surface(Modifier.fillMaxSize()) {}
@@ -197,6 +200,7 @@ class MainActivity : FragmentActivity() {
                         openShortcut = null
                     },
                 )
+                }
                 }
             }
         }

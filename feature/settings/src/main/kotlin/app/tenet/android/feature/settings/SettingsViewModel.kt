@@ -251,6 +251,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { repository.setJournalSerif(enabled) }
     }
 
+    fun setWashStrength(value: Float) {
+        viewModelScope.launch { repository.setWashStrength(value) }
+    }
+
     fun setGlassBar(enabled: Boolean) {
         viewModelScope.launch { repository.setGlassBar(enabled) }
     }

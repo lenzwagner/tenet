@@ -1,5 +1,6 @@
 package app.tenet.android.feature.settings
 
+import androidx.compose.material.icons.outlined.Gradient
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.EditCalendar
@@ -310,6 +311,7 @@ fun SettingsScreen(
                                 checked = settings.glassBar,
                                 onCheckedChange = viewModel::setGlassBar,
                             )
+                        WashStrengthRow(settings.washStrength, viewModel::setWashStrength)
                         }
                     }
                 }
@@ -1452,5 +1454,34 @@ private fun CalendarSettings(settings: app.tenet.android.core.datastore.UserSett
             },
             confirmButton = { TextButton(onClick = { pick = false }) { Text("Abbrechen") } },
         )
+    }
+}
+
+
+/** "Farbverlauf": how strong the colour wash at the top of the pages is. */
+@Composable
+private fun WashStrengthRow(value: Float, onChange: (Float) -> Unit) {
+    var v by remember(value) { mutableStateOf(value) }
+    val label = when {
+        v < 0.05f -> "Aus"
+        v < 0.75f -> "Dezent"
+        v < 1.2f -> "Normal"
+        else -> "Kräftig"
+    }
+    Row(Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        SettingsIcon(Icons.Outlined.Gradient)
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Farbverlauf oben", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            androidx.compose.material3.Slider(
+                value = v,
+                onValueChange = { v = it },
+                onValueChangeFinished = { onChange(v) },
+                valueRange = 0f..1.6f,
+            )
+        }
     }
 }

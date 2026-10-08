@@ -1,10 +1,10 @@
 # Tenet – offene ToDos
 
-Stand: 07.10.2026, Version 1.0.0.44 (auf `main` gepusht, APK `tenet-1.0.0.44-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 07.10.2026, Version 1.0.0.45 (auf `main` gepusht, APK `tenet-1.0.0.45-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Übergabe (Session 06.–07.10.2026)
 
-**Stand:** 1.0.0.6 – 1.0.0.44 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
+**Stand:** 1.0.0.6 – 1.0.0.45 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
 
 **Wichtig vor dem nächsten Update am Handy:**
 - Seit 1.0.0.6 ist die Datenbank mit SQLCipher verschlüsselt (Rohschlüssel, im Android Keystore gewrappt, `no_backup/db.key`). Die alte Klartext-DB wird beim ersten Start einmal umgewandelt. Im Emulator geprüft, mit echten Daten noch nicht → vorher mit Google anmelden und synchronisieren.
@@ -105,7 +105,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Alte APKs im Projektordner aufräumen (~40 Stück, je ~10–18 MB, enthalten den NIM-Schlüssel)
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.44)
+## Zuletzt erledigt (0.5.0 – 1.0.0.45)
+
+- 1.0.0.45: Einstellungen → Darstellung: Regler „Farbverlauf oben“ (Aus · Dezent · Normal · Kräftig) für die Stärke des Header-Verlaufs auf allen Seiten, Unterseiten und Sheets
 
 - 1.0.0.44: Notiz-Hintergrund: Farbe (als ruhige Tönung über die ganze Notiz) oder eins von 20 Strand-/Meer-/Insel-Fotos (Unsplash-Lizenz, Quellen in feature/journal/docs/note-backgrounds.md) – im Editor unter weißem bzw. schwarzem Schleier, in der Kachel als Hintergrund; Farbe und Bild schließen sich gegenseitig aus
 

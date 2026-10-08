@@ -41,6 +41,7 @@ class UserSettingsRepository @Inject constructor(
             // Default: the whole app in primary + secondary only.
             twoTone = prefs[KEY_TWO_TONE] ?: true,
             glassBar = prefs[KEY_GLASS_BAR] ?: true,
+            washStrength = prefs[KEY_WASH_STRENGTH] ?: 1f,
             companion = prefs[KEY_COMPANION] ?: true,
             calendarRead = prefs[KEY_CALENDAR_READ] ?: false,
             calendarWriteId = prefs[KEY_CALENDAR_WRITE]?.takeIf { it >= 0 },
@@ -224,6 +225,10 @@ class UserSettingsRepository @Inject constructor(
         context.tenetDataStore.edit { it[KEY_JOURNAL_SERIF] = enabled }
     }
 
+    suspend fun setWashStrength(value: Float) {
+        context.tenetDataStore.edit { it[KEY_WASH_STRENGTH] = value.coerceIn(0f, 1.6f) }
+    }
+
     suspend fun setGlassBar(enabled: Boolean) {
         context.tenetDataStore.edit { it[KEY_GLASS_BAR] = enabled }
     }
@@ -265,6 +270,7 @@ class UserSettingsRepository @Inject constructor(
         val KEY_COLOR_STYLE = stringPreferencesKey("color_style")
         val KEY_TWO_TONE = booleanPreferencesKey("two_tone")
         val KEY_GLASS_BAR = booleanPreferencesKey("glass_bar")
+        val KEY_WASH_STRENGTH = androidx.datastore.preferences.core.floatPreferencesKey("wash_strength")
         val KEY_COMPANION = booleanPreferencesKey("companion")
         val KEY_CALENDAR_READ = booleanPreferencesKey("calendar_read")
         val KEY_CALENDAR_WRITE = androidx.datastore.preferences.core.longPreferencesKey("calendar_write_id")

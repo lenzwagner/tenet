@@ -28,6 +28,8 @@ data class UserSettings(
     val journalSerif: Boolean = false,
     /** Glassmorphism tab bar; false = opaque bar (fallback / accessibility). */
     val glassBar: Boolean = true,
+    /** Colour wash at the top of pages: 0 = off, 1 = default, up to 1.6 = strong. */
+    val washStrength: Float = 1f,
     /** Companion "Tenny" walking around the app (talk to it, let it log things). */
     val companion: Boolean = true,
     /** Phone calendar: show appointments in the week calendar. */
