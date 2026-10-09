@@ -485,9 +485,14 @@ private fun EditorScaffold(
                     // Notes: only their own title up here, editable in place (no "Neue Notiz").
                     if (state.type == EntryType.NOTE) BasicTextField(
                         value = state.title,
-                        onValueChange = viewModel::onTitle,
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences),
-                        singleLine = true,
+                        // A title is one line of text; long ones wrap onto a second line.
+                        onValueChange = { viewModel.onTitle(it.replace("\n", " ")) },
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences,
+                            imeAction = androidx.compose.ui.text.input.ImeAction.Done,
+                        ),
+                        singleLine = false,
+                        maxLines = 2,
                         textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                         decorationBox = { inner ->
