@@ -118,7 +118,7 @@
         <receiver
             android:name=".widget.FormWidgetReceiver"
             android:exported="true"
-            android:label="Tagesform">
+            android:label="Tenet-Form">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>

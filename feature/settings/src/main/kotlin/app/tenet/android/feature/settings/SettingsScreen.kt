@@ -425,7 +425,7 @@ fun SettingsScreen(
                                 shapes = shapes(0, 2),
                                 icon = Icons.Outlined.MonitorHeart,
                                 title = "Morgen-Bericht",
-                                supporting = "Bereitschaft mit Ruhepuls, HRV und Schlaf (Health Connect) ab ${formatMinute(settings.readinessReportMinute)}",
+                                supporting = "Tenet-Form aus HRV, Ruhepuls und Schlaf (Health Connect) ab ${formatMinute(settings.readinessReportMinute)}",
                                 checked = settings.readinessReport,
                                 onCheckedChange = { on ->
                                     if (on) withNotificationPermission { viewModel.setReadinessReport(true) } else viewModel.setReadinessReport(false)
@@ -1295,8 +1295,8 @@ private fun CompanionPicker(
 
 /** Cards of the "Heute" page (ids = TodayCard names in feature/today). */
 private val TodayCardOptions: List<Triple<String, Pair<String, String>, ImageVector>> = listOf(
-    Triple("FEED", "Gesundheits-Übersicht" to "Woche aktiv, Schritte, Tagesform, Schlaf", Icons.Outlined.MonitorHeart),
-    Triple("READINESS", "Bereitschaft" to "Score mit HRV, Ruhepuls, Schlaf und Belastung", Icons.Outlined.Speed),
+    Triple("FEED", "Gesundheits-Übersicht" to "Woche aktiv, Schritte, Tenet-Form, Schlaf", Icons.Outlined.MonitorHeart),
+    Triple("READINESS", "Tenet-Form" to "Eigener Score aus HRV, Schlaf und Ruhepuls", Icons.Outlined.Speed),
     Triple("DREAM", "Traum" to "Traum von letzter Nacht notieren", Icons.Outlined.NightsStay),
     Triple("NUTRITION", "Ernährung" to "Kalorien- und Makro-Ringe", Icons.Outlined.TrackChanges),
     Triple("SPORT", "Sport" to "Heutige und nächste Einheiten", Icons.Outlined.FitnessCenter),

@@ -37,7 +37,7 @@ import kotlinx.coroutines.launch
 /** Dashboard cards (App_Konzept.md 5.1); order and visibility are user settings. */
 enum class TodayCard(val label: String) {
     FEED("Gesundheits-Übersicht"),
-    READINESS("Bereitschaft"),
+    READINESS(app.tenet.android.core.common.Readiness.NAME),
     DREAM("Traum"),
     NUTRITION("Ernährung"),
     SPORT("Sport"),

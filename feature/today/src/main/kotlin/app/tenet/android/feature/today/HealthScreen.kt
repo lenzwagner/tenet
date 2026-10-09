@@ -139,7 +139,7 @@ fun HealthScreen(onBack: () -> Unit, viewModel: HealthViewModel = hiltViewModel(
 @Composable
 private fun ReadinessSection(r: app.tenet.android.core.data.health.ReadinessRepository.Today) {
     val dark = isDark()
-    Section(Icons.Outlined.MonitorHeart, "Bereitschaft", HealthTint.BODY, meta = "Heute") {
+    Section(Icons.Outlined.MonitorHeart, app.tenet.android.core.common.Readiness.NAME, HealthTint.BODY, meta = "Heute") {
         Row(verticalAlignment = Alignment.CenterVertically) {
             ReadinessRing(r.result.score, readinessColor(r.result.level, dark), Modifier.size(76.dp))
             Spacer(Modifier.width(16.dp))
@@ -151,6 +151,7 @@ private fun ReadinessSection(r: app.tenet.android.core.data.health.ReadinessRepo
         Tiles(r.result.contributors.map { Triple(it.kind.label, it.value, it.detail) }) { i ->
             readinessColor(partLevel(r.result.contributors[i].score), dark)
         }
+        FormExplainer()
     }
 }
 

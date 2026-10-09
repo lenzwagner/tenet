@@ -13,7 +13,7 @@ class ReadinessTest {
 
     @Test
     fun noRecoveryDataMeansNoScore() {
-        assertNull(Readiness.compute(Readiness.Input(acuteLoadMin = 200, chronicLoadMin = 800, hasTrainingHistory = true)))
+        assertNull(Readiness.compute(Readiness.Input()))
     }
 
     @Test
@@ -23,7 +23,6 @@ class ReadinessTest {
                 sleep = night(500, deep = 90, rem = 110),
                 restingHr = 50, restingHrBaseline = 54.0,
                 hrvMs = 70.0, hrvBaselineMs = 60.0,
-                acuteLoadMin = 180, chronicLoadMin = 760, hasTrainingHistory = true,
             ),
         )!!
         assertTrue(r.score >= 80)
@@ -37,7 +36,6 @@ class ReadinessTest {
                 sleep = night(300),
                 restingHr = 62, restingHrBaseline = 54.0,
                 hrvMs = 40.0, hrvBaselineMs = 60.0,
-                acuteLoadMin = 500, chronicLoadMin = 800, hasTrainingHistory = true,
             ),
         )!!
         assertTrue("score ${r.score}", r.score < 40)
@@ -53,9 +51,9 @@ class ReadinessTest {
     }
 
     @Test
-    fun loadSpikeLowersLoadPart() {
-        val calm = Readiness.compute(Readiness.Input(sleep = night(450), acuteLoadMin = 200, chronicLoadMin = 800, hasTrainingHistory = true))!!
-        val spike = Readiness.compute(Readiness.Input(sleep = night(450), acuteLoadMin = 400, chronicLoadMin = 800, hasTrainingHistory = true))!!
-        assertTrue(spike.score < calm.score)
+    fun oneShortNightAfterGoodWeekHurtsLess() {
+        val alone = Readiness.compute(Readiness.Input(sleep = night(300)))!!
+        val afterGoodWeek = Readiness.compute(Readiness.Input(sleep = night(300), previousNights = List(6) { night(480) }))!!
+        assertTrue(afterGoodWeek.score > alone.score + 20)
     }
 }

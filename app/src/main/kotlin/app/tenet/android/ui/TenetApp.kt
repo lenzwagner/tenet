@@ -862,25 +862,36 @@ private fun TabContent(
     CompositionLocalProvider(LocalTabReselect provides events, content = content)
 }
 
-/** Duration of the back animation (fast, like system back). */
-/** Material shared axis X timing: 300 ms, outgoing fades in the first 90 ms. */
+/** Duration of the page transitions (fast, like system back). */
 private const val AXIS_MS = 250
-private const val AXIS_FADE_OUT_MS = 75
 
-/** Incoming page: drifts in by ~8 % of the width and fades in after the old one is gone. */
+/**
+ * Page transitions without a gap: the page underneath always stays fully opaque,
+ * only the page on top moves and fades. A fade-through (old out, then new in)
+ * let the bare window colour – white or black – shine through halfway.
+ * Forward: the new page lies on top and drifts in; back: the closing page lies
+ * on top and drifts out, the page below is already there.
+ */
 private fun sharedAxisIn(forward: Boolean): EnterTransition =
-    slideInHorizontally(tween(AXIS_MS, easing = EmphasizedDecelerate)) { w -> if (forward) w / 12 else -w / 12 } +
-        fadeIn(tween(AXIS_MS - AXIS_FADE_OUT_MS, delayMillis = AXIS_FADE_OUT_MS, easing = LinearOutSlowInEasing))
+    if (forward) {
+        slideInHorizontally(tween(AXIS_MS, easing = EmphasizedDecelerate)) { w -> w / 12 } +
+            fadeIn(tween(AXIS_MS * 2 / 3, easing = LinearOutSlowInEasing))
+    } else {
+        // Page below on back: already in place, opaque.
+        EnterTransition.None
+    }
 
-/** Outgoing page: drifts ~8 % to the side and fades out quickly. */
 private fun sharedAxisOut(forward: Boolean): ExitTransition =
-    slideOutHorizontally(tween(AXIS_MS, easing = EmphasizedDecelerate)) { w -> if (forward) -w / 12 else w / 12 } +
-        fadeOut(tween(AXIS_FADE_OUT_MS, easing = FastOutLinearInEasing))
+    if (forward) {
+        // Page below on forward: stays opaque until the new one covers it.
+        fadeOut(tween(1, delayMillis = AXIS_MS))
+    } else {
+        slideOutHorizontally(tween(AXIS_MS, easing = EmphasizedDecelerate)) { w -> w / 12 } +
+            fadeOut(tween(AXIS_MS * 2 / 3, easing = FastOutLinearInEasing))
+    }
 
-/** Predictive back, page below: shows up late and drifts in from the left. */
-private fun gestureBackIn(): EnterTransition =
-    slideInHorizontally(tween(AXIS_MS, easing = LinearEasing)) { w -> -w / 12 } +
-        fadeIn(tween(AXIS_MS / 3, delayMillis = AXIS_MS * 2 / 3, easing = LinearEasing))
+/** Predictive back, page below: in place and opaque from the start. */
+private fun gestureBackIn(): EnterTransition = EnterTransition.None
 
 /** Predictive back, current page: follows the finger ~20 % to the right, fades at the end. */
 private fun gestureBackOut(): ExitTransition =

@@ -508,7 +508,7 @@ class CompanionAgent @Inject constructor(
             Heute: ${today.format(day)}, ${LocalTime.now().withSecond(0).withNano(0)} Uhr
             Ernährung heute: ${totals.kcal.roundToInt()} von ${goal.kcal.roundToInt()} kcal, Eiweiß ${totals.protein.roundToInt()}/${goal.protein.roundToInt()} g, Wasser $water ml
             Herz: $heart
-            Gesundheit: Schritte ${snap?.steps ?: "?"}, Tagesform ${snap?.form ?: "?"}/100, Schlaf ${snap?.sleepText ?: "?"}, Woche aktiv ${snap?.weekActiveMin ?: 0}/150 min
+            Gesundheit: Schritte ${snap?.steps ?: "?"}, Tenet-Form (eigener Erholungs-Score, nicht Google Health) ${snap?.form ?: "?"}/100, Schlaf ${snap?.sleepText ?: "?"}, Woche aktiv ${snap?.weekActiveMin ?: 0}/150 min
             Trainings der letzten 14 Tage:
             $sessions
             Geplant (7 Tage):

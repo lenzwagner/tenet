@@ -746,7 +746,7 @@ private fun HealthFeed(
             )
             FeedPill(
                 icon = Icons.Outlined.MonitorHeart,
-                label = "Tagesform",
+                label = app.tenet.android.core.common.Readiness.NAME,
                 value = readiness?.score?.toString() ?: "–",
                 colors = FeedColors.form(dark),
                 fill = readiness?.score?.div(100f),
@@ -857,7 +857,7 @@ private fun ReadinessCard(r: app.tenet.android.core.common.Readiness.Result, onC
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             CardTitle(
                 Icons.Outlined.MonitorHeart,
-                "Bereitschaft",
+                app.tenet.android.core.common.Readiness.NAME,
                 HealthTint.BODY,
                 meta = "Heute",
                 // Close: the card moves to the end of the page for today.
@@ -892,7 +892,48 @@ private fun ReadinessCard(r: app.tenet.android.core.common.Readiness.Result, onC
                     if (pair.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
+            FormExplainer()
         }
+    }
+}
+
+/**
+ * How the Tenet-Form is made, small and grey under the score: a thin bar split by
+ * the weights, the parts below it and one line on what they are compared with.
+ */
+@Composable
+internal fun FormExplainer(modifier: Modifier = Modifier) {
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+    val weights = app.tenet.android.core.common.Readiness.Weights.entries.sortedByDescending { it.value }
+    Column(modifier.fillMaxWidth().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth().height(4.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            weights.forEachIndexed { i, (_, w) ->
+                Box(
+                    Modifier
+                        .weight(w.toFloat())
+                        .fillMaxHeight()
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.28f - i * 0.07f)),
+                )
+            }
+        }
+        Row(Modifier.fillMaxWidth()) {
+            weights.forEach { (kind, w) ->
+                Text(
+                    "${kind.label} ${kotlin.math.round(w * 100).toInt()} %",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = muted,
+                    modifier = Modifier.weight(w.toFloat()),
+                )
+            }
+        }
+        Text(
+            "Eigene Berechnung aus deinen Uhr-Daten: jeder Wert im Vergleich zu deinem 30-Tage-Schnitt, " +
+                "Schlaf über die letzten ${app.tenet.android.core.common.Readiness.SLEEP_NIGHTS} Nächte – die letzte zählt halb. " +
+                "Daher nicht identisch mit Google Health.",
+            style = MaterialTheme.typography.labelSmall,
+            color = muted,
+        )
     }
 }
 
@@ -917,7 +958,7 @@ internal fun readinessColor(level: app.tenet.android.core.common.Readiness.Level
 internal fun ReadinessRing(score: Int, color: androidx.compose.ui.graphics.Color, modifier: Modifier = Modifier) {
     val track = MaterialTheme.colorScheme.surfaceContainerHighest
     val sweep by androidx.compose.animation.core.animateFloatAsState(270f * score / 100f, label = "readiness")
-    Box(modifier.semantics(mergeDescendants = true) { contentDescription = "Bereitschaft $score von 100" }, contentAlignment = Alignment.Center) {
+    Box(modifier.semantics(mergeDescendants = true) { contentDescription = "${app.tenet.android.core.common.Readiness.NAME} $score von 100" }, contentAlignment = Alignment.Center) {
         androidx.compose.foundation.Canvas(Modifier.matchParentSize()) {
             val stroke = androidx.compose.ui.graphics.drawscope.Stroke(width = 9.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
             val inset = stroke.width / 2

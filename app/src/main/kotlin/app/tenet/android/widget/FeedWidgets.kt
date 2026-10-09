@@ -117,7 +117,7 @@ private fun ringBitmap(fraction: Float, dark: Boolean, px: Int = 360): Bitmap {
     return bmp
 }
 
-/** Tagesform background: the brighter part fills like a bar. */
+/** Tenet-Form background: the brighter part fills like a bar. */
 private fun fillBitmap(fraction: Float, pill: Pill): Bitmap {
     val bmp = Bitmap.createBitmap(200, 10, Bitmap.Config.ARGB_8888)
     val c = Canvas(bmp)
@@ -198,7 +198,7 @@ private fun StepsPill(s: TodayFeedRepository.Snapshot, dark: Boolean, modifier: 
 
 @Composable
 private fun FormPill(s: TodayFeedRepository.Snapshot, dark: Boolean, modifier: GlanceModifier) = PillView(
-    R.drawable.ic_widget_form, "Tagesform", s.form?.toString() ?: "–", WidgetColors.form(dark), modifier,
+    R.drawable.ic_widget_form, "Tenet-Form", s.form?.toString() ?: "–", WidgetColors.form(dark), modifier,
     fill = s.form?.div(100f),
 )
 
