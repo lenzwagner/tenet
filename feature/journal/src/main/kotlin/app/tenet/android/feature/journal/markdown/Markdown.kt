@@ -1,5 +1,7 @@
 package app.tenet.android.feature.journal.markdown
 
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
@@ -224,7 +226,8 @@ fun MarkdownView(
     val cut = compact && (all.size > blocks.size || overflowed)
     val t = MaterialTheme.typography
     // Compact = card preview: one size step smaller everywhere.
-    val body1 = if (compact) t.bodyMedium else t.bodyLarge
+    // Previews a touch smaller still (13 sp), so the tile's title stands out like in Keep.
+    val body1 = if (compact) t.bodyMedium.copy(fontSize = 13.sp, lineHeight = 18.sp) else t.bodyLarge
     val h1 = if (compact) t.titleMediumEmphasized else t.headlineSmallEmphasized
     val h2 = if (compact) t.titleSmallEmphasized else t.titleLargeEmphasized
     val h3 = if (compact) t.labelLargeEmphasized else t.titleMediumEmphasized
@@ -265,7 +268,7 @@ fun MarkdownView(
                             Checkbox(
                                 checked = block.checked,
                                 onCheckedChange = { onToggleCheck(block.line) },
-                                modifier = Modifier.size(32.dp),
+                                modifier = Modifier.size(28.dp).scale(0.9f),
                             )
                         }
                     } else {
