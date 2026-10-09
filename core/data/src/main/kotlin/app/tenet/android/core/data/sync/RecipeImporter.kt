@@ -135,9 +135,16 @@ class RecipeImporter @Inject constructor(
             ).copy(notes = text.take(500))
         }
         onStep("KI liest das Rezept …")
-        // Saffron's prompt; the model answers in ~10 s (Saffron's Nemotron queues
-        // for minutes on NIM at times). Fallback: the fast default model.
-        val answer = ai.chat(TEXT_PROMPT + text, listOf(TEXT_MODEL), maxTokens = 3000, timeoutMs = 40_000)
+        // Nemotron 3 Super with the recipe prompt (temperature 0.2, no thinking – set in
+        // AiAssistant.chat); gpt-oss as fallback when it is busy or too slow.
+        val answer = ai.chat(
+            TEXT_PROMPT + text,
+            listOf(EXTRACT_MODEL, TEXT_MODEL),
+            maxTokens = 3000,
+            timeoutMs = 90_000,
+            configuredFirst = false,
+            accept = { AiAssistant.extractJson(it) != null },
+        )
             ?: error(ai.lastError ?: "KI hat nicht geantwortet.")
         return germanize(parse(answer, text, thumbnail), onStep)
     }
@@ -189,6 +196,7 @@ class RecipeImporter @Inject constructor(
 
     private fun parse(answer: String, original: String, thumbnail: String): ImportedRecipe {
         val json = AiAssistant.extractJson(answer) ?: error("KI-Antwort war kein Rezept.")
+        if (json.optString("error") == "no_recipe") error("Im Text wurde kein Rezept gefunden.")
         fun list(key: String) = json.optJSONArray(key)?.let { a -> (0 until a.length()).mapNotNull { a.optString(it).trim().takeIf(String::isNotEmpty) } }.orEmpty()
         val ingredients = list("ingredients")
         val tags = DietDetector.correct(
@@ -208,7 +216,7 @@ class RecipeImporter @Inject constructor(
             vegetarian = tags.firstOrNull() in setOf("Vegetarisch", "Vegan"),
             // Stated in the text beats the AI (it falls back to 2 when unsure).
             servings = CaptionRecipe.servings(original) ?: json.optInt("servings", 0).takeIf { it in 1..24 } ?: 2,
-            minutes = json.optInt("minutes", 0).coerceIn(0, 1440),
+            minutes = json.optInt("cookingTimeMinutes", json.optInt("minutes", 0)).coerceIn(0, 1440),
             slideImages = emptyList(),
         )
     }
@@ -459,6 +467,8 @@ class RecipeImporter @Inject constructor(
     private companion object {
         /** Fast and good at German on NIM (low reasoning effort, see AiAssistant). */
         const val TEXT_MODEL = "openai/gpt-oss-20b"
+        /** Recipe extraction from captions and page text. */
+        const val EXTRACT_MODEL = "nvidia/nemotron-3-super-120b-a12b"
         val PLACEHOLDER_TAGS = setOf("Küche", "Hauptkomponente", "Hauptzutat", "Fleischart", "Eigenschaften", "Gang", "Temperatur")
         const val VIDEO_HINT = "Detaillierte Zubereitung siehe Video / Link in Bio"
 
@@ -475,35 +485,66 @@ class RecipeImporter @Inject constructor(
         const val INSTA_FN_ALT = "https://get-insta-recipe-498311-uc.a.run.app"
         const val BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
-        /** Saffron's extraction prompt, plus servings and time. */
+        /** Recipe extraction prompt (caption or page text follows after "Text: "). */
         val TEXT_PROMPT = """
-            Extrahiere das Rezept aus diesem Text. Antworte NUR mit validem JSON.
-            JSON-Struktur: {"title":"...","ingredients":["..."],"steps":["..."],"category":"...","course":"...","weight":"...","tags":["..."],"servings":2,"minutes":0}
+            Du bist ein Koch-Assistent. Der folgende Text stammt aus einer Social-Media-Caption oder Webseite und kann unstrukturiert sein.
+            Aufgabe: Extrahiere alle erkennbaren Rezeptinformationen. Antworte NUR mit validem JSON, kein Markdown.
+            Nur wenn der Text nichts mit Kochen/Essen zu tun hat, gib zurück: {"error":"no_recipe"}
 
-            Regeln für die Extraktion:
-            1. Falls Zutaten oder Schritte im Text beschrieben sind, extrahiere sie präzise. Übernimm Mengenangaben (z. B. "200 g Mehl") NUR, wenn sie im Text stehen.
-               ERFINDE NIEMALS Zutaten, Mengen, Schritte, Portionen oder Zeiten, die nicht im Text stehen – lieber weglassen.
-               Zutaten, die nur in der Zubereitung vorkommen (z. B. "in Butter ausbacken", "mit Apfelmus servieren", "mit Salz abschmecken"),
-               gehören AUCH in "ingredients" – ohne Menge, wenn keine genannt ist ("Butter zum Ausbacken", "Apfelmus").
-            Anweisungen im Fließtext ("Zwiebel anbraten, Tomaten dazu, 15 Minuten kochen") SIND Schritte: teile sie in einzelne, kurze Schritte auf.
-            2. Wenn im Text KEINE Zubereitungsschritte enthalten sind (sondern z. B. nur Zutaten und ein Verweis auf ein Video oder einen Bio-Link):
-               - Extrahiere alle im Text erwähnten Zutaten.
-               - Füge als Zubereitungsschritt ("steps") einen Hinweis hinzu, z. B.: "Detaillierte Zubereitung siehe Video / Link in Bio".
-               - Falls jedoch Anweisungen im Text stehen, extrahiere diese zwingend als "steps"!
-            3. Versuche immer, mindestens den Titel und die erwähnten Zutaten zu erfassen, selbst wenn das Rezept unvollständig ist.
-            4. Behalte den TITEL ("title") in der Originalsprache bei, übersetze ihn NICHT zwangsweise.
-            5. Übersetze ALLE ANDEREN Texte (Zutaten, Schritte, Tags) zwingend vollständig ins Deutsche. Keine Zutat auf Englisch!
-            6. Schreibe den Titel NIEMALS in reinen Großbuchstaben.
-            7. "servings": Anzahl Portionen NUR falls im Text genannt, sonst 2. "minutes": Gesamtzeit in Minuten NUR falls im Text genannt, sonst 0.
-            8. Für die JSON-Felder gilt:
-               - "category": genau eines von: Hähnchen, Pute, Rind, Fisch, Pasta, Reis, Kartoffeln, Mexikanisch, Asiatisch, Vegetarisch, Andere
-               - "course": genau eines von: Vorspeise, Hauptgang, Dessert, Getränk ("Getränk" NUR für flüssige Getränke).
-               - "weight": genau eines von: Leicht, Deftig
-               - "tags": Sei EXTREM WÄHLERISCH, nur dominante Merkmale. Das ERSTE Element MUSS eines aus "Vegan", "Vegetarisch" oder "Nicht-Vegetarisch" sein (bei Fleisch/Fisch/Garnelen oder Unsicherheit: "Nicht-Vegetarisch").
-                 Weitere Tags (großgeschrieben, soweit zutreffend): Temperatur ("Warm"/"Kalt"), Gang, Küche ("Mediterran", "Asiatisch" …), Hauptkomponente ("Nudeln", "Reis" …), Fleisch/Fisch ("Huhn", "Rind" …), Eigenschaften ("Schnell", "Gesund", "Scharf" …).
+            JSON-Struktur:
+            {"title":"...","ingredients":["..."],"steps":["..."],"category":"...","course":"...","weight":"...","tags":["..."],"servings":0,"cookingTimeMinutes":0}
+
+            TITEL ("title"):
+            - In der Originalsprache lassen (englischer Titel bleibt englisch), NICHT übersetzen.
+            - KEINE Emojis, KEINE Hashtags, KEINE Sonderzeichen-Deko.
+            - NIEMALS reine Großbuchstaben (KEIN ALL CAPS).
+            - Jedes Wort beginnt mit einem Großbuchstaben (z. B. "Crispy Honey Garlic Chicken").
+            - "with", "and", "mit", "und" werden durch "&" ersetzt (z. B. "Chicken & Rice & Broccoli").
+            - Kurz und beschreibend, ohne Zusätze wie "so easy", "best ever", "recipe".
+
+            ZUTATEN ("ingredients"):
+            - Format: "Menge Einheit Zutat", z. B. "500 g Hähnchenschenkel", "3 EL Honig".
+            - Jede Zutat zwingend ins Deutsche übersetzen (z. B. "Pineapple" → "Ananas", "Red Pepper" → "Rote Paprika", "Shrimp" → "Garnelen", "Egg" → "Ei", "Flour" → "Mehl", "Panko Breadcrumbs" → "Panko-Paniermehl"). KEINE Zutat auf Englisch!
+            - Alle Mengen ins metrische System umrechnen und sinnvoll runden:
+              * cup → ml (Flüssigkeiten, 1 cup = 240 ml) bzw. g (feste Zutaten, z. B. 1 cup Mehl = 125 g, 1 cup Zucker = 200 g, 1 cup Reis = 185 g)
+              * oz → g (1 oz = 28 g), fl oz → ml (1 fl oz = 30 ml), lb → g (1 lb = 450 g), pint → ml (1 pint = 470 ml)
+              * tbsp → EL, tsp → TL, inch → cm (1 inch = 2,5 cm), °F → °C
+            - Erlaubte Einheiten: g, kg, ml, l, EL, TL, Prise, Bund, Stück, Zehe(n), Dose(n), Scheibe(n).
+            - Falls keine Zutaten erkennbar: [].
+
+            SCHRITTE ("steps"):
+            - Jeden Zubereitungsschritt als eigenen String, auf Deutsch, im Imperativ.
+            - Mengen, Temperaturen und Maße in Schritten ebenfalls metrisch (°C, cm, g, ml).
+            - Wenn KEINE Zubereitungsschritte im Text stehen (z. B. nur Zutaten + Verweis auf Video/Bio-Link): genau einen Schritt "Detaillierte Zubereitung siehe Video / Link in Bio".
+            - Stehen Anweisungen im Text, extrahiere sie zwingend vollständig.
+
+            Versuche immer, mindestens Titel und Zutaten zu erfassen, auch wenn das Rezept unvollständig ist.
+
+            FELDER:
+            - "category": genau eines von: Hähnchen, Pute, Rind, Fisch, Pasta, Reis, Kartoffeln, Mexikanisch, Asiatisch, Vegetarisch, Andere
+            - "course": PFLICHT, genau eines von: Vorspeise, Hauptgang, Dessert, Getränk
+              * "Getränk": NUR für flüssige Getränke (Smoothies, Cocktails, Kaffee, Tee, Säfte). NIEMALS für Speisen.
+              * "Dessert": Süßspeisen, Kuchen, Eis, Nachtisch.
+              * "Vorspeise": Salate, Suppen, kleine Snacks vorab.
+              * "Hauptgang": Standard für alle sättigenden Hauptmahlzeiten.
+            - "weight": PFLICHT, genau eines von: Leicht, Deftig (Leicht = Salate/Gemüse/gesund unter ~500 kcal; Deftig = viel Fett/Käse/Fleisch über ~600 kcal)
+            - "servings": ganze Zahl (0 wenn unbekannt). "cookingTimeMinutes": ganze Zahl (0 wenn unbekannt).
+            - "tags" (alle auf Deutsch, mit Großbuchstaben beginnend):
+              * Index 0 MUSS genau eines sein: "Vegan", "Vegetarisch" oder "Nicht-Vegetarisch".
+                - "Nicht-Vegetarisch", wenn Fleisch, Fisch, Garnelen oder andere tierische Fleisch-/Fischprodukte enthalten sind. Wenn unsicher: "Nicht-Vegetarisch".
+                - "Vegetarisch" nur, wenn komplett fleisch- und fischfrei.
+                - "Vegan" nur, wenn komplett frei von tierischen Produkten (kein Fleisch, Fisch, Ei, Milch, Honig usw.).
+              * Temperatur: "Warm" oder "Kalt" (MUSS "Warm" sein, wenn gebraten, gekocht, gebacken oder frittiert).
+              * Gang: "Getränk", "Vorspeise", "Hauptgang", "Dessert" oder "Sonstiges".
+              * Küche (wenn erkennbar): z. B. "Mediterran", "Asiatisch", "Deutsch", "Italienisch", "Mexikanisch".
+              * Sei bei Komponenten-Tags EXTREM WÄHLERISCH: nur wenn ABSOLUTE Hauptkomponente bzw. im Titel.
+                - Kohlenhydrate: z. B. "Nudeln", "Reis", "Kartoffeln", "Salat", "Brot" ("Brot" nur bei Sandwich, Burger, Toast oder brotbasiert).
+                - Fleisch/Fisch: z. B. "Fisch", "Huhn", "Ente", "Rind", "Schwein", "Lamm", "Garnelen".
+                - "Getränk" NIEMALS als Tag für Speisen.
+              * Weitere Eigenschaften: z. B. "Schnell", "Gesund", "Scharf", "Süß", "Herzhaft".
 
             Text:
-        """.trimIndent() + "\n"
+        """.trimIndent() + " "
 
         /** Classification only (recipe sites deliver ingredients and steps themselves). */
         val CLASSIFY_PROMPT = """
