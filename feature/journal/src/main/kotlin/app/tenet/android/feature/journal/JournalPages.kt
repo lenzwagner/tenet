@@ -862,7 +862,11 @@ internal fun EntryCard(
                         .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 14.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        // Notes: title and icons hang from the same top edge in every tile.
+                        verticalAlignment = if (showDate) Alignment.CenterVertically else Alignment.Top,
+                        modifier = if (showDate) Modifier else Modifier.padding(top = 8.dp, end = 12.dp),
+                    ) {
                         if (leading != null) {
                             leading()
                             Spacer(Modifier.width(10.dp))
@@ -876,7 +880,7 @@ internal fun EntryCard(
                             overflow = TextOverflow.Clip,
                             modifier = Modifier.weight(1f),
                         ) else if (titleInHeader) {
-                            // Without a date the title moves up next to the menu.
+                            // Without a date the title moves up into the header line.
                             Box(Modifier.weight(1f)) {
                                 JournalReading(enabled = serif) {
                                     Text(entry.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -913,7 +917,9 @@ internal fun EntryCard(
                                 selected,
                                 Modifier.padding(12.dp),
                             )
-                        } else Box {
+                        // Notes have no ⋮ (like Keep): the title gets the full width; pin in the
+                        // editor, delete via long-press selection or swipe.
+                        } else if (showDate) Box {
                             IconButton(onClick = { menu = true }, shapes = IconButtonDefaults.shapes()) {
                                 Icon(Icons.Outlined.MoreVert, contentDescription = "Mehr")
                             }
