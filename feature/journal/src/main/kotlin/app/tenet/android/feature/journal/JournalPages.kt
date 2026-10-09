@@ -263,7 +263,8 @@ internal fun NotesPage(state: JournalUiState, actions: EntryActions) {
                             tags = state.tagsByEntry[note.id].orEmpty(),
                             image = image,
                             hasVoice = state.attachments[note.id].orEmpty().any { it.mimeType.startsWith("audio") },
-                            previewLines = 10,
+                            // Like Keep: at most 8 entries (or 8 lines of text), then "…".
+                            previewLines = 8,
                             keepTile = true,
                             showDate = false,
                             modifier = Modifier.animateItem(),
@@ -990,6 +991,7 @@ internal fun EntryCard(
                                         compact = true,
                                         maxBlocks = lines,
                                         maxLines = lines,
+                                        moreAsEllipsis = keepTile,
                                     )
                                 }
                                 // Selecting: a tap anywhere on the preview (checkboxes, links) only selects.

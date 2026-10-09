@@ -216,6 +216,8 @@ fun MarkdownView(
     compact: Boolean = false,
     maxBlocks: Int = Int.MAX_VALUE,
     maxLines: Int = Int.MAX_VALUE,
+    /** Keep tile: more entries than shown end in a "…" line instead of a fade. */
+    moreAsEllipsis: Boolean = false,
 ) {
     val all = remember(body) { parseMarkdown(body) }
     val blocks = all.take(maxBlocks)
@@ -232,7 +234,7 @@ fun MarkdownView(
     val h2 = if (compact) t.titleSmallEmphasized else t.titleLargeEmphasized
     val h3 = if (compact) t.labelLargeEmphasized else t.titleMediumEmphasized
     Column(
-        modifier.then(if (cut) Modifier.fadeBottom() else Modifier),
+        modifier.then(if (cut && !moreAsEllipsis) Modifier.fadeBottom() else Modifier),
         verticalArrangement = Arrangement.spacedBy(if (compact) 2.dp else 6.dp),
     ) {
         blocks.forEach { block ->
@@ -323,6 +325,13 @@ fun MarkdownView(
                 }
                 MdBlock.Rule -> HorizontalDivider(Modifier.padding(vertical = 6.dp))
             }
+        }
+        if (moreAsEllipsis && all.size > blocks.size) {
+            Text(
+                "…",
+                style = body1.copy(fontSize = 18.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, lineHeight = 18.sp),
+                modifier = Modifier.padding(start = 8.dp),
+            )
         }
     }
 }
