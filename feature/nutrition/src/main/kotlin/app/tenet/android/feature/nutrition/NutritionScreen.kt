@@ -166,8 +166,10 @@ fun NutritionScreen(
     val headerState = rememberHeaderScrollState()
     ReselectEffect { headerState.animateExpand() }
     val fabExpanded by remember { derivedStateOf { headerState.progress < 0.5f } }
-    val snackbar = remember { SnackbarHostState() }
-    LaunchedEffect(Unit) { viewModel.messages.collect { snackbar.showSnackbar(it) } }
+    // Messages ("Mit Saffron synchronisiert") in the app-wide snackbar: at the bottom
+    // above the tab bar like everywhere, not lifted above the FAB.
+    val appSnackbar = LocalAppSnackbar.current
+    LaunchedEffect(Unit) { viewModel.messages.collect { appSnackbar?.show(it) } }
 
     var goalSheetOpen by remember { mutableStateOf(false) }
     if (goalSheetOpen) {
@@ -188,7 +190,6 @@ fun NutritionScreen(
 
     Scaffold(
         contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
-        snackbarHost = { app.tenet.android.core.designsystem.component.TenetSnackbarHost(snackbar, Modifier.padding(bottom = TenetDimens.bottomTabBarPadding)) },
         floatingActionButton = {
             val recipesPage = pagerState.currentPage == 1
             // Recipes: import (like Saffron) or write one yourself.
