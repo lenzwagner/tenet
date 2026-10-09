@@ -176,8 +176,8 @@ class RecipeImporter @Inject constructor(
             "(seasoning = Gewürzmischung, double/heavy cream = Sahne, fry = anbraten, thighs = Hähnchenschenkel). " +
             "Gleiche Struktur, gleiche Reihenfolge, antworte NUR mit dem JSON.\n" + payload
         // Each model on its own: an answer with missing entries is as bad as none.
-        for (model in listOf(TEXT_MODEL, AiAssistant.DEFAULT_MODEL)) {
-            val json = ai.chat(prompt, listOf(model), maxTokens = 3000, timeoutMs = 45_000)?.let { AiAssistant.extractJson(it) }
+        for (model in listOf(EXTRACT_MODEL, TEXT_MODEL)) {
+            val json = ai.chat(prompt, listOf(model), maxTokens = 3000, timeoutMs = 60_000, configuredFirst = false)?.let { AiAssistant.extractJson(it) }
             fun list(key: String, size: Int) =
                 json?.optJSONArray(key)?.let { a -> (0 until a.length()).map { a.optString(it).trim() } }?.takeIf { it.size == size && it.all(String::isNotEmpty) }
             val ingredients = list("ingredients", r.ingredients.size)
@@ -419,7 +419,10 @@ class RecipeImporter @Inject constructor(
         onStep("KI ordnet das Rezept ein …")
         val prompt = CLASSIFY_PROMPT + "Titel: ${r.name}\nKategorie der Seite: ${r.category}\nZutaten:\n" +
             r.ingredients.joinToString("\n") { "- $it" }
-        val json = ai.chat(prompt, listOf(TEXT_MODEL), maxTokens = 600, timeoutMs = 25_000)?.let { AiAssistant.extractJson(it) }
+        val json = ai.chat(
+            prompt, listOf(EXTRACT_MODEL, TEXT_MODEL), maxTokens = 600, timeoutMs = 40_000, configuredFirst = false,
+            accept = { AiAssistant.extractJson(it) != null },
+        )?.let { AiAssistant.extractJson(it) }
         val aiTags = json?.optJSONArray("tags")?.let { a -> (0 until a.length()).mapNotNull { a.optString(it).trim().takeIf(String::isNotEmpty) } }.orEmpty()
             .plus(listOfNotNull(json?.optString("course")?.takeIf { it.isNotBlank() })).distinct()
         val tags = DietDetector.correct(aiTags.map(CaptionRecipe::cleanTag).filter { it !in PLACEHOLDER_TAGS }.distinct(), r.ingredients)
@@ -467,7 +470,7 @@ class RecipeImporter @Inject constructor(
     private companion object {
         /** Fast and good at German on NIM (low reasoning effort, see AiAssistant). */
         const val TEXT_MODEL = "openai/gpt-oss-20b"
-        /** Recipe extraction from captions and page text. */
+        /** Recipe extraction, classification and translation (gpt-oss is the fallback). */
         const val EXTRACT_MODEL = "nvidia/nemotron-3-super-120b-a12b"
         val PLACEHOLDER_TAGS = setOf("Küche", "Hauptkomponente", "Hauptzutat", "Fleischart", "Eigenschaften", "Gang", "Temperatur")
         const val VIDEO_HINT = "Detaillierte Zubereitung siehe Video / Link in Bio"

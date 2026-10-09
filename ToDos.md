@@ -1,10 +1,10 @@
 # Tenet – offene ToDos
 
-Stand: 07.10.2026, Version 1.0.0.55 (auf `main` gepusht, APK `tenet-1.0.0.55-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 07.10.2026, Version 1.0.0.56 (auf `main` gepusht, APK `tenet-1.0.0.56-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Übergabe (Session 06.–07.10.2026)
 
-**Stand:** 1.0.0.6 – 1.0.0.55 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
+**Stand:** 1.0.0.6 – 1.0.0.56 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
 
 **Wichtig vor dem nächsten Update am Handy:**
 - Seit 1.0.0.6 ist die Datenbank mit SQLCipher verschlüsselt (Rohschlüssel, im Android Keystore gewrappt, `no_backup/db.key`). Die alte Klartext-DB wird beim ersten Start einmal umgewandelt. Im Emulator geprüft, mit echten Daten noch nicht → vorher mit Google anmelden und synchronisieren.
@@ -105,7 +105,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Alte APKs im Projektordner aufräumen (~40 Stück, je ~10–18 MB, enthalten den NIM-Schlüssel)
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.55)
+## Zuletzt erledigt (0.5.0 – 1.0.0.56)
+
+- 1.0.0.56: Rezept-Import: auch Einordnen (Rezeptseiten/strukturierte Captions) und Übersetzen laufen über Nemotron 3 Super, gpt-oss-20b als Fallback
 
 - 1.0.0.55: Rezept-Import (Captions/Seitentext) mit Nemotron 3 Super 120B (temperature 0.2, ohne Thinking) und neuem Prompt: Titel-Regeln (Originalsprache, Title Case, „&“), Zutaten metrisch und deutsch, Schritte im Imperativ, course/weight Pflicht, cookingTimeMinutes, {"error":"no_recipe"}; Fallback gpt-oss-20b
 
