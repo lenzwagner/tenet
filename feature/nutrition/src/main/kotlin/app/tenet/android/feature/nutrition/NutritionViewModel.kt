@@ -65,7 +65,7 @@ class NutritionViewModel @Inject constructor(
         viewModelScope.launch {
             _refreshing.value = true
             cloudSync.sync()
-                .onSuccess { _messages.send("Mit Saffron synchronisiert") }
+                .onSuccess { _messages.send("Rezepte synchronisiert") }
                 .onFailure { _messages.send(it.message ?: "Aktualisieren fehlgeschlagen") }
             _refreshing.value = false
         }

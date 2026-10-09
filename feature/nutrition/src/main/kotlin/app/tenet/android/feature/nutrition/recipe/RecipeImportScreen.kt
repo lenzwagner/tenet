@@ -311,7 +311,7 @@ fun RecipeImportScreen(
                 modifier = app.tenet.android.core.designsystem.header.washBar(),
                 navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", leave) },
                 title = { Text("Rezept importieren") },
-                subtitle = { Text(if (viewModel.signedIn) "Landet auch in Saffron" else "Als Gast nur auf diesem Handy") },
+                subtitle = { Text(if (viewModel.signedIn) "Wird mit deinem Konto synchronisiert" else "Als Gast nur auf diesem Handy") },
             )
         },
         bottomBar = {
@@ -520,7 +520,7 @@ private fun ImportPreview(r: ImportedRecipe, e: ImportEdit, vm: RecipeImportView
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.CloudDone, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Wird in deinem Konto gespeichert und erscheint auch in Saffron.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Wird in deinem Konto gespeichert und ist auf all deinen Geräten.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         Spacer(Modifier.height(8.dp))

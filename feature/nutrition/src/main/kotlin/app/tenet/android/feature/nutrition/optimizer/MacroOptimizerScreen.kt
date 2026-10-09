@@ -236,7 +236,7 @@ fun MacroOptimizerScreen(
             if (state.recipesWithoutNutrition > 0) {
                 item(key = "hint") {
                     Text(
-                        "${state.recipesWithoutNutrition} Rezepte ohne Nährwerte (z. B. aus Saffron) sind nicht dabei.",
+                        "${state.recipesWithoutNutrition} Rezepte ohne Nährwerte (z. B. importierte) sind nicht dabei.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 12.dp),

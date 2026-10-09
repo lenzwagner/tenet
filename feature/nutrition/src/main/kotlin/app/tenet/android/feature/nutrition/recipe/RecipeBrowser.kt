@@ -176,9 +176,9 @@ fun RecipeBrowser(
                 icon = Icons.AutoMirrored.Outlined.MenuBook,
                 title = "Noch keine Rezepte",
                 body = if (signedIn) {
-                    "Leg ein Rezept an oder speichere welche in Saffron – zum Aktualisieren nach unten ziehen."
+                    "Leg ein Rezept an oder importiere eins – zum Aktualisieren nach unten ziehen."
                 } else {
-                    "Leg ein Rezept an. Mit Google angemeldet (Einstellungen → Konto) kommen deine Saffron-Rezepte automatisch dazu."
+                    "Leg ein Rezept an. Mit Google angemeldet (Einstellungen → Konto) sind deine Rezepte auf allen Geräten."
                 },
                 actionLabel = if (onImport != null) "Rezept importieren" else null,
                 onAction = onImport,
@@ -334,8 +334,8 @@ fun RecipeBrowser(
                         "Das lässt sich nicht rückgängig machen.".takeIf { own.isNotEmpty() },
                         when (saffron) {
                             0 -> null
-                            1 -> "1 Saffron-Rezept bleibt – lösch es in Saffron, sonst kommt es mit dem nächsten Abgleich zurück."
-                            else -> "$saffron Saffron-Rezepte bleiben – lösch sie in Saffron, sonst kommen sie mit dem nächsten Abgleich zurück."
+                            1 -> "1 synchronisiertes Rezept bleibt – es kommt sonst mit dem nächsten Abgleich zurück."
+                            else -> "$saffron synchronisierte Rezepte bleiben – sie kämen sonst mit dem nächsten Abgleich zurück."
                         },
                     ).joinToString("\n\n"),
                 )
@@ -539,7 +539,7 @@ private fun RecipeSearchBar(
                 val angle by spin.animateFloat(0f, -360f, infiniteRepeatable(tween(900, easing = LinearEasing)), label = "sync-angle")
                 TooltipIconButton(
                     Icons.Outlined.Sync,
-                    if (refreshing) "Synchronisiere …" else "Mit Saffron synchronisieren",
+                    if (refreshing) "Synchronisiere …" else "Rezepte synchronisieren",
                     { if (!refreshing) onRefresh() },
                     modifier = Modifier.graphicsLayer { rotationZ = if (refreshing) angle else 0f },
                 )

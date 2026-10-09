@@ -164,7 +164,7 @@ private fun WelcomePage(accountViewModel: AccountViewModel, onNext: () -> Unit) 
         Column(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth()) {
             Feature(Icons.AutoMirrored.Outlined.MenuBook, "Notizen, Tagebuch und Träume", "Schreiben oder einfach erzählen")
             Feature(Icons.Outlined.FitnessCenter, "Gym, Calisthenics und Laufen", "Pläne, die mit dir mitwachsen")
-            Feature(Icons.Outlined.Restaurant, "Kalorien und Rezepte", "Mit deinen Saffron-Rezepten")
+            Feature(Icons.Outlined.Restaurant, "Kalorien und Rezepte", "Mit Rezept-Import aus TikTok, Instagram und Web")
         }
         Spacer(Modifier.weight(1f))
         Spacer(Modifier.height(32.dp))
@@ -210,7 +210,7 @@ private fun WelcomePage(accountViewModel: AccountViewModel, onNext: () -> Unit) 
             Icon(Icons.Outlined.Sync, contentDescription = null, tint = colors.onSurfaceVariant, modifier = Modifier.size(16.dp).offset(y = 2.dp))
             Spacer(Modifier.width(8.dp))
             Text(
-                "Mit Google kommen deine Saffron-Rezepte dazu und deine Daten sind auf allen Geräten. " +
+                "Mit Google sind deine Rezepte und Daten auf allen Geräten. " +
                     "Als Gast bleibt alles nur auf diesem Handy – anmelden kannst du dich jederzeit in den Einstellungen.",
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.onSurfaceVariant,

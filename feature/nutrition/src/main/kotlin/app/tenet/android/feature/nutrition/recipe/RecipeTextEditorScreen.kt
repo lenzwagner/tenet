@@ -167,8 +167,8 @@ class RecipeTextEditViewModel @Inject constructor(
             _done.send(
                 when {
                     !s.saffron -> "Rezept gespeichert"
-                    cloud -> "Gespeichert – auch in Saffron"
-                    else -> "Gespeichert – Saffron wird aktualisiert, sobald du online bist"
+                    cloud -> "Gespeichert – auch in deinem Konto"
+                    else -> "Gespeichert – wird synchronisiert, sobald du online bist"
                 },
             )
         }
@@ -207,7 +207,7 @@ fun RecipeTextEditorScreen(
                 modifier = app.tenet.android.core.designsystem.header.washBar(),
                 navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", leave) },
                 title = { Text("Rezept bearbeiten") },
-                subtitle = { if (s.saffron) Text("Änderungen gehen auch an Saffron") },
+                subtitle = { if (s.saffron) Text("Änderungen werden mit deinem Konto synchronisiert") },
                 actions = {
                     Button(
                         onClick = viewModel::save,

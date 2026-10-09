@@ -239,17 +239,19 @@ internal fun NotesPage(state: JournalUiState, actions: EntryActions) {
             )
 
             grid -> {
-                val gridState = rememberLazyGridState()
+                // Like Google Keep: two columns, each tile as tall as its content (masonry).
+                val gridState = androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState()
                 ReselectEffect { gridState.animateScrollToItem(0) }
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
+                androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid(
+                    columns = androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells.Fixed(2),
                     modifier = Modifier.fillMaxSize(),
                     state = gridState,
                     contentPadding = ListPadding,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalItemSpacing = 8.dp,
                 ) {
-                    items(notes, key = { it.id }) { note ->
+                    items(notes.size, key = { notes[it].id }) { index ->
+                        val note = notes[index]
                         // Tile wallpaper: a chosen background photo, else the note's first own photo.
                         val image = state.attachments[note.id]?.let { list ->
                             NoteBackgrounds.wallpaperUri(list.map { it.uri to it.mimeType }, note.color)
@@ -261,10 +263,10 @@ internal fun NotesPage(state: JournalUiState, actions: EntryActions) {
                             tags = state.tagsByEntry[note.id].orEmpty(),
                             image = image,
                             hasVoice = state.attachments[note.id].orEmpty().any { it.mimeType.startsWith("audio") },
-                            previewLines = 4,
-                            fixedHeight = true,
+                            previewLines = 10,
+                            keepTile = true,
                             showDate = false,
-                            modifier = Modifier.height(240.dp).animateItem(),
+                            modifier = Modifier.animateItem(),
                             selecting = selecting,
                             selected = note.id in selectedIds,
                             onSelect = { toggle(note.id) },
@@ -802,6 +804,8 @@ internal fun EntryCard(
     onSelect: (() -> Unit)? = null,
     /** Notes leave the date out of the overview; it shows inside the note. */
     showDate: Boolean = true,
+    /** Google Keep tile: height by content, outline on plain notes, photo as wallpaper. */
+    keepTile: Boolean = false,
 ) {
     var menu by remember { mutableStateOf(false) }
     val preview = remember(entry.body) { markdownPlain(entry.body) }
@@ -811,14 +815,23 @@ internal fun EntryCard(
     val titleInHeader = !showDate && entry.title.isNotBlank()
 
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val plain = entry.color == null && image == null
     TenetCard(
-        colors = CardDefaults.cardColors(containerColor = noteContainer(entry.color)),
-        border = if (selected) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        colors = CardDefaults.cardColors(
+            containerColor = if (keepTile && plain) MaterialTheme.colorScheme.surface else noteContainer(entry.color),
+        ),
+        // Keep: plain notes get a thin outline instead of a filled card.
+        border = when {
+            selected -> androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+            keepTile && plain -> androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            else -> null
+        },
+        shape = if (keepTile) androidx.compose.foundation.shape.RoundedCornerShape(16.dp) else app.tenet.android.core.designsystem.theme.tenetCardShape,
         modifier = modifier.fillMaxWidth(),
     ) {
-        // Grid tiles: the photo is the tile's wallpaper under a white (light) or
+        // Grid tiles: the photo is the tile's wallpaper under a light white (light) or
         // black (dark) veil; lists show no photo (it sits at the end of the note).
-        val wallpaper = image?.takeIf { fixedHeight }
+        val wallpaper = image?.takeIf { fixedHeight || keepTile }
         Box {
             if (wallpaper != null) {
                 AsyncImage(
@@ -832,11 +845,19 @@ internal fun EntryCard(
                     Modifier
                         .matchParentSize()
                         .background(
-                            androidx.compose.ui.graphics.Brush.verticalGradient(
-                                0f to veil.copy(alpha = 0.55f),
-                                0.45f to veil.copy(alpha = 0.8f),
-                                1f to veil.copy(alpha = 0.92f),
-                            ),
+                            if (keepTile) {
+                                // Keep shows the picture clearly; a soft veil keeps the text legible.
+                                androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    0f to veil.copy(alpha = 0.45f),
+                                    1f to veil.copy(alpha = 0.3f),
+                                )
+                            } else {
+                                androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    0f to veil.copy(alpha = 0.55f),
+                                    0.45f to veil.copy(alpha = 0.8f),
+                                    1f to veil.copy(alpha = 0.92f),
+                                )
+                            },
                         ),
                 )
             }
@@ -883,7 +904,16 @@ internal fun EntryCard(
                             // Without a date the title moves up into the header line.
                             Box(Modifier.weight(1f)) {
                                 JournalReading(enabled = serif) {
-                                    Text(entry.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                    Text(
+                                        entry.title,
+                                        style = if (keepTile) {
+                                            MaterialTheme.typography.titleLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
+                                        } else {
+                                            MaterialTheme.typography.titleMedium
+                                        },
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
                                 }
                             }
                         } else Spacer(Modifier.weight(1f))

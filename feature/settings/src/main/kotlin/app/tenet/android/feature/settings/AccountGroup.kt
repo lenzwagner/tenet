@@ -171,7 +171,7 @@ internal fun AccountGroup(viewModel: AccountViewModel = hiltViewModel()) {
                     Column(Modifier.weight(1f)) {
                         Text("Mit Google anmelden", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "Deine Saffron-Rezepte kommen automatisch dazu, Journal, Sport und Ernährung sind auf allen Geräten gesichert.",
+                            "Rezepte, Journal, Sport und Ernährung sind auf allen Geräten gesichert.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
