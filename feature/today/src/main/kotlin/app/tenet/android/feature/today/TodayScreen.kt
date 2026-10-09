@@ -159,6 +159,8 @@ fun TodayScreen(
     journalLocked: Boolean = false,
     /** Start the GPS run for a planned running unit. */
     onStartRun: (plannedWorkoutId: String) -> Unit = {},
+    /** Tap on the health summary: the "Gesundheit" page with all the details. */
+    onOpenHealth: () -> Unit = {},
     viewModel: TodayViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -317,7 +319,11 @@ fun TodayScreen(
                                 locked = journalLocked,
                             ) }
                             TodayCard.STREAKS -> StreakCard(state.streaks)
-                            TodayCard.FEED -> if (state.isToday) HealthFeed(feed, readiness?.result, readiness?.input?.sleep)
+                            TodayCard.FEED -> if (state.isToday) Box(
+                                Modifier
+                                    .clip(MaterialTheme.shapes.extraLarge)
+                                    .clickable(onClickLabel = "Gesundheit öffnen", onClick = onOpenHealth),
+                            ) { HealthFeed(feed, readiness?.result, readiness?.input?.sleep) }
                             TodayCard.READINESS -> readiness?.takeIf { state.isToday }?.let {
                                 ReadinessCard(it.result, onClose = viewModel::dismissReadiness.takeIf { _ -> state.cards.last() != TodayCard.READINESS })
                             }
@@ -451,7 +457,7 @@ private fun DayDots(mark: DayMarks, onSelected: Boolean) {
 // ---- Cards --------------------------------------------------------------------
 
 @Composable
-private fun CardTitle(
+internal fun CardTitle(
     icon: ImageVector,
     title: String,
     tint: HealthTint,
@@ -697,7 +703,7 @@ private fun JournalCard(
 
 /** Steps, pulse, HRV or background reading not allowed yet: one tap opens Health Connect's dialog. */
 @Composable
-private fun HealthPermissionHint(onGranted: () -> Unit) {
+internal fun HealthPermissionHint(onGranted: () -> Unit) {
     val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.health.connect.client.PermissionController.createRequestPermissionResultContract(),
     ) { onGranted() }
@@ -890,14 +896,14 @@ private fun ReadinessCard(r: app.tenet.android.core.common.Readiness.Result, onC
     }
 }
 
-private fun partLevel(score: Int) = when {
+internal fun partLevel(score: Int) = when {
     score >= 80 -> app.tenet.android.core.common.Readiness.Level.HIGH
     score >= 60 -> app.tenet.android.core.common.Readiness.Level.GOOD
     score >= 40 -> app.tenet.android.core.common.Readiness.Level.MODERATE
     else -> app.tenet.android.core.common.Readiness.Level.LOW
 }
 
-private fun readinessColor(level: app.tenet.android.core.common.Readiness.Level, dark: Boolean) = androidx.compose.ui.graphics.Color(
+internal fun readinessColor(level: app.tenet.android.core.common.Readiness.Level, dark: Boolean) = androidx.compose.ui.graphics.Color(
     when (level) {
         app.tenet.android.core.common.Readiness.Level.HIGH -> if (dark) 0xFF30D158 else 0xFF1FA34A
         app.tenet.android.core.common.Readiness.Level.GOOD -> if (dark) 0xFF64D2FF else 0xFF1E88D9
@@ -908,7 +914,7 @@ private fun readinessColor(level: app.tenet.android.core.common.Readiness.Level,
 
 /** 270° gauge with the score in the middle. */
 @Composable
-private fun ReadinessRing(score: Int, color: androidx.compose.ui.graphics.Color, modifier: Modifier = Modifier) {
+internal fun ReadinessRing(score: Int, color: androidx.compose.ui.graphics.Color, modifier: Modifier = Modifier) {
     val track = MaterialTheme.colorScheme.surfaceContainerHighest
     val sweep by androidx.compose.animation.core.animateFloatAsState(270f * score / 100f, label = "readiness")
     Box(modifier.semantics(mergeDescendants = true) { contentDescription = "Bereitschaft $score von 100" }, contentAlignment = Alignment.Center) {

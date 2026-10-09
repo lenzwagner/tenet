@@ -190,6 +190,45 @@ class HealthConnectRepository @Inject constructor(
         }.onFailure { android.util.Log.w("TenetHealth", "steps failed", it) }.getOrNull()
     }
 
+    /** Steps per day for the last [days] days (today included), deduplicated by Health Connect. */
+    suspend fun stepsByDay(days: Int): Map<java.time.LocalDate, Long> {
+        if (!_status.value.enabled || availability() != Availability.AVAILABLE) return emptyMap()
+        val granted = runCatching { client.permissionController.getGrantedPermissions() }.getOrDefault(emptySet())
+        if (READ_STEPS !in granted) return emptyMap()
+        val today = java.time.LocalDate.now()
+        val start = today.minusDays(days - 1L).atStartOfDay()
+        return runCatching {
+            client.aggregateGroupByPeriod(
+                androidx.health.connect.client.request.AggregateGroupByPeriodRequest(
+                    metrics = setOf(StepsRecord.COUNT_TOTAL),
+                    timeRangeFilter = TimeRangeFilter.between(start, java.time.LocalDateTime.now()),
+                    timeRangeSlicer = java.time.Period.ofDays(1),
+                ),
+            ).associate { it.startTime.toLocalDate() to (it.result[StepsRecord.COUNT_TOTAL] ?: 0L) }
+        }.onFailure { android.util.Log.w("TenetHealth", "steps by day failed", it) }.getOrDefault(emptyMap())
+    }
+
+    /** Heart rate of one day: lowest, average and highest bpm (null without data). */
+    data class HeartRange(val min: Int, val avg: Int, val max: Int)
+
+    suspend fun heartRange(day: java.time.LocalDate): HeartRange? {
+        if (!_status.value.enabled || availability() != Availability.AVAILABLE) return null
+        val granted = runCatching { client.permissionController.getGrantedPermissions() }.getOrDefault(emptySet())
+        if (READ_HR !in granted) return null
+        val zone = java.time.ZoneId.systemDefault()
+        val end = if (day == java.time.LocalDate.now()) Instant.now() else day.plusDays(1).atStartOfDay(zone).toInstant()
+        return runCatching {
+            val r = client.aggregate(
+                AggregateRequest(
+                    metrics = setOf(HeartRateRecord.BPM_MIN, HeartRateRecord.BPM_AVG, HeartRateRecord.BPM_MAX),
+                    timeRangeFilter = TimeRangeFilter.between(day.atStartOfDay(zone).toInstant(), end),
+                ),
+            )
+            val min = r[HeartRateRecord.BPM_MIN] ?: return@runCatching null
+            HeartRange(min.toInt(), (r[HeartRateRecord.BPM_AVG] ?: min).toInt(), (r[HeartRateRecord.BPM_MAX] ?: min).toInt())
+        }.getOrNull()
+    }
+
     /** Permissions Tenet asks for but the user has not granted (e.g. new ones after an update). */
     suspend fun missingPermissions(): Set<String> {
         if (!_status.value.enabled || availability() != Availability.AVAILABLE) return emptySet()

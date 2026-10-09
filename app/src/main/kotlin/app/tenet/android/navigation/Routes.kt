@@ -47,6 +47,7 @@ data class NewEntryRoute(
 )
 
 @Serializable data object SearchRoute
+@Serializable data object HealthRoute
 
 @Serializable data object ExerciseLibraryRoute
 

@@ -125,6 +125,7 @@ import app.tenet.android.navigation.JournalRoute
 import app.tenet.android.navigation.NutritionRoute
 import app.tenet.android.navigation.RoutineEditorRoute
 import app.tenet.android.navigation.SearchRoute
+import app.tenet.android.navigation.HealthRoute
 import app.tenet.android.navigation.SettingsRoute
 import app.tenet.android.ui.search.SearchScreen
 import app.tenet.android.navigation.SkillSessionRoute
@@ -326,6 +327,7 @@ fun TenetApp(
                             onOpenEntry = { entry -> navController.navigate(EntryEditorRoute(entry.id, entry.type.name)) },
                             journalLocked = settings.journalLock && !JournalLock.unlocked,
                             onStartRun = { id -> navController.navigate(ActiveRunRoute(id)) },
+                            onOpenHealth = { navController.navigate(HealthRoute) },
                         )
                     }
                 }
@@ -363,6 +365,11 @@ fun TenetApp(
                     }
                 }
 }
+                composable<HealthRoute> {
+ SubPageWash(HeaderImage.TODAY) {
+                    app.tenet.android.feature.today.HealthScreen(onBack = { navController.popBackStack() })
+ }
+                }
                 composable<SearchRoute> {
  SubPageWash(HeaderImage.TODAY) {
                     SearchScreen(
