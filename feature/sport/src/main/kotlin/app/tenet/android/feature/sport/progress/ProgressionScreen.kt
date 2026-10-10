@@ -215,7 +215,7 @@ private fun SlideCard(slide: Slide, series: List<Series>, from: LocalDate?) {
 
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(series, key = { it.key }) { s ->
-                    FilterChip(
+                    app.tenet.android.core.designsystem.component.TenetFilterChip(
                         selected = s.key == selected.key,
                         onClick = { selectedKey = s.key },
                         label = { Text(s.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },

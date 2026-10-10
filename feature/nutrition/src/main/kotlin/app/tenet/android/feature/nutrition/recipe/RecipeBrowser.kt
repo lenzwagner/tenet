@@ -217,7 +217,7 @@ fun RecipeBrowser(
                     )
                     // One row of filters; the category is a chip with a menu.
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(
+                        app.tenet.android.core.designsystem.component.TenetFilterChip(
                             selected = favorites,
                             onClick = { favorites = !favorites },
                             label = { Text("Favoriten") },
@@ -225,7 +225,7 @@ fun RecipeBrowser(
                         )
                         if (categories.isNotEmpty()) {
                             Box {
-                                FilterChip(
+                                app.tenet.android.core.designsystem.component.TenetFilterChip(
                                     selected = category != null,
                                     onClick = { categoryMenu = true },
                                     label = { Text(category ?: "Kategorie") },
@@ -255,19 +255,19 @@ fun RecipeBrowser(
                                 }
                             }
                         }
-                        FilterChip(
+                        app.tenet.android.core.designsystem.component.TenetFilterChip(
                             selected = vegetarian,
                             onClick = { vegetarian = !vegetarian },
                             label = { Text("Vegetarisch") },
                             leadingIcon = { Icon(Icons.Outlined.Eco, contentDescription = null, modifier = Modifier.size(FilterChipDefaults.IconSize)) },
                         )
-                        FilterChip(
+                        app.tenet.android.core.designsystem.component.TenetFilterChip(
                             selected = quick,
                             onClick = { quick = !quick },
                             label = { Text("Schnell") },
                             leadingIcon = { Icon(Icons.Outlined.Schedule, contentDescription = null, modifier = Modifier.size(FilterChipDefaults.IconSize)) },
                         )
-                        FilterChip(selected = uncooked, onClick = { uncooked = !uncooked }, label = { Text("Nicht gekocht") })
+                        app.tenet.android.core.designsystem.component.TenetFilterChip(selected = uncooked, onClick = { uncooked = !uncooked }, label = { Text("Nicht gekocht") })
                     }
                     // Result count only when something filters.
                     if (filter.active) {

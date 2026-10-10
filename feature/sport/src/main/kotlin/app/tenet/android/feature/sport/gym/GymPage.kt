@@ -247,6 +247,7 @@ fun GymPage(
                 .padding(end = 16.dp, bottom = TenetDimens.bottomTabBarPadding + 16.dp),
         ) {
         FloatingActionButton(
+                shape = app.tenet.android.core.designsystem.component.tenetFabShape,
             onClick = { if (!showDiscardDialog) viewModel.startWorkout() },
         ) {
             Box(
@@ -468,7 +469,7 @@ private fun MuscleWeekCard(muscles: List<Pair<String, Int>>) {
             muscles.forEach { (muscle, sets) ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(muscle, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(96.dp))
-                    LinearWavyProgressIndicator(
+                    app.tenet.android.core.designsystem.component.TenetProgress(
                         progress = { (sets / 20f).coerceIn(0f, 1f) },
                         modifier = Modifier.weight(1f),
                         color = if (sets >= 10) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
@@ -512,7 +513,7 @@ private fun ProgressCard(overview: GymOverview) {
                     )
                 }
                 Spacer(Modifier.height(6.dp))
-                LinearWavyProgressIndicator(
+                app.tenet.android.core.designsystem.component.TenetProgress(
                     progress = { (sessionsThisWeek.toFloat() / WEEKLY_SESSION_GOAL).coerceIn(0f, 1f) },
                     modifier = Modifier.fillMaxWidth(),
                     color = if (weekOver) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
@@ -544,7 +545,7 @@ private fun ProgressCard(overview: GymOverview) {
                         Spacer(Modifier.height(4.dp))
                         // 1RM shown relative to the strongest lift of the plan.
                         val fraction = if (maxLift <= 0f) 0f else (lift.oneRepMax / maxLift).coerceIn(0f, 1f)
-                        LinearWavyProgressIndicator(
+                        app.tenet.android.core.designsystem.component.TenetProgress(
                             progress = { fraction },
                             modifier = Modifier.fillMaxWidth(),
                         )

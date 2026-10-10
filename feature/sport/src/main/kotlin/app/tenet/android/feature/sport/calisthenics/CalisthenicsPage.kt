@@ -319,6 +319,7 @@ fun CalisthenicsPage(
                 .padding(end = 16.dp, bottom = TenetDimens.bottomTabBarPadding + 16.dp),
         ) {
         FloatingActionButton(
+                shape = app.tenet.android.core.designsystem.component.tenetFabShape,
             onClick = { if (!showDiscardDialog) viewModel.startOrResume() },
         ) {
             Box(
@@ -521,7 +522,7 @@ private fun SkillCarousel(cards: List<SkillCardUi>, selectedId: String?, onSelec
                     color = if (selected) colors.onPrimaryContainer else colors.onSurfaceVariant,
                 )
                 Spacer(Modifier.weight(1f))
-                LinearWavyProgressIndicator(progress = { card.criterionProgress }, modifier = Modifier.fillMaxWidth())
+                app.tenet.android.core.designsystem.component.TenetProgress(progress = { card.criterionProgress }, modifier = Modifier.fillMaxWidth())
                 Text(
                     "${card.bestText ?: "–"} / Ziel ${card.targetText}",
                     style = MaterialTheme.typography.labelMedium,
@@ -749,7 +750,7 @@ private fun StrengthSheet(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 SessionMode.entries.forEach { modeOption ->
-                    FilterChip(
+                    app.tenet.android.core.designsystem.component.TenetFilterChip(
                         selected = mode == modeOption,
                         onClick = { onModeChange(modeOption) },
                         label = {

@@ -1,10 +1,10 @@
 # Tenet – offene ToDos
 
-Stand: 07.10.2026, Version 1.0.0.65 (auf `main` gepusht, APK `tenet-1.0.0.65-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 07.10.2026, Version 1.0.0.66 (auf `main` gepusht, APK `tenet-1.0.0.66-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Übergabe (Session 06.–07.10.2026)
 
-**Stand:** 1.0.0.6 – 1.0.0.65 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
+**Stand:** 1.0.0.6 – 1.0.0.66 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
 
 **Wichtig vor dem nächsten Update am Handy:**
 - Seit 1.0.0.6 ist die Datenbank mit SQLCipher verschlüsselt (Rohschlüssel, im Android Keystore gewrappt, `no_backup/db.key`). Die alte Klartext-DB wird beim ersten Start einmal umgewandelt. Im Emulator geprüft, mit echten Daten noch nicht → vorher mit Google anmelden und synchronisieren.
@@ -105,7 +105,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Alte APKs im Projektordner aufräumen (~40 Stück, je ~10–18 MB, enthalten den NIM-Schlüssel)
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.65)
+## Zuletzt erledigt (0.5.0 – 1.0.0.66)
+
+- 1.0.0.66: Apple-Designsprache auf allen Screens („Klar“): Textfelder grau gefüllt und rund ohne Rahmen (48 Stellen), Filter-/Aktions-Chips als Kapseln ohne Rand (34), Fortschritt als dünne Linie statt Welle (19) und schlichter Ring, Lade-Anzeige als Apple-Spinner (33), runde Häkchen wie in Erinnerungen, Regler mit schmaler Spur und weißem Knopf, runde FABs, Menüs runder (14 dp), Scroll-Ende mit Gummiband und Zurückfedern statt Android-Stretch; Bausteine in core/designsystem/component/AppleComponents.kt, Expressive bleibt Material
 
 - 1.0.0.65: Apple-Designsprache, zentraler Durchgang („Klar“): eigenes Motion-Schema mit kritisch gedämpften Federn (Response 0,25/0,35/0,5 s) für alle M3-Komponenten; Druck-Feedback wie iOS (sofortiges, gleichmäßiges Abdunkeln statt Ripple, Karten geben 3 % nach); Haptik bei Schaltern, Tab-Wechsel und Checklisten-Häkchen; Seitenwechsel als iOS-Push (volle Breite von rechts, Seite darunter mit Parallax, zurück gespiegelt, Zurück-Geste klebt am Finger); Sheet mit Apples Feder (0,8/0,3), Loslassen nach Schwung-Projektion und mit Fingergeschwindigkeit
 

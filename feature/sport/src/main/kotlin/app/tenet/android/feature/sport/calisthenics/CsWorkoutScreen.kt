@@ -300,7 +300,7 @@ private fun CircuitCard(
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            LinearWavyProgressIndicator(
+            app.tenet.android.core.designsystem.component.TenetProgress(
                 progress = {
                     if (state.done) 1f else {
                         state.remainingSec.toFloat() / phaseLen.toFloat()
@@ -372,7 +372,7 @@ private fun EmomCard(
                 text = mmss(state.remainingSec),
                 style = MaterialTheme.typography.displayMedium,
             )
-            LinearWavyProgressIndicator(
+            app.tenet.android.core.designsystem.component.TenetProgress(
                 progress = { state.remainingSec.toFloat() / interval.toFloat() },
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -424,7 +424,7 @@ private fun AmrapCard(
                 color = MaterialTheme.colorScheme.primary,
             )
             Text(mmss(state.remainingSec), style = MaterialTheme.typography.displayMedium)
-            LinearWavyProgressIndicator(
+            app.tenet.android.core.designsystem.component.TenetProgress(
                 progress = { state.remainingSec.toFloat() / (state.minutes * 60f) },
                 modifier = Modifier.fillMaxWidth(),
             )

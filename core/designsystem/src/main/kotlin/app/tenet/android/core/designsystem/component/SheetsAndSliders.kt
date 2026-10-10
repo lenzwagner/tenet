@@ -40,6 +40,23 @@ fun TenetSlider(
 ) {
     val state = remember(steps, valueRange) { SliderState(value, steps, valueRange) }
     state.value = value
+    if (app.tenet.android.core.designsystem.theme.isClearStyle) {
+        // iOS: a slim track and a white knob.
+        Slider(
+            state = state,
+            onValueChange = onValueChange,
+            modifier = modifier,
+            enabled = enabled,
+            onValueChangeFinished = onValueChangeFinished,
+            colors = colors,
+            thumb = { AppleSliderThumb() },
+            track = { st ->
+                val span = (valueRange.endInclusive - valueRange.start).takeIf { it > 0f } ?: 1f
+                AppleSliderTrack((st.value - valueRange.start) / span, enabled)
+            },
+        )
+        return
+    }
     Slider(
         state = state,
         onValueChange = onValueChange,

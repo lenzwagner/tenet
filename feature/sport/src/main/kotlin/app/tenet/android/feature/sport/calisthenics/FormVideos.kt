@@ -228,7 +228,7 @@ internal fun FormVideoStrip(
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (videos.size >= 2) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(
+                app.tenet.android.core.designsystem.component.TenetFilterChip(
                     selected = comparing,
                     onClick = {
                         comparing = !comparing
@@ -355,7 +355,7 @@ internal fun FormVideoPlayer(videos: List<FormVideo>, caption: (FormVideo) -> St
                             apply()
                         },
                     )
-                    FilterChip(
+                    app.tenet.android.core.designsystem.component.TenetFilterChip(
                         selected = slow,
                         onClick = {
                             slow = !slow

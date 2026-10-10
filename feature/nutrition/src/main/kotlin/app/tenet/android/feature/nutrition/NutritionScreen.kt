@@ -203,6 +203,7 @@ fun NutritionScreen(
                     modifier = Modifier.padding(bottom = TenetDimens.bottomTabBarPadding),
                 )
             } else ExtendedFloatingActionButton(
+                shape = app.tenet.android.core.designsystem.component.tenetFabShape,
                 onClick = { if (recipesPage) onNewRecipe() else onAddFood(null, state.date.toString()) },
                 expanded = fabExpanded,
                 icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
@@ -329,13 +330,13 @@ private fun TrackerPage(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(top = 8.dp),
             ) {
-                AssistChip(
+                app.tenet.android.core.designsystem.component.TenetAssistChip(
                     onClick = onOptimize,
                     label = { Text(if (state.isToday) "Was passt noch?" else "Tag planen") },
                     leadingIcon = { Icon(Icons.Outlined.AutoAwesome, contentDescription = null) },
                 )
                 if (state.logs.isEmpty() && !state.loading) {
-                    AssistChip(
+                    app.tenet.android.core.designsystem.component.TenetAssistChip(
                         onClick = viewModel::copyPreviousDay,
                         label = { Text("Vortag kopieren") },
                         leadingIcon = { Icon(Icons.Outlined.ContentCopy, contentDescription = null) },
@@ -372,7 +373,7 @@ private fun TrackerPage(
             icon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
             title = { Text("Mahlzeit umbenennen") },
             text = {
-                OutlinedTextField(value = name, onValueChange = { name = it }, singleLine = true, label = { Text("Name") })
+                app.tenet.android.core.designsystem.component.TenetTextField(value = name, onValueChange = { name = it }, singleLine = true, label = { Text("Name") })
             },
             confirmButton = {
                 TextButton(
@@ -457,7 +458,7 @@ private fun WaterCard(ml: Int, goalMl: Int, onAdd: () -> Unit, onRemove: () -> U
                         "${"%.2f".format(ml / 1000f).replace('.', ',')} l",
                         style = MaterialTheme.typography.headlineSmall,
                     )
-                    LinearWavyProgressIndicator(
+                    app.tenet.android.core.designsystem.component.TenetProgress(
                         progress = { (ml.toFloat() / goalMl).coerceIn(0f, 1f) },
                         color = water,
                         modifier = Modifier.fillMaxWidth(),

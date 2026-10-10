@@ -197,7 +197,7 @@ fun ExerciseLibraryScreen(
                 ) {
                     if (state.muscleFilter != null || state.equipmentFilter != null) {
                         item {
-                            FilterChip(
+                            app.tenet.android.core.designsystem.component.TenetFilterChip(
                                 selected = true,
                                 onClick = viewModel::clearFilters,
                                 label = { Text("Alle löschen") },
@@ -205,14 +205,14 @@ fun ExerciseLibraryScreen(
                         }
                     }
                     items(state.muscles) { muscle ->
-                        FilterChip(
+                        app.tenet.android.core.designsystem.component.TenetFilterChip(
                             selected = state.muscleFilter == muscle,
                             onClick = { viewModel.toggleMuscle(muscle) },
                             label = { Text(muscle) },
                         )
                     }
                     items(state.equipment) { item ->
-                        FilterChip(
+                        app.tenet.android.core.designsystem.component.TenetFilterChip(
                             selected = state.equipmentFilter == item,
                             onClick = { viewModel.toggleEquipment(item) },
                             label = { Text(item) },
@@ -382,28 +382,28 @@ private fun ExerciseEditorDialog(
                 Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                OutlinedTextField(
+                app.tenet.android.core.designsystem.component.TenetTextField(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Name *") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                OutlinedTextField(
+                app.tenet.android.core.designsystem.component.TenetTextField(
                     value = primary,
                     onValueChange = { primary = it },
                     label = { Text("Primär (z. B. Brust, Rücken)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                OutlinedTextField(
+                app.tenet.android.core.designsystem.component.TenetTextField(
                     value = secondary,
                     onValueChange = { secondary = it },
                     label = { Text("Sekundär (kommagetrennt)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                OutlinedTextField(
+                app.tenet.android.core.designsystem.component.TenetTextField(
                     value = equipment,
                     onValueChange = { equipment = it },
                     label = { Text("Equipment (z. B. Langhantel)") },
@@ -416,7 +416,7 @@ private fun ExerciseEditorDialog(
                     selectedIndex = MeasureType.entries.indexOf(measureType),
                     onSelect = { measureType = MeasureType.entries[it] },
                 )
-                OutlinedTextField(
+                app.tenet.android.core.designsystem.component.TenetTextField(
                     value = notes,
                     onValueChange = { notes = it },
                     label = { Text("Notizen") },

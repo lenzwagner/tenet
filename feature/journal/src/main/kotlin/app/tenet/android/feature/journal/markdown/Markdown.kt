@@ -273,14 +273,14 @@ fun MarkdownView(
                 is MdBlock.Check -> Row(verticalAlignment = Alignment.CenterVertically) {
                     if (compact) {
                         CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
-                            Checkbox(
+                            app.tenet.android.core.designsystem.component.TenetCheckbox(
                                 checked = block.checked,
                                 onCheckedChange = { tick(block.line) },
                                 modifier = Modifier.size(26.dp).scale(0.84f),
                             )
                         }
                     } else {
-                        Checkbox(checked = block.checked, onCheckedChange = { tick(block.line) })
+                        app.tenet.android.core.designsystem.component.TenetCheckbox(checked = block.checked, onCheckedChange = { tick(block.line) })
                     }
                     Text(
                         inline(block.text, onLink),

@@ -1,5 +1,6 @@
 package app.tenet.android.core.designsystem.theme
 
+import androidx.compose.ui.unit.dp
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
@@ -173,13 +174,16 @@ fun TenetTheme(
             colorScheme = finalScheme,
             // "Klar": Apple's critically damped springs; Expressive keeps its overshoot.
             motionScheme = if (clear) AppleMotionScheme else MotionScheme.expressive(),
-            shapes = TenetShapes,
+            // "Klar": menus and tooltips rounder, like iOS context menus.
+            shapes = if (clear) ClearShapes else TenetShapes,
             typography = typography,
         ) {
             if (clear) {
                 // iOS press feedback: an instant, even highlight instead of a spreading ripple.
                 val tint = if (darkTheme) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.07f)
+                val reach = with(androidx.compose.ui.platform.LocalDensity.current) { 420.dp.toPx() }
                 androidx.compose.runtime.CompositionLocalProvider(
+                    androidx.compose.foundation.LocalOverscrollFactory provides remember(reach) { RubberBandOverscrollFactory(reach) },
                     androidx.compose.foundation.LocalIndication provides remember(tint) { HighlightIndication(tint) },
                     androidx.compose.material3.LocalRippleConfiguration provides androidx.compose.material3.RippleConfiguration(
                         color = if (darkTheme) Color.White else Color.Black,

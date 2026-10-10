@@ -405,7 +405,7 @@ private fun ZonesCard(zones: IntArray, maxHr: Int) {
 @Composable
 private fun NotesCard(initial: String, onSave: (String) -> Unit) {
     var text by rememberSaveable(initial) { mutableStateOf(initial) }
-    OutlinedTextField(
+    app.tenet.android.core.designsystem.component.TenetTextField(
         value = text,
         onValueChange = { text = it },
         label = { Text("Notizen zum Lauf") },

@@ -295,7 +295,7 @@ private fun GoalCalculator(
 
         var activityOpen by remember { mutableStateOf(false) }
         ExposedDropdownMenuBox(expanded = activityOpen, onExpandedChange = { activityOpen = it }) {
-            OutlinedTextField(
+            app.tenet.android.core.designsystem.component.TenetTextField(
                 value = activity.label + " (×" + activity.factor + ")",
                 onValueChange = {},
                 readOnly = true,
@@ -351,7 +351,7 @@ private fun GoalCalculator(
 
 @Composable
 private fun NumberInput(label: String, value: String, onChange: (String) -> Unit, suffix: String, modifier: Modifier) {
-    OutlinedTextField(
+    app.tenet.android.core.designsystem.component.TenetTextField(
         value = value,
         onValueChange = onChange,
         label = { Text(label) },

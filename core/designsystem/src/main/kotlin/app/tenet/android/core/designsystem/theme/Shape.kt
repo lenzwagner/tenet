@@ -18,3 +18,6 @@ val TenetShapes = Shapes(
     extraLargeIncreased = RoundedCornerShape(32.dp),
     extraExtraLarge = RoundedCornerShape(48.dp),
 )
+
+/** "Klar": the smallest role (menus, tooltips) rounded like iOS context menus. */
+val ClearShapes = TenetShapes.copy(extraSmall = RoundedCornerShape(14.dp))

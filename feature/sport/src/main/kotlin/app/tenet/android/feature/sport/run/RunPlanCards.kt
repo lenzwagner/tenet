@@ -213,7 +213,7 @@ internal fun PlanWeekCard(weeks: List<PlanWeekUi>, currentWeek: Int, onOpen: (St
                 TooltipIconButton(Icons.Outlined.ChevronRight, "Nächste Woche", { index++ }, enabled = index < weeks.lastIndex)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                LinearWavyProgressIndicator(
+                app.tenet.android.core.designsystem.component.TenetProgress(
                     progress = { if (week.plannedKm <= 0f) 0f else (week.doneKm / week.plannedKm).coerceIn(0f, 1f) },
                     modifier = Modifier.weight(1f),
                 )

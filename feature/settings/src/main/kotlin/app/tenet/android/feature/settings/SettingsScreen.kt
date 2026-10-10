@@ -948,7 +948,7 @@ private fun TextInputDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            OutlinedTextField(
+            app.tenet.android.core.designsystem.component.TenetTextField(
                 value = value,
                 onValueChange = { value = it.trim() },
                 label = { Text(label) },
@@ -1178,7 +1178,7 @@ private fun CompanionPicker(
         AlertDialog(
             onDismissRequest = { editing = null },
             title = { Text("Name für ${pet.label}") },
-            text = { OutlinedTextField(
+            text = { app.tenet.android.core.designsystem.component.TenetTextField(
                 value = draft, onValueChange = { draft = it.take(40) },
                 label = { Text("Individueller Name") },
                 placeholder = { Text(pet.label) },
@@ -1519,7 +1519,7 @@ private fun WashStrengthRow(value: Float, onChange: (Float) -> Unit) {
                 Text("Farbverlauf oben", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                 Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            androidx.compose.material3.Slider(
+            app.tenet.android.core.designsystem.component.TenetSlider(
                 value = v,
                 onValueChange = { v = it },
                 onValueChangeFinished = { onChange(v) },

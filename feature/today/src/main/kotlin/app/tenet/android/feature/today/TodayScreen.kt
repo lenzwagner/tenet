@@ -175,7 +175,7 @@ fun TodayScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Wöchentlicher Eintrag für Gewichtsverlauf. Chart: Sport → Gym → Körper.")
-                    OutlinedTextField(
+                    app.tenet.android.core.designsystem.component.TenetTextField(
                         value = weeklyWeight,
                         onValueChange = { weeklyWeight = it },
                         label = { Text("Gewicht (kg)") },

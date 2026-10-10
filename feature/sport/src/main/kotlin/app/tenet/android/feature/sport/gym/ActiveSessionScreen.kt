@@ -206,7 +206,7 @@ fun ActiveSessionScreen(
                     actions = {
                         if (viewModel.aiAvailable) {
                             if (aiBusy) {
-                                LoadingIndicator(Modifier.size(40.dp).padding(4.dp))
+                                app.tenet.android.core.designsystem.component.TenetSpinner(Modifier.size(40.dp).padding(4.dp))
                             } else {
                                 TooltipIconButton(icon = Icons.Outlined.Mic, contentDescription = "Sätze per Sprache", onClick = {
                                     speech.launch()
@@ -438,7 +438,7 @@ private fun EndSessionSheet(
                 style = MaterialTheme.typography.bodyMedium,
             )
 
-            OutlinedTextField(
+            app.tenet.android.core.designsystem.component.TenetTextField(
                 value = notes,
                 onValueChange = { notes = it },
                 label = { Text("Notiz (optional)") },
@@ -523,7 +523,7 @@ private fun PlateCalculatorSheet(
             )
 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
+                app.tenet.android.core.designsystem.component.TenetTextField(
                     value = weightText,
                     onValueChange = { weightText = it },
                     label = { Text("Ziel (kg)") },
@@ -531,7 +531,7 @@ private fun PlateCalculatorSheet(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.weight(1f),
                 )
-                OutlinedTextField(
+                app.tenet.android.core.designsystem.component.TenetTextField(
                     value = barText,
                     onValueChange = { barText = it },
                     label = { Text("Stange (kg)") },
@@ -744,7 +744,7 @@ private fun ExerciseCard(
                 }
             }
             if (noteOpen || block.notes.isNotEmpty()) {
-                OutlinedTextField(
+                app.tenet.android.core.designsystem.component.TenetTextField(
                     value = block.notes,
                     onValueChange = onNote,
                     placeholder = { Text("Notiz, z. B. Sitzhöhe 4, Griff eng") },
@@ -1014,7 +1014,7 @@ private fun RestBar(
                 text = "Pause ${formatSeconds(rest.remainingSec)}",
                 style = MaterialTheme.typography.titleSmall,
             )
-            LinearWavyProgressIndicator(
+            app.tenet.android.core.designsystem.component.TenetProgress(
                 progress = {
                     if (rest.totalSec == 0) 0f
                     else rest.remainingSec.toFloat() / rest.totalSec

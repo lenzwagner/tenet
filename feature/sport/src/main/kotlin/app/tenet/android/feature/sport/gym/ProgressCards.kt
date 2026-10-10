@@ -144,7 +144,7 @@ fun OneRmHistoryCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     exercises.forEach { exercise ->
-                        FilterChip(
+                        app.tenet.android.core.designsystem.component.TenetFilterChip(
                             selected = selected == exercise,
                             onClick = { selected = exercise },
                             label = { Text(exercise) },
@@ -241,13 +241,13 @@ fun VolumeHistoryCard(
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                FilterChip(
+                app.tenet.android.core.designsystem.component.TenetFilterChip(
                     selected = selected == null,
                     onClick = { selected = null },
                     label = { Text("Alle") },
                 )
                 muscleGroups.forEach { muscle ->
-                    FilterChip(
+                    app.tenet.android.core.designsystem.component.TenetFilterChip(
                         selected = selected == muscle,
                         onClick = { selected = muscle },
                         label = { Text(muscle) },
@@ -505,7 +505,7 @@ private fun AddWeightDialog(
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
+                    app.tenet.android.core.designsystem.component.TenetTextField(
                         value = text,
                         onValueChange = { text = it },
                         label = { Text("Gewicht (kg)") },
@@ -515,7 +515,7 @@ private fun AddWeightDialog(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier.weight(1f),
                     )
-                    OutlinedTextField(
+                    app.tenet.android.core.designsystem.component.TenetTextField(
                         value = fat,
                         onValueChange = { fat = it },
                         label = { Text("Fett (%)") },
@@ -529,7 +529,7 @@ private fun AddWeightDialog(
                 BodyMeasurements.FIELDS.chunked(2).forEach { pair ->
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         pair.forEach { (key, label) ->
-                            OutlinedTextField(
+                            app.tenet.android.core.designsystem.component.TenetTextField(
                                 value = measures[key].orEmpty(),
                                 onValueChange = { measures[key] = it },
                                 label = { Text(label) },

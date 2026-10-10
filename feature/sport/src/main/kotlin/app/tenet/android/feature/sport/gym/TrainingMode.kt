@@ -135,7 +135,7 @@ private fun RestPhase(rest: RestUiState, next: WorkoutGuide.Next?, onAddRest: ()
         Text("Pause", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(16.dp))
         Box(contentAlignment = Alignment.Center) {
-            CircularWavyProgressIndicator(
+            app.tenet.android.core.designsystem.component.TenetCircularProgress(
                 progress = { if (rest.totalSec == 0) 0f else rest.remainingSec.toFloat() / rest.totalSec },
                 modifier = Modifier.size(240.dp),
             )

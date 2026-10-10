@@ -392,7 +392,7 @@ private fun TimePartField(value: String, label: String, max: Int, modifier: Modi
             field = field.copy(selection = androidx.compose.ui.text.TextRange(0, field.text.length))
         }
     }
-    androidx.compose.material3.OutlinedTextField(
+    app.tenet.android.core.designsystem.component.TenetTextField(
         value = field,
         onValueChange = { v ->
             // Was the old content selected (just tapped)? Then the typing replaces it.

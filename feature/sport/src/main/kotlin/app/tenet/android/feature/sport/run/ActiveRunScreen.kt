@@ -374,7 +374,7 @@ private fun LiveContent(
             RouteMap(route = state.route, follow = true, modifier = Modifier.fillMaxSize())
             if (state.route.isEmpty()) {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surfaceContainer) {
-                    Box(contentAlignment = Alignment.Center) { LoadingIndicator() }
+                    Box(contentAlignment = Alignment.Center) { app.tenet.android.core.designsystem.component.TenetSpinner() }
                 }
             }
         }

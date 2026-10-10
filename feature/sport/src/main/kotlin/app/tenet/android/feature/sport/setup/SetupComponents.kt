@@ -103,7 +103,7 @@ internal fun SetupScaffold(
                     }
                     Spacer(Modifier.weight(1f))
                     if (busy) {
-                        LoadingIndicator(Modifier.size(48.dp))
+                        app.tenet.android.core.designsystem.component.TenetSpinner(Modifier.size(48.dp))
                     } else {
                         Button(
                             onClick = { if (last) onFinish() else onStep(step + 1) },
@@ -117,7 +117,7 @@ internal fun SetupScaffold(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             val progress by animateFloatAsState((step + 1f) / stepTitles.size, label = "setup-progress")
-            LinearWavyProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
+            app.tenet.android.core.designsystem.component.TenetProgress(progress = { progress }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
             AnimatedContent(
                 targetState = step,
                 transitionSpec = {
@@ -201,7 +201,7 @@ internal fun NumberField(
     suffix: String? = null,
     decimal: Boolean = false,
 ) {
-    OutlinedTextField(
+    app.tenet.android.core.designsystem.component.TenetTextField(
         value = value,
         onValueChange = { v -> onValue(v.filter { it.isDigit() || (decimal && (it == ',' || it == '.')) }.take(6)) },
         label = { Text(label) },

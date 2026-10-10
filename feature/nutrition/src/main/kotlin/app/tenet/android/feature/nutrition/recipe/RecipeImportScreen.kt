@@ -326,7 +326,7 @@ fun RecipeImportScreen(
                             Text("Verwerfen")
                         }
                         Button(onClick = viewModel::save, enabled = !s.saving, shapes = ButtonDefaults.shapes(), modifier = Modifier.weight(1f)) {
-                            if (s.saving) LoadingIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary) else Text("Speichern")
+                            if (s.saving) app.tenet.android.core.designsystem.component.TenetSpinner(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary) else Text("Speichern")
                         }
                     } else if (s.batch) {
                         val running = s.batchItems.any { it.status == BatchItem.Status.RUNNING || it.status == BatchItem.Status.WAITING }
@@ -343,7 +343,7 @@ fun RecipeImportScreen(
                                 shapes = ButtonDefaults.shapes(),
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
-                                if (running) LoadingIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
+                                if (running) app.tenet.android.core.designsystem.component.TenetSpinner(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
                                 else Text(if (count == 1) "1 Rezept importieren" else "$count Rezepte importieren")
                             }
                         }
@@ -373,14 +373,14 @@ fun RecipeImportScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        LoadingIndicator(Modifier.size(72.dp))
+                        app.tenet.android.core.designsystem.component.TenetSpinner(Modifier.size(72.dp))
                         Text(s.step.orEmpty(), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
                         Text("Das dauert meist 5–20 Sekunden.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     else -> Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         ImportModes(s, viewModel)
                         if (s.fromText) {
-                            OutlinedTextField(
+                            app.tenet.android.core.designsystem.component.TenetTextField(
                                 value = s.input,
                                 onValueChange = viewModel::setInput,
                                 label = { Text("Rezepttext") },
@@ -390,7 +390,7 @@ fun RecipeImportScreen(
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         } else {
-                            OutlinedTextField(
+                            app.tenet.android.core.designsystem.component.TenetTextField(
                                 value = s.input,
                                 onValueChange = viewModel::setInput,
                                 label = { Text("Link") },
@@ -539,7 +539,7 @@ private fun ImportMeta(e: ImportEdit, vm: RecipeImportViewModel) {
     ) {
         var menu by remember { mutableStateOf(false) }
         Box {
-            androidx.compose.material3.FilterChip(
+            app.tenet.android.core.designsystem.component.TenetFilterChip(
                 selected = true,
                 onClick = { menu = true },
                 label = { Text(e.category.ifBlank { "Kategorie" }) },
@@ -593,7 +593,7 @@ private fun BatchImport(s: RecipeImportState, vm: RecipeImportViewModel, clip: S
         val started = s.batchItems.isNotEmpty()
         if (!started) {
             ImportModes(s, vm)
-            OutlinedTextField(
+            app.tenet.android.core.designsystem.component.TenetTextField(
                 value = s.input,
                 onValueChange = vm::setInput,
                 label = { Text("Links") },
@@ -617,7 +617,7 @@ private fun BatchImport(s: RecipeImportState, vm: RecipeImportViewModel, clip: S
         } else {
             val done = s.batchItems.count { it.status == BatchItem.Status.DONE || it.status == BatchItem.Status.FAILED }
             Text("$done von ${s.batchItems.size} verarbeitet", style = MaterialTheme.typography.titleMedium)
-            androidx.compose.material3.LinearWavyProgressIndicator(
+            app.tenet.android.core.designsystem.component.TenetProgress(
                 progress = { done.toFloat() / s.batchItems.size },
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -629,7 +629,7 @@ private fun BatchImport(s: RecipeImportState, vm: RecipeImportViewModel, clip: S
                         colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
                         leadingContent = {
                             when (item.status) {
-                                BatchItem.Status.RUNNING -> LoadingIndicator(Modifier.size(28.dp))
+                                BatchItem.Status.RUNNING -> app.tenet.android.core.designsystem.component.TenetSpinner(Modifier.size(28.dp))
                                 BatchItem.Status.DONE -> Icon(Icons.Outlined.CloudDone, contentDescription = "Gespeichert", tint = MaterialTheme.colorScheme.primary)
                                 BatchItem.Status.FAILED -> Icon(Icons.Outlined.Close, contentDescription = "Fehler", tint = MaterialTheme.colorScheme.error)
                                 BatchItem.Status.WAITING -> Icon(Icons.Outlined.Link, contentDescription = "Wartet", tint = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -75,11 +75,11 @@ fun TooltipIconButton(
     }
 }
 
-/** Centered M3 Expressive loading indicator (morphing shapes). */
+/** Centered loading indicator: Apple's spinner in "Klar", M3's morphing shape in Expressive. */
 @Composable
 fun TenetLoading(modifier: Modifier = Modifier) {
     Box(modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-        LoadingIndicator()
+        TenetSpinner()
     }
 }
 

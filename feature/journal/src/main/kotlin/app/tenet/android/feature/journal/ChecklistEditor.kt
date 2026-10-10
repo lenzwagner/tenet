@@ -159,7 +159,7 @@ internal fun ChecklistEditor(body: String, onBody: (String) -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(start = 4.dp, end = 4.dp).bringIntoViewRequester(inView),
                 ) {
-                    if (item.heading) Spacer(Modifier.width(16.dp)) else Checkbox(
+                    if (item.heading) Spacer(Modifier.width(16.dp)) else app.tenet.android.core.designsystem.component.TenetCheckbox(
                         checked = item.checked,
                         onCheckedChange = {
                             haptics.performHapticFeedback(if (it) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff)

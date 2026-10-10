@@ -414,7 +414,7 @@ private fun ChatPanel(
                 modifier = Modifier.heightIn(max = 200.dp).verticalScroll(rememberScrollState()),
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
+                app.tenet.android.core.designsystem.component.TenetTextField(
                     value = text,
                     onValueChange = { text = it },
                     placeholder = { Text("Nachricht an $name") },
@@ -498,7 +498,7 @@ private fun WorkingView(name: String, kind: app.tenet.android.core.designsystem.
             androidx.compose.animation.AnimatedContent(targetState = actual ?: steps[step], label = "step") { s ->
                 Text("$name $s …", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             }
-            androidx.compose.material3.LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth())
+            app.tenet.android.core.designsystem.component.TenetProgress(modifier = Modifier.fillMaxWidth())
         }
     }
 }

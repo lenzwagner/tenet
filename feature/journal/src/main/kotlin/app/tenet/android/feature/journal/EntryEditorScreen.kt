@@ -528,7 +528,7 @@ private fun EditorScaffold(
                     TooltipIconButton(Icons.Outlined.Mic, "Diktieren", ::dictate)
                     if (viewModel.aiAvailable) {
                         if (aiBusy) {
-                            LoadingIndicator(Modifier.size(40.dp).padding(4.dp))
+                            app.tenet.android.core.designsystem.component.TenetSpinner(Modifier.size(40.dp).padding(4.dp))
                         } else {
                             // Empty entry: dictate first, the dictation then fills the fields by itself.
                             TooltipIconButton(Icons.Outlined.AutoAwesome, "Mit KI ausfüllen", {
@@ -856,14 +856,14 @@ private fun DiarySection(
             Text("An diesem Tag", style = MaterialTheme.typography.labelLarge)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (context.meals > 0) {
-                    AssistChip(
+                    app.tenet.android.core.designsystem.component.TenetAssistChip(
                         onClick = {},
                         label = { Text("${context.kcal} kcal · ${context.meals} Mahlzeiten") },
                         leadingIcon = { Icon(Icons.Outlined.Restaurant, contentDescription = null) },
                     )
                 }
                 context.workouts.forEach { workout ->
-                    AssistChip(
+                    app.tenet.android.core.designsystem.component.TenetAssistChip(
                         onClick = {},
                         label = { Text(workout) },
                         leadingIcon = { Icon(Icons.Outlined.FitnessCenter, contentDescription = null) },
@@ -971,7 +971,7 @@ private fun DreamSection(
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             DreamEmotions.forEach { emotion ->
                 val selected = emotion in state.emotions
-                FilterChip(
+                app.tenet.android.core.designsystem.component.TenetFilterChip(
                     selected = selected,
                     onClick = { viewModel.toggleEmotion(emotion) },
                     label = { Text(emotion) },
@@ -1112,7 +1112,7 @@ private fun FolderField(value: String, folders: List<String>, onChange: (String)
     var menu by remember { mutableStateOf(false) }
     var newFolder by remember { mutableStateOf<String?>(null) }
     Box {
-        FilterChip(
+        app.tenet.android.core.designsystem.component.TenetFilterChip(
             selected = value.isNotBlank(),
             onClick = { menu = true },
             label = { Text(value.ifBlank { "Ordner" }) },
@@ -1146,7 +1146,7 @@ private fun FolderField(value: String, folders: List<String>, onChange: (String)
             onDismissRequest = { newFolder = null },
             title = { Text("Neuer Ordner") },
             text = {
-                OutlinedTextField(value = name, onValueChange = { newFolder = it }, singleLine = true, label = { Text("Name") })
+                app.tenet.android.core.designsystem.component.TenetTextField(value = name, onValueChange = { newFolder = it }, singleLine = true, label = { Text("Name") })
             },
             confirmButton = {
                 TextButton(

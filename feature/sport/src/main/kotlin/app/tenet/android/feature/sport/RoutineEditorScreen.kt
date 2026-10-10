@@ -264,23 +264,23 @@ private fun RoutineRow(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                FilterChip(
+                app.tenet.android.core.designsystem.component.TenetFilterChip(
                     selected = target.supersetGroup == null,
                     onClick = { onSuperset(null) },
                     label = { Text("Keiner") },
                 )
-                FilterChip(
+                app.tenet.android.core.designsystem.component.TenetFilterChip(
                     selected = target.supersetGroup == 1,
                     onClick = { onSuperset(1) },
                     label = { Text("A") },
                 )
-                FilterChip(
+                app.tenet.android.core.designsystem.component.TenetFilterChip(
                     selected = target.supersetGroup == 2,
                     onClick = { onSuperset(2) },
                     label = { Text("B") },
                 )
             }
-            AssistChip(
+            app.tenet.android.core.designsystem.component.TenetAssistChip(
                 onClick = onRule,
                 leadingIcon = { Icon(Icons.AutoMirrored.Outlined.TrendingUp, contentDescription = null, modifier = Modifier.size(AssistChipDefaults.IconSize)) },
                 label = { Text("Progression: ${ruleText(target)}") },
@@ -322,14 +322,14 @@ private fun OverloadRuleDialog(
                         "(z. B. ${target.targetReps}–${target.targetReps + 4} Wdh).",
                     style = MaterialTheme.typography.bodyMedium,
                 )
-                OutlinedTextField(
+                app.tenet.android.core.designsystem.component.TenetTextField(
                     value = repMax,
                     onValueChange = { repMax = it.filter(Char::isDigit).take(2) },
                     label = { Text("Wdh bis (ab ${target.targetReps})") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 )
-                OutlinedTextField(
+                app.tenet.android.core.designsystem.component.TenetTextField(
                     value = step,
                     onValueChange = { step = it.filter { c -> c.isDigit() || c == ',' || c == '.' }.take(4) },
                     label = { Text("Steigerung in kg") },
@@ -337,7 +337,7 @@ private fun OverloadRuleDialog(
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 )
-                OutlinedTextField(
+                app.tenet.android.core.designsystem.component.TenetTextField(
                     value = deload,
                     onValueChange = { deload = it.filter(Char::isDigit).take(2) },
                     label = { Text("Deload in %") },
@@ -371,7 +371,7 @@ private fun TargetField(
     var text by remember(value) { mutableStateOf(if (value == 0 && placeholder != null) "" else value.toString()) }
     Column(modifier) {
         Text(label, style = MaterialTheme.typography.labelSmall)
-        OutlinedTextField(
+        app.tenet.android.core.designsystem.component.TenetTextField(
             value = text,
             onValueChange = { input ->
                 text = input

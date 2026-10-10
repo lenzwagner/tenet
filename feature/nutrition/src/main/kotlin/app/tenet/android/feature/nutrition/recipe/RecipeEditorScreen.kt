@@ -170,7 +170,7 @@ fun RecipeEditorScreen(
                     Text("Foto hinzufügen")
                 }
             }
-            OutlinedTextField(
+            app.tenet.android.core.designsystem.component.TenetTextField(
                 value = state.title,
                 onValueChange = viewModel::onTitle,
                 label = { Text("Titel") },
@@ -190,7 +190,7 @@ fun RecipeEditorScreen(
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
+                app.tenet.android.core.designsystem.component.TenetTextField(
                     value = state.minutes,
                     onValueChange = viewModel::onMinutes,
                     label = { Text("Zeit") },
@@ -199,7 +199,7 @@ fun RecipeEditorScreen(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f),
                 )
-                OutlinedTextField(
+                app.tenet.android.core.designsystem.component.TenetTextField(
                     value = state.tags,
                     onValueChange = viewModel::onTags,
                     label = { Text("Tags (mit Komma)") },
@@ -210,7 +210,7 @@ fun RecipeEditorScreen(
 
             if (state.importing) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    LoadingIndicator(Modifier.size(32.dp))
+                    app.tenet.android.core.designsystem.component.TenetSpinner(Modifier.size(32.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Zutaten werden zugeordnet …", style = MaterialTheme.typography.bodyMedium)
                 }
@@ -247,7 +247,7 @@ fun RecipeEditorScreen(
                         },
                         trailingContent = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                OutlinedTextField(
+                                app.tenet.android.core.designsystem.component.TenetTextField(
                                     value = item.grams.fmt(),
                                     onValueChange = { v -> v.parseAmount()?.let { viewModel.setGrams(item, it) } },
                                     suffix = { Text("g") },
@@ -268,7 +268,7 @@ fun RecipeEditorScreen(
             }
 
             SectionHeader("Zubereitung")
-            OutlinedTextField(
+            app.tenet.android.core.designsystem.component.TenetTextField(
                 value = state.steps,
                 onValueChange = viewModel::onSteps,
                 label = { Text("Ein Schritt pro Zeile") },
@@ -333,7 +333,7 @@ private fun ImportTextDialog(onDismiss: () -> Unit, onImport: (String) -> Unit) 
                     "Rezept einfügen – Titel, Zutaten mit Mengen und Zubereitung werden erkannt.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
-                OutlinedTextField(
+                app.tenet.android.core.designsystem.component.TenetTextField(
                     value = text,
                     onValueChange = { text = it },
                     placeholder = { Text("Pfannkuchen\nZutaten\n250 g Mehl\n…") },
@@ -385,7 +385,7 @@ private fun IngredientPickerSheet(
             val food = chosen
             if (food == null) {
                 Text("Zutat suchen", style = MaterialTheme.typography.headlineSmall)
-                OutlinedTextField(
+                app.tenet.android.core.designsystem.component.TenetTextField(
                     value = query,
                     onValueChange = onQuery,
                     leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
@@ -415,7 +415,7 @@ private fun IngredientPickerSheet(
             } else {
                 Text(food.name, style = MaterialTheme.typography.headlineSmall)
                 val g = grams.parseAmount() ?: 0f
-                OutlinedTextField(
+                app.tenet.android.core.designsystem.component.TenetTextField(
                     value = grams,
                     onValueChange = { grams = it },
                     label = { Text("Menge") },

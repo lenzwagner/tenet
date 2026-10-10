@@ -82,7 +82,7 @@ internal fun SetupStep(
             .navigationBarsPadding()
             .padding(horizontal = 24.dp, vertical = 16.dp),
     ) {
-        LinearWavyProgressIndicator(progress = { (step + 1f) / steps }, modifier = Modifier.fillMaxWidth())
+        app.tenet.android.core.designsystem.component.TenetProgress(progress = { (step + 1f) / steps }, modifier = Modifier.fillMaxWidth())
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             Spacer(Modifier.height(24.dp))
             ShapeIcon(icon, containerShape = MaterialShapes.Cookie9Sided.toShape(), modifier = Modifier.size(64.dp))
@@ -147,7 +147,7 @@ private fun LabeledSlider(label: String, value: Float, range: ClosedFloatingPoin
             Text(label, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
             Text(text, style = MaterialTheme.typography.titleMediumEmphasized, color = MaterialTheme.colorScheme.primary)
         }
-        Slider(value = value, onValueChange = onChange, valueRange = range)
+        app.tenet.android.core.designsystem.component.TenetSlider(value = value, onValueChange = onChange, valueRange = range)
     }
 }
 

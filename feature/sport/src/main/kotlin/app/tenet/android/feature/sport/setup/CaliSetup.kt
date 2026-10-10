@@ -149,7 +149,7 @@ fun CaliSetupScreen(onDone: () -> Unit, viewModel: CaliSetupViewModel = hiltView
                     Text(skill.name, style = MaterialTheme.typography.titleSmall)
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         steps.forEach { step ->
-                            FilterChip(
+                            app.tenet.android.core.designsystem.component.TenetFilterChip(
                                 selected = step.id == current,
                                 onClick = { viewModel.update { copy(currentSteps = currentSteps + (skill.id to step.id)) } },
                                 label = { Text(step.label) },
@@ -185,7 +185,7 @@ fun CaliSetupScreen(onDone: () -> Unit, viewModel: CaliSetupViewModel = hiltView
                                 Text(skill.name, style = MaterialTheme.typography.titleMedium)
                                 stepLabel?.let { Text("Stufe: $it", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                             }
-                            Checkbox(checked = checked, onCheckedChange = null, enabled = checked || s.focus.size < MAX_FOCUS)
+                            app.tenet.android.core.designsystem.component.TenetCheckbox(checked = checked, onCheckedChange = null, enabled = checked || s.focus.size < MAX_FOCUS)
                         }
                     }
                 }

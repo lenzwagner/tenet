@@ -112,7 +112,7 @@ fun HealthScreen(onBack: () -> Unit, viewModel: HealthViewModel = hiltViewModel(
     ) { padding ->
         val o = state
         if (o == null) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { LoadingIndicator() }
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { app.tenet.android.core.designsystem.component.TenetSpinner() }
             return@Scaffold
         }
         LazyColumn(

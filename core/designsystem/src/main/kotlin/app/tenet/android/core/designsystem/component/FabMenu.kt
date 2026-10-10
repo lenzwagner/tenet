@@ -72,6 +72,7 @@ fun TenetFabMenu(
     val haptics = LocalHapticFeedback.current
 
     FloatingActionButton(
+        shape = tenetFabShape,
         onClick = {
             haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
             open = true

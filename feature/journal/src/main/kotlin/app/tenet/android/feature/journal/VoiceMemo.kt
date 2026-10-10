@@ -187,7 +187,7 @@ internal fun VoiceMemoRow(
                 )
             }
             Spacer(Modifier.width(8.dp))
-            LinearWavyProgressIndicator(
+            app.tenet.android.core.designsystem.component.TenetProgress(
                 progress = { progress },
                 modifier = Modifier.weight(1f),
                 color = MaterialTheme.colorScheme.secondary,

@@ -215,7 +215,7 @@ fun RecipeTextEditorScreen(
                         shapes = ButtonDefaults.shapes(),
                         modifier = Modifier.padding(end = 8.dp),
                     ) {
-                        if (s.saving) LoadingIndicator(Modifier.size(20.dp)) else Text("Speichern")
+                        if (s.saving) app.tenet.android.core.designsystem.component.TenetSpinner(Modifier.size(20.dp)) else Text("Speichern")
                     }
                 },
             )
@@ -231,7 +231,7 @@ fun RecipeTextEditorScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             item(key = "title") {
-                OutlinedTextField(
+                app.tenet.android.core.designsystem.component.TenetTextField(
                     value = s.title,
                     onValueChange = viewModel::onTitle,
                     label = { Text("Titel") },

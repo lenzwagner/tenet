@@ -189,7 +189,7 @@ private fun WelcomePage(accountViewModel: AccountViewModel, onNext: () -> Unit) 
                 modifier = Modifier.fillMaxWidth().height(ButtonDefaults.MediumContainerHeight),
             ) {
                 if (busy) {
-                    LoadingIndicator(Modifier.size(24.dp), color = colors.onPrimary)
+                    app.tenet.android.core.designsystem.component.TenetSpinner(Modifier.size(24.dp), color = colors.onPrimary)
                 } else {
                     Icon(Icons.Outlined.AccountCircle, contentDescription = null, modifier = Modifier.size(ButtonDefaults.MediumIconSize))
                 }

@@ -111,7 +111,7 @@ fun CookingModeScreen(
         val scope = rememberCoroutineScope()
 
         Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 24.dp)) {
-            LinearWavyProgressIndicator(
+            app.tenet.android.core.designsystem.component.TenetProgress(
                 progress = { (pager.currentPage + 1f) / pages },
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             )
@@ -220,7 +220,7 @@ private fun StepTimer(seconds: Int) {
     }
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
         Box(contentAlignment = Alignment.Center) {
-            CircularWavyProgressIndicator(
+            app.tenet.android.core.designsystem.component.TenetCircularProgress(
                 progress = { remaining.toFloat() / seconds },
                 modifier = Modifier.size(180.dp),
             )

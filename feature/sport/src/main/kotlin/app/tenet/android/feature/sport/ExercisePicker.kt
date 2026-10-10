@@ -79,7 +79,7 @@ internal fun ExercisePickerSheet(
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberSheetState(skipPartiallyExpanded = false)) {
         Column(Modifier.fillMaxHeight(0.92f).navigationBarsPadding()) {
             Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 16.dp))
-            OutlinedTextField(
+            app.tenet.android.core.designsystem.component.TenetTextField(
                 value = query,
                 onValueChange = { query = it },
                 placeholder = { Text("Übung, Muskel oder Gerät suchen") },
@@ -89,12 +89,12 @@ internal fun ExercisePickerSheet(
             )
             LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(muscles) { m ->
-                    FilterChip(selected = muscle == m, onClick = { muscle = if (muscle == m) null else m }, label = { Text(m) })
+                    app.tenet.android.core.designsystem.component.TenetFilterChip(selected = muscle == m, onClick = { muscle = if (muscle == m) null else m }, label = { Text(m) })
                 }
             }
             LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(equipments) { e ->
-                    FilterChip(selected = equipment == e, onClick = { equipment = if (equipment == e) null else e }, label = { Text(e) })
+                    app.tenet.android.core.designsystem.component.TenetFilterChip(selected = equipment == e, onClick = { equipment = if (equipment == e) null else e }, label = { Text(e) })
                 }
             }
             val listState = rememberLazyListState()

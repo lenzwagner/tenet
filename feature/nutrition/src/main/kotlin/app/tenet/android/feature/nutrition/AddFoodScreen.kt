@@ -423,7 +423,7 @@ private fun QuickEntryTab(
             Text("Nur Kalorien und Makros – schnell erfasst.", style = MaterialTheme.typography.bodyMedium)
         }
         MealPicker(selected = meal, names = mealNames, onSelect = { meal = it })
-        OutlinedTextField(
+        app.tenet.android.core.designsystem.component.TenetTextField(
             value = quick.name,
             onValueChange = { v -> onUpdate { copy(name = v) } },
             label = { Text("Was hast du gegessen?") },
@@ -460,7 +460,7 @@ private fun QuickEntryTab(
 
 @Composable
 private fun QuickField(label: String, value: String, suffix: String, modifier: Modifier, onChange: (String) -> Unit) {
-    OutlinedTextField(
+    app.tenet.android.core.designsystem.component.TenetTextField(
         value = value,
         onValueChange = onChange,
         label = { Text(label) },
@@ -545,7 +545,7 @@ private fun VoiceMealSheet(
             }
             if (busy) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    LoadingIndicator(Modifier.size(40.dp))
+                    app.tenet.android.core.designsystem.component.TenetSpinner(Modifier.size(40.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Ordne Lebensmittel zu …", style = MaterialTheme.typography.bodyMedium)
                 }
@@ -569,7 +569,7 @@ private fun VoiceMealSheet(
                         enabled = item.food != null,
                         shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, items.size),
                         colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                        leadingContent = { Checkbox(checked = item.include, onCheckedChange = { onToggle(item.id) }, enabled = item.food != null) },
+                        leadingContent = { app.tenet.android.core.designsystem.component.TenetCheckbox(checked = item.include, onCheckedChange = { onToggle(item.id) }, enabled = item.food != null) },
                         supportingContent = {
                             Text(
                                 item.food?.let { f ->
@@ -582,7 +582,7 @@ private fun VoiceMealSheet(
                             )
                         },
                         trailingContent = {
-                            OutlinedTextField(
+                            app.tenet.android.core.designsystem.component.TenetTextField(
                                 value = item.grams.roundToInt().toString(),
                                 onValueChange = { v -> v.filter(Char::isDigit).toFloatOrNull()?.let { onGrams(item.id, it) } },
                                 suffix = { Text("g") },

@@ -330,7 +330,7 @@ fun GymSetupScreen(
                         ) { Text("+") }
                     }
                     customSplitTitles(s.customRoutineTitles, routineCount).forEachIndexed { index, title ->
-                        OutlinedTextField(
+                        app.tenet.android.core.designsystem.component.TenetTextField(
                             value = title,
                             onValueChange = { value ->
                                 viewModel.update {

@@ -307,7 +307,7 @@ private fun ProgressCard(s: RunPlanUi) {
                 Stat("${s.currentWeek + 1}/${s.weeks}", "Woche", Modifier.weight(1f))
             }
             val ratio = if (s.dueCount == 0) 0f else s.done.size.toFloat() / s.dueCount
-            LinearWavyProgressIndicator(progress = { ratio.coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
+            app.tenet.android.core.designsystem.component.TenetProgress(progress = { ratio.coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
         }
     }
 }

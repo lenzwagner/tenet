@@ -195,7 +195,7 @@ fun CaliPlanScreen(
                         TenetCard(Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 app.tenet.android.core.designsystem.component.CardHeader(Icons.Outlined.AccountTree, sk.name, meta = "Stufe ${sk.stepNumber}/${sk.stepCount}")
-                                LinearWavyProgressIndicator(progress = { sk.stepNumber.toFloat() / sk.stepCount }, modifier = Modifier.fillMaxWidth())
+                                app.tenet.android.core.designsystem.component.TenetProgress(progress = { sk.stepNumber.toFloat() / sk.stepCount }, modifier = Modifier.fillMaxWidth())
                                 Text(sk.step, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }

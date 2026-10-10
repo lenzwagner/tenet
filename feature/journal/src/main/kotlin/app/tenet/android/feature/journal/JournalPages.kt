@@ -175,7 +175,7 @@ internal fun NotesPage(state: JournalUiState, actions: EntryActions) {
                 )
             } else LazyRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item {
-                    FilterChip(
+                    app.tenet.android.core.designsystem.component.TenetFilterChip(
                         selected = tagFilter == null && folderFilter == null,
                         onClick = {
                             tagFilter = null
@@ -185,7 +185,7 @@ internal fun NotesPage(state: JournalUiState, actions: EntryActions) {
                     )
                 }
                 items(state.folders, key = { "folder-$it" }) { folder ->
-                    FilterChip(
+                    app.tenet.android.core.designsystem.component.TenetFilterChip(
                         selected = folderFilter == folder,
                         onClick = { folderFilter = if (folderFilter == folder) null else folder },
                         label = { Text(folder) },
@@ -199,7 +199,7 @@ internal fun NotesPage(state: JournalUiState, actions: EntryActions) {
                     )
                 }
                 items(state.tagCounts, key = { it.id }) { tag ->
-                    FilterChip(
+                    app.tenet.android.core.designsystem.component.TenetFilterChip(
                         selected = tagFilter == tag.name,
                         onClick = { tagFilter = if (tagFilter == tag.name) null else tag.name },
                         label = { Text("#${tag.name}") },
@@ -447,7 +447,7 @@ private fun WeeklyGoal(done: Int) {
             )
         }
         Spacer(Modifier.height(6.dp))
-        LinearWavyProgressIndicator(
+        app.tenet.android.core.designsystem.component.TenetProgress(
             progress = { (done.toFloat() / WEEKLY_ENTRY_GOAL).coerceIn(0f, 1f) },
             modifier = Modifier.fillMaxWidth(),
         )

@@ -171,7 +171,7 @@ internal fun PortionSheet(
                 }
             }
 
-            OutlinedTextField(
+            app.tenet.android.core.designsystem.component.TenetTextField(
                 value = amount,
                 onValueChange = { amount = it },
                 label = { Text("Menge") },

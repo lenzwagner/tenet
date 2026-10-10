@@ -154,14 +154,14 @@ fun MacroOptimizerScreen(
             item(key = "sources") {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     CandidateSource.entries.forEach { source ->
-                        FilterChip(
+                        app.tenet.android.core.designsystem.component.TenetFilterChip(
                             selected = source in state.sources,
                             onClick = { viewModel.toggleSource(source) },
                             label = { Text(source.label) },
                         )
                     }
                     listOf(3, 4, 5, 6).forEach { n ->
-                        FilterChip(
+                        app.tenet.android.core.designsystem.component.TenetFilterChip(
                             selected = state.maxItems == n,
                             onClick = { viewModel.setMaxItems(n) },
                             label = { Text(if (n == 3) "max. 3 Gerichte" else "max. $n") },

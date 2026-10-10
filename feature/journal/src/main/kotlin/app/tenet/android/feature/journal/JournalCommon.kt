@@ -133,7 +133,7 @@ internal fun TagEditor(
                 )
             }
             if (!adding) {
-                androidx.compose.material3.AssistChip(
+                app.tenet.android.core.designsystem.component.TenetAssistChip(
                     onClick = { adding = true },
                     label = { Text(label) },
                     leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(androidx.compose.material3.AssistChipDefaults.IconSize)) },

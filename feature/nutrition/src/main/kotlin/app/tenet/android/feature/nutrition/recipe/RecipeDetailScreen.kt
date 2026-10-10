@@ -282,7 +282,7 @@ private fun BarButton(icon: androidx.compose.ui.graphics.vector.ImageVector, lab
 
 @Composable
 private fun IngredientCheck(done: Boolean) {
-    androidx.compose.material3.Checkbox(checked = done, onCheckedChange = null)
+    app.tenet.android.core.designsystem.component.TenetCheckbox(checked = done, onCheckedChange = null)
 }
 
 @Composable
@@ -401,7 +401,7 @@ fun RecipeDetailScreen(
                     }
                 }
                 Spacer(Modifier.weight(1f))
-                FilterChip(
+                app.tenet.android.core.designsystem.component.TenetFilterChip(
                     selected = d.recipe.cooked,
                     onClick = viewModel::toggleCooked,
                     label = { Text("Gekocht") },

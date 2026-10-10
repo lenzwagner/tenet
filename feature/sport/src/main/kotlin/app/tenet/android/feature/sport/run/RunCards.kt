@@ -323,7 +323,7 @@ fun ManualRunSheet(
                 Text("Lauf nachtragen", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
                 if (aiFill != null) {
                     if (aiBusy) {
-                        LoadingIndicator(Modifier.size(40.dp))
+                        app.tenet.android.core.designsystem.component.TenetSpinner(Modifier.size(40.dp))
                     } else {
                         FilledTonalButton(
                             onClick = {
@@ -361,7 +361,7 @@ fun ManualRunSheet(
                     Text(time)
                 }
             }
-            OutlinedTextField(
+            app.tenet.android.core.designsystem.component.TenetTextField(
                 value = km,
                 onValueChange = { km = it.filter { c -> c.isDigit() || c == ',' || c == '.' }.take(6) },
                 label = { Text("Distanz (km)") },
@@ -376,7 +376,7 @@ fun ManualRunSheet(
                     Triple("Min", minutes) { v: String -> minutes = v },
                     Triple("Sek", seconds) { v: String -> seconds = v },
                 ).forEach { (label, value, set) ->
-                    OutlinedTextField(
+                    app.tenet.android.core.designsystem.component.TenetTextField(
                         value = value,
                         onValueChange = { set(it.filter(Char::isDigit).take(2)) },
                         label = { Text(label) },
@@ -386,7 +386,7 @@ fun ManualRunSheet(
                     )
                 }
             }
-            OutlinedTextField(
+            app.tenet.android.core.designsystem.component.TenetTextField(
                 value = hr,
                 onValueChange = { hr = it.filter(Char::isDigit).take(3) },
                 label = { Text("Ø Puls (optional)") },
@@ -394,7 +394,7 @@ fun ManualRunSheet(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
             )
-            OutlinedTextField(
+            app.tenet.android.core.designsystem.component.TenetTextField(
                 value = notes,
                 onValueChange = { notes = it },
                 label = { Text("Notiz (z. B. Laufband, 1 % Steigung)") },
