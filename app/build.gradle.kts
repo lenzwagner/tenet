@@ -21,8 +21,8 @@ android {
         applicationId = "app.tenet.android"
         minSdk = 26
         targetSdk = 37
-        versionCode = 160
-        versionName = "1.0.0.64"
+        versionCode = 162
+        versionName = "1.0.0.65"
     }
 
     buildTypes {

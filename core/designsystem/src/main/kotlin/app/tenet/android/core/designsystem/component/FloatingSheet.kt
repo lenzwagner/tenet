@@ -77,7 +77,8 @@ fun FloatingSheet(
         window?.setDimAmount(0f)
         window?.setWindowAnimations(0)
     }
-    LaunchedEffect(Unit) { offset.animateTo(0f, spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMedium)) }
+    // Apple's sheet spring: damping 0.8, response 0.3 s.
+    LaunchedEffect(Unit) { offset.animateTo(0f, app.tenet.android.core.designsystem.theme.AppleSpring.bouncy(0.3f)) }
     LaunchedEffect(Unit) { snapshotFlow { 1f - offset.value }.collect { backdrop?.floatValue = it } }
     DisposableEffect(Unit) { onDispose { backdrop?.floatValue = 0f } }
     BackHandler { close() }
@@ -113,8 +114,15 @@ fun FloatingSheet(
                             state = drag,
                             orientation = Orientation.Vertical,
                             onDragStopped = { velocity ->
-                                if (offset.value > 0.25f || velocity > 1800f) close()
-                                else offset.animateTo(0f, spring(dampingRatio = 0.9f))
+                                // Where the flick is heading decides (momentum projection), not where
+                                // the finger let go; the spring takes over at the finger's speed.
+                                val projected = offset.value + (velocity / 1000f) * 0.998f / (1f - 0.998f) / sheetPx
+                                if (projected > 0.5f) close()
+                                else offset.animateTo(
+                                    0f,
+                                    app.tenet.android.core.designsystem.theme.AppleSpring.bouncy(0.3f),
+                                    initialVelocity = velocity / sheetPx,
+                                )
                             },
                         )
                         .padding(vertical = 10.dp)

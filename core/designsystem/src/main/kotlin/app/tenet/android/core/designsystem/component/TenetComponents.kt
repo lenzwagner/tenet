@@ -202,9 +202,19 @@ fun TenetSwitch(
         val c = MaterialTheme.colorScheme
         val dark = c.background.luminance() < 0.5f
         val offTrack = if (dark) androidx.compose.ui.graphics.Color(0xFF39393D) else androidx.compose.ui.graphics.Color(0xFFE5E5EA)
+        // The switch clicks under the finger, in the same frame it flips.
+        val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
         androidx.compose.material3.Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange,
+            onCheckedChange = onCheckedChange?.let { change ->
+                { on ->
+                    haptics.performHapticFeedback(
+                        if (on) androidx.compose.ui.hapticfeedback.HapticFeedbackType.ToggleOn
+                        else androidx.compose.ui.hapticfeedback.HapticFeedbackType.ToggleOff,
+                    )
+                    change(on)
+                }
+            },
             modifier = modifier,
             enabled = enabled,
             thumbContent = { Box(Modifier.size(androidx.compose.material3.SwitchDefaults.IconSize)) },

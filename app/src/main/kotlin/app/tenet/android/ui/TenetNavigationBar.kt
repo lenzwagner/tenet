@@ -149,11 +149,16 @@ private fun TabPill(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
             tabs.forEach { tab ->
                 val isSelected = tab == selected
                 ShortNavigationBarItem(
                     selected = isSelected,
-                    onClick = { onSelect(tab) },
+                    onClick = {
+                        // A light tick when the tab changes, in the same frame.
+                        if (tab != selected) haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.SegmentTick)
+                        onSelect(tab)
+                    },
                     iconPosition = NavigationItemIconPosition.Start,
                     icon = {
                         BadgedBox(badge = { if (tab in badges) Badge() }) {

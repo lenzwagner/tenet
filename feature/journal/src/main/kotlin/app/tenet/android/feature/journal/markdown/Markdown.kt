@@ -219,6 +219,12 @@ fun MarkdownView(
     /** Keep tile: more entries than shown end in a "…" line instead of a fade. */
     moreAsEllipsis: Boolean = false,
 ) {
+    // Ticking a box clicks under the finger.
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val tick: (Int) -> Unit = { line ->
+        haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.SegmentTick)
+        onToggleCheck(line)
+    }
     val all = remember(body) { parseMarkdown(body) }
     val blocks = all.take(maxBlocks)
     // Card preview cut off (blocks left out or a line ellipsized): fade out
@@ -269,12 +275,12 @@ fun MarkdownView(
                         CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
                             Checkbox(
                                 checked = block.checked,
-                                onCheckedChange = { onToggleCheck(block.line) },
+                                onCheckedChange = { tick(block.line) },
                                 modifier = Modifier.size(26.dp).scale(0.84f),
                             )
                         }
                     } else {
-                        Checkbox(checked = block.checked, onCheckedChange = { onToggleCheck(block.line) })
+                        Checkbox(checked = block.checked, onCheckedChange = { tick(block.line) })
                     }
                     Text(
                         inline(block.text, onLink),

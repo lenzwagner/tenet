@@ -200,16 +200,21 @@ fun TenetCard(
     elevation: CardElevation = CardDefaults.cardElevation(),
     border: BorderStroke? = null,
     content: @Composable ColumnScope.() -> Unit,
-) = Card(
-    onClick = onClick,
-    modifier = modifier,
-    enabled = enabled,
-    shape = shape,
-    colors = colors,
-    elevation = elevation,
-    border = border,
-    content = content,
-)
+) {
+    val interactions = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    Card(
+        onClick = onClick,
+        // "Klar": the card gives a little under the finger, like on iOS.
+        modifier = if (isClearStyle) modifier.pressScale(interactions) else modifier,
+        enabled = enabled,
+        shape = shape,
+        colors = colors,
+        elevation = elevation,
+        border = border,
+        interactionSource = interactions,
+        content = content,
+    )
+}
 
 /**
  * Colors for list rows on the page background. "Klar" keeps checked or

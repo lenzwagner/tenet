@@ -171,12 +171,28 @@ fun TenetTheme(
     ) {
         MaterialExpressiveTheme(
             colorScheme = finalScheme,
-            // "Klar": calm, barely bouncing springs like iOS; Expressive keeps its overshoot.
-            motionScheme = if (clear) MotionScheme.standard() else MotionScheme.expressive(),
+            // "Klar": Apple's critically damped springs; Expressive keeps its overshoot.
+            motionScheme = if (clear) AppleMotionScheme else MotionScheme.expressive(),
             shapes = TenetShapes,
             typography = typography,
-            content = content,
-        )
+        ) {
+            if (clear) {
+                // iOS press feedback: an instant, even highlight instead of a spreading ripple.
+                val tint = if (darkTheme) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.07f)
+                androidx.compose.runtime.CompositionLocalProvider(
+                    androidx.compose.foundation.LocalIndication provides remember(tint) { HighlightIndication(tint) },
+                    androidx.compose.material3.LocalRippleConfiguration provides androidx.compose.material3.RippleConfiguration(
+                        color = if (darkTheme) Color.White else Color.Black,
+                        rippleAlpha = androidx.compose.material.ripple.RippleAlpha(
+                            draggedAlpha = 0.08f, focusedAlpha = 0.06f, hoveredAlpha = 0.04f, pressedAlpha = 0.07f,
+                        ),
+                    ),
+                    content = content,
+                )
+            } else {
+                content()
+            }
+        }
     }
 }
 

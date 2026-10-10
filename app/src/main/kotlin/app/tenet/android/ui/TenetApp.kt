@@ -866,37 +866,30 @@ private fun TabContent(
 private const val AXIS_MS = 250
 
 /**
- * Page transitions without a gap: the page underneath always stays fully opaque,
- * only the page on top moves and fades. A fade-through (old out, then new in)
- * let the bare window colour – white or black – shine through halfway.
- * Forward: the new page lies on top and drifts in; back: the closing page lies
- * on top and drifts out, the page below is already there.
+ * Page transitions like an iOS push: the new page slides in over the full width
+ * from the right, on top; the page below drifts a quarter of the way to the left
+ * (parallax) and stays fully opaque, so nothing shines through. Back is the exact
+ * mirror – what came in from the right leaves to the right. Both run on the same
+ * critically damped spring (response 0.35 s), so they can be turned around mid-way.
  */
+private val PushSpring = app.tenet.android.core.designsystem.theme.AppleSpring.smooth(
+    response = 0.35f,
+    visibilityThreshold = androidx.compose.ui.unit.IntOffset(1, 1),
+)
+
 private fun sharedAxisIn(forward: Boolean): EnterTransition =
-    if (forward) {
-        slideInHorizontally(tween(AXIS_MS, easing = EmphasizedDecelerate)) { w -> w / 12 } +
-            fadeIn(tween(AXIS_MS * 2 / 3, easing = LinearOutSlowInEasing))
-    } else {
-        // Page below on back: already in place, opaque.
-        EnterTransition.None
-    }
+    if (forward) slideInHorizontally(PushSpring) { w -> w } else slideInHorizontally(PushSpring) { w -> -w / 4 }
 
 private fun sharedAxisOut(forward: Boolean): ExitTransition =
-    if (forward) {
-        // Page below on forward: stays opaque until the new one covers it.
-        fadeOut(tween(1, delayMillis = AXIS_MS))
-    } else {
-        slideOutHorizontally(tween(AXIS_MS, easing = EmphasizedDecelerate)) { w -> w / 12 } +
-            fadeOut(tween(AXIS_MS * 2 / 3, easing = FastOutLinearInEasing))
-    }
+    if (forward) slideOutHorizontally(PushSpring) { w -> -w / 4 } else slideOutHorizontally(PushSpring) { w -> w }
 
-/** Predictive back, page below: in place and opaque from the start. */
-private fun gestureBackIn(): EnterTransition = EnterTransition.None
+/** Predictive back, page below: comes back from its parallax position with the finger. */
+private fun gestureBackIn(): EnterTransition =
+    slideInHorizontally(tween(AXIS_MS, easing = LinearEasing)) { w -> -w / 4 }
 
-/** Predictive back, current page: follows the finger ~20 % to the right, fades at the end. */
+/** Predictive back, current page: glued to the finger, all the way out to the right. */
 private fun gestureBackOut(): ExitTransition =
-    slideOutHorizontally(tween(AXIS_MS, easing = LinearEasing)) { w -> w / 5 } +
-        fadeOut(tween(AXIS_MS / 3, delayMillis = AXIS_MS * 2 / 3, easing = LinearEasing))
+    slideOutHorizontally(tween(AXIS_MS, easing = LinearEasing)) { w -> w }
 
 private val EmphasizedDecelerate = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
 
