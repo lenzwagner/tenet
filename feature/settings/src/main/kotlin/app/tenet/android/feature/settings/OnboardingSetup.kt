@@ -1,5 +1,6 @@
 package app.tenet.android.feature.settings
 
+import androidx.compose.material.icons.outlined.FitnessCenter
 import app.tenet.android.core.designsystem.theme.TenetCard
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -135,6 +136,38 @@ internal fun ModulesStep(step: Int, steps: Int, enabled: Set<AppModule>, onToggl
                     supportingContent = { Text(m.why()) },
                     trailingContent = { Switch(checked = on, onCheckedChange = { onToggle(m, it) }) },
                 ) { Text(m.label) }
+            }
+        }
+    }
+}
+
+/** Sports of the app: id as stored, name and what the first setup will ask. */
+internal val SportChoices = listOf(
+    Triple("GYM", "Gym", "Krafttraining: du wählst Ziel, Tage und einen Split (Ganzkörper, 2er, 3er oder 4er)"),
+    Triple("CALISTHENICS", "Calisthenics", "Körpergewicht und Skills: dein Stand entscheidet über die Übungen"),
+    Triple("RUNNING", "Laufen", "Laufplan zu deinem Ziel: 5 km bis Marathon oder einfach fit bleiben"),
+)
+
+/** Which sports are trained: the others stay off "Sport", the chosen ones get a first plan right after. */
+@Composable
+internal fun SportsStep(step: Int, steps: Int, chosen: Set<String>, onToggle: (String, Boolean) -> Unit, onNext: () -> Unit) {
+    SetupStep(
+        step, steps, Icons.Outlined.FitnessCenter,
+        "Was trainierst du?",
+        "Für jede gewählte Sportart richten wir gleich einen ersten Plan ein. Später kannst du Pläne selbst bauen oder vom KI-Coach erstellen lassen.",
+        onPrimary = onNext,
+        primaryEnabled = chosen.isNotEmpty(),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
+            SportChoices.forEachIndexed { i, (id, label, why) ->
+                val on = id in chosen
+                SegmentedListItem(
+                    onClick = { onToggle(id, !on) },
+                    shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(i, SportChoices.size),
+                    colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
+                    supportingContent = { Text(why) },
+                    trailingContent = { app.tenet.android.core.designsystem.component.TenetSwitch(checked = on, onCheckedChange = { onToggle(id, it) }) },
+                ) { Text(label) }
             }
         }
     }

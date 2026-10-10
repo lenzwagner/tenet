@@ -1,5 +1,7 @@
 package app.tenet.android.feature.sport
 
+import androidx.compose.foundation.layout.size
+import app.tenet.android.core.database.entity.Discipline
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -118,28 +120,19 @@ internal fun TodaySessionCard(
     }
 }
 
-/** Switch the active plan of a discipline; only shown with more than one plan. */
+/** Opens the plans of a discipline (list, switch, create); set by the sport screen. */
+internal val LocalOpenPlans = androidx.compose.runtime.staticCompositionLocalOf<((Discipline) -> Unit)?> { null }
+
+/**
+ * "Pläne" in a plan card's header: all plans of the discipline – switch,
+ * rename, delete, or create a new one (yourself, with questions, with the AI coach).
+ */
 @Composable
-internal fun PlanSwitchButton(plans: List<TrainingPlan>, onSelect: (TrainingPlan) -> Unit) {
-    if (plans.size < 2) return
-    var open by remember { mutableStateOf(false) }
-    Box {
-        TooltipIconButton(Icons.Outlined.SwapHoriz, "Plan wechseln", { open = true })
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            plans.forEach { plan ->
-                DropdownMenuItem(
-                    text = { Text(plan.name) },
-                    leadingIcon = if (plan.active) {
-                        { Icon(Icons.Outlined.Check, contentDescription = "Aktiv") }
-                    } else {
-                        null
-                    },
-                    onClick = {
-                        open = false
-                        if (!plan.active) onSelect(plan)
-                    },
-                )
-            }
-        }
+internal fun PlanSwitchButton(discipline: Discipline) {
+    val open = LocalOpenPlans.current ?: return
+    androidx.compose.material3.TextButton(onClick = { open(discipline) }) {
+        Icon(Icons.Outlined.SwapHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
+        androidx.compose.foundation.layout.Spacer(Modifier.width(4.dp))
+        Text("Pläne", maxLines = 1, softWrap = false)
     }
 }

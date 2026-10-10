@@ -1,5 +1,6 @@
 package app.tenet.android.feature.sport
 
+import androidx.compose.runtime.remember
 import app.tenet.android.core.designsystem.header.pageWash
 import app.tenet.android.core.designsystem.header.PageTabs
 import app.tenet.android.core.designsystem.header.PageTab
@@ -86,7 +87,13 @@ fun SportScreen(
     onOpenGymHistory: () -> Unit = {},
     onOpenExercise: (exerciseId: String) -> Unit = {},
     onOpenCaliPlan: () -> Unit = {},
+    /** All plans of a discipline: switch, edit, create. */
+    onOpenPlans: (Discipline) -> Unit = {},
+    /** Sports in use (Discipline names); the others get no tab. */
+    disciplines: Set<String> = emptySet(),
 ) {
+    val allTabs = disciplineTabs
+    val disciplineTabs = remember(disciplines) { allTabs.filter { disciplines.isEmpty() || it.discipline.name in disciplines }.ifEmpty { allTabs } }
     val pagerState = rememberPagerState { disciplineTabs.size }
     val scope = rememberCoroutineScope()
     val headerState = rememberHeaderScrollState()
@@ -118,19 +125,21 @@ fun SportScreen(
                         TooltipIconButton(
                             icon = Icons.AutoMirrored.Outlined.ShowChart,
                             contentDescription = "Fortschritt",
-                            onClick = { onOpenProgression(pagerState.currentPage) },
+                            // Progression pages are numbered over all three sports.
+                            onClick = { onOpenProgression(allTabs.indexOf(disciplineTabs[pagerState.currentPage.coerceIn(0, disciplineTabs.lastIndex)])) },
                         )
                         TooltipIconButton(icon = Icons.Outlined.CalendarMonth, contentDescription = "Wochenkalender", onClick = onOpenWeekCalendar)
                     }
                 },
             )
 
+            androidx.compose.runtime.CompositionLocalProvider(LocalOpenPlans provides onOpenPlans) {
             HorizontalPager(
                 state = pagerState,
                 beyondViewportPageCount = 1,
                 modifier = Modifier.weight(1f),
             ) { page ->
-                when (disciplineTabs[page].discipline) {
+                when (disciplineTabs[page.coerceIn(0, disciplineTabs.lastIndex)].discipline) {
                     Discipline.GYM -> GymPage(
                         onOpenSession = onOpenSession,
                         onOpenLibrary = onOpenLibrary,
@@ -157,6 +166,7 @@ fun SportScreen(
                         onOpenWorkout = onOpenRunWorkout,
                     )
                 }
+            }
             }
         }
     }

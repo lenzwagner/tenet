@@ -526,6 +526,21 @@ fun SettingsScreen(
                                 )
                             }
                         }
+                        if (AppModule.SPORT in settings.enabledModules) {
+                            SettingsDivider()
+                            SettingsGroup { shapes ->
+                                SportChoices.forEachIndexed { index, (id, label, _) ->
+                                    SwitchItem(
+                                        shapes = shapes(index, SportChoices.size),
+                                        icon = Icons.Outlined.FitnessCenter,
+                                        title = label,
+                                        supporting = if (id in settings.sportDisciplines) "Sportart aktiv" else "Auf „Sport“ ausgeblendet",
+                                        checked = id in settings.sportDisciplines,
+                                        onCheckedChange = { viewModel.setSportDiscipline(id, it) },
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
                 item(key = "privacy") {

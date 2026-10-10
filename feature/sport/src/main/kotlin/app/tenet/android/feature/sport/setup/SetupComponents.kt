@@ -231,7 +231,10 @@ internal fun SetupIntroCard(
     body: String,
     onSetup: () -> Unit,
     onSkip: () -> Unit,
+    /** Set: also offers the plans page (build a plan yourself or with the AI coach). */
+    discipline: app.tenet.android.core.database.entity.Discipline? = null,
 ) {
+    val openPlans = app.tenet.android.feature.sport.LocalOpenPlans.current
     TenetCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         modifier = Modifier.fillMaxWidth(),
@@ -243,6 +246,11 @@ internal fun SetupIntroCard(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Button(onClick = onSetup, shapes = ButtonDefaults.shapes()) { Text("Jetzt einrichten") }
                 TextButton(onClick = onSkip, shapes = ButtonDefaults.shapes()) { Text("Später") }
+            }
+            if (discipline != null && openPlans != null) {
+                TextButton(onClick = { openPlans(discipline) }, shapes = ButtonDefaults.shapes()) {
+                    Text("Lieber selbst bauen oder mit dem KI-Coach")
+                }
             }
         }
     }

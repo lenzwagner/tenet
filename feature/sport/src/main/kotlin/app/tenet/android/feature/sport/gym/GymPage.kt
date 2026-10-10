@@ -171,6 +171,7 @@ fun GymPage(
             if (setupDone?.contains("GYM") == false) {
                 item(key = "setup") {
                     SetupIntroCard(
+                    discipline = app.tenet.android.core.database.entity.Discipline.GYM,
                         icon = Icons.Outlined.FitnessCenter,
                         title = "Richte dein Gym-Training ein",
                         body = "Ziel, Trainingstage, Split und deine aktuellen Kraftwerte – daraus erstellt Tenet " +
@@ -351,7 +352,7 @@ private fun RoutineCard(
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             CardHeader(Icons.Outlined.CalendarMonth, "Trainingsplan", action = {
-                PlanSwitchButton(plans) { onSwitchPlan(it.id) }
+                PlanSwitchButton(app.tenet.android.core.database.entity.Discipline.GYM)
                 TextButton(shapes = ButtonDefaults.shapes(), onClick = onEdit) { Text("Bearbeiten", maxLines = 1, softWrap = false) }
             })
             overview.plan?.let { Text(it.name, style = MaterialTheme.typography.titleMedium) }
@@ -368,14 +369,16 @@ private fun RoutineCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            // Switching and creating live on the plans page (own plan, questions or AI coach).
+            val openPlans = app.tenet.android.feature.sport.LocalOpenPlans.current
             OutlinedButton(
                 shapes = ButtonDefaults.shapes(),
-                onClick = onSetup,
+                onClick = { openPlans?.invoke(app.tenet.android.core.database.entity.Discipline.GYM) ?: onSetup() },
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Icon(Icons.Outlined.RestartAlt, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
                 Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                Text("Split wechseln oder erstellen")
+                Text("Plan wechseln oder neu erstellen")
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilledTonalButton(

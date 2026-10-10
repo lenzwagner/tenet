@@ -280,6 +280,19 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { repository.setCompanionKind(kind) }
     }
 
+    fun setSportDiscipline(discipline: String, enabled: Boolean) {
+        viewModelScope.launch { repository.setSportDiscipline(discipline, enabled) }
+    }
+
+    /** After the welcome screens: the first plan of each chosen sport is set up, one after the other. */
+    fun queueSportSetups(disciplines: List<String>) {
+        viewModelScope.launch { repository.setPendingSportSetups(disciplines) }
+    }
+
+    fun sportSetupHandled(discipline: String) {
+        viewModelScope.launch { repository.sportSetupHandled(discipline) }
+    }
+
     fun setModuleEnabled(module: AppModule, enabled: Boolean) {
         viewModelScope.launch { repository.setModuleEnabled(module, enabled) }
     }

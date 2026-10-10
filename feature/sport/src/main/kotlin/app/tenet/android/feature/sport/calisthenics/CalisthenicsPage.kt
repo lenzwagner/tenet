@@ -258,6 +258,7 @@ fun CalisthenicsPage(
             if (setupDone?.contains("CALISTHENICS") == false) {
                 item(key = "setup") {
                     SetupIntroCard(
+                    discipline = app.tenet.android.core.database.entity.Discipline.CALISTHENICS,
                         icon = Icons.Outlined.SelfImprovement,
                         title = "Richte dein Calisthenics-Training ein",
                         body = "Ein kurzer Max-Test, deine Skill-Stufen und Trainingstage – daraus stellt Tenet " +
@@ -605,7 +606,7 @@ private fun PlanCard(
     TenetCard(onClick = onOpenPlan, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             CardHeader(Icons.Outlined.CalendarMonth, "Trainingsplan", meta = "Kraft-Block", action = {
-                PlanSwitchButton(plans) { onSwitchPlan(it.id) }
+                PlanSwitchButton(app.tenet.android.core.database.entity.Discipline.CALISTHENICS)
                 TooltipIconButton(Icons.Outlined.RestartAlt, "Plan neu einrichten", onSetup)
                 TooltipIconButton(Icons.AutoMirrored.Outlined.KeyboardArrowRight, "Plan-Details", onOpenPlan)
             })

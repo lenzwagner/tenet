@@ -210,6 +210,45 @@ interface SportDao {
     @Query("UPDATE TrainingPlan SET active = 0 WHERE discipline = :discipline")
     suspend fun deactivatePlans(discipline: Discipline)
 
+    @Query("SELECT * FROM TrainingPlan WHERE id = :id")
+    suspend fun planOnce(id: String): TrainingPlan?
+
+    @Query("UPDATE TrainingPlan SET name = :name WHERE id = :id")
+    suspend fun renamePlan(id: String, name: String)
+
+    @Query("DELETE FROM TrainingPlan WHERE id = :id")
+    suspend fun deletePlan(id: String)
+
+    @Query("DELETE FROM RoutineExercise WHERE plannedWorkoutId IN (SELECT id FROM PlannedWorkout WHERE planId = :planId)")
+    suspend fun deleteRoutinesOfPlan(planId: String)
+
+    @Query("DELETE FROM PlannedWorkout WHERE id = :id")
+    suspend fun deleteWorkout(id: String)
+
+    @Query("UPDATE PlannedWorkout SET title = :title WHERE id = :id")
+    suspend fun renameWorkout(id: String, title: String)
+
+    /** Template workouts (no date) of every plan of a discipline, for the plan overview. */
+    @Query("SELECT * FROM PlannedWorkout WHERE discipline = :discipline AND date IS NULL ORDER BY sortOrder")
+    fun observeTemplateWorkouts(discipline: Discipline): Flow<List<PlannedWorkout>>
+
+    @Query("SELECT * FROM PlannedWorkout WHERE planId = :planId ORDER BY sortOrder")
+    fun observeWorkoutsOfPlan(planId: String): Flow<List<PlannedWorkout>>
+
+    /** Every routine entry of a discipline's template workouts. */
+    @Query(
+        """
+        SELECT RoutineExercise.* FROM RoutineExercise
+        INNER JOIN PlannedWorkout ON PlannedWorkout.id = RoutineExercise.plannedWorkoutId
+        WHERE PlannedWorkout.discipline = :discipline
+        ORDER BY RoutineExercise.sortOrder
+        """,
+    )
+    fun observeRoutines(discipline: Discipline): Flow<List<RoutineExercise>>
+
+    @Query("SELECT COUNT(*) FROM PlannedWorkout WHERE planId = :planId")
+    fun observeWorkoutCount(planId: String): Flow<Int>
+
     /** Every plan of a discipline, the active one first (older ones stay for switching back). */
     @Query("SELECT * FROM TrainingPlan WHERE discipline = :discipline ORDER BY active DESC, startDate DESC, name")
     fun observePlans(discipline: Discipline): Flow<List<TrainingPlan>>

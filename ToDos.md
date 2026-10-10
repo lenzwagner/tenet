@@ -1,10 +1,10 @@
 # Tenet – offene ToDos
 
-Stand: 07.10.2026, Version 1.0.0.66 (auf `main` gepusht, APK `tenet-1.0.0.66-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 07.10.2026, Version 1.0.0.67 (auf `main` gepusht, APK `tenet-1.0.0.67-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Übergabe (Session 06.–07.10.2026)
 
-**Stand:** 1.0.0.6 – 1.0.0.66 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
+**Stand:** 1.0.0.6 – 1.0.0.67 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
 
 **Wichtig vor dem nächsten Update am Handy:**
 - Seit 1.0.0.6 ist die Datenbank mit SQLCipher verschlüsselt (Rohschlüssel, im Android Keystore gewrappt, `no_backup/db.key`). Die alte Klartext-DB wird beim ersten Start einmal umgewandelt. Im Emulator geprüft, mit echten Daten noch nicht → vorher mit Google anmelden und synchronisieren.
@@ -105,7 +105,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Alte APKs im Projektordner aufräumen (~40 Stück, je ~10–18 MB, enthalten den NIM-Schlüssel)
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.66)
+## Zuletzt erledigt (0.5.0 – 1.0.0.67)
+
+- 1.0.0.67: Trainingspläne neu: (a) Erststart fragt „Was trainierst du?“ (Gym/Calisthenics/Laufen), nur gewählte Sportarten erscheinen auf „Sport“ (auch in Einstellungen → Bereiche umschaltbar), danach folgt pro Sportart automatisch das Setup für den ersten Plan; Gym-Setup schlägt Ganzkörper, 2er-, 3er- und neuen 4er-Split vor; (b) Seite „Pläne“ je Sportart (Knopf in der Plan-Karte): alle Pläne mit Inhalt und Tagen, aktiver markiert, Aktivieren, Umbenennen, Duplizieren, Löschen; neuer Plan per KI-Coach, selbst zusammenstellen oder mit Fragen; (c) Plan-Editor für Gym/Calisthenics: Name, Trainingstage, Einheiten anlegen/umbenennen/löschen, Übungen hinzufügen/sortieren/entfernen, Sätze/Wdh./Pause, als aktiven Plan wählen; (d) KI-Coach-Chat: Split, Volumen, Übungen, Ausschlüsse ansagen → Plan aus dem Übungskatalog, per Nachricht nachbessern, übernehmen (aktiv oder nur speichern) und im Editor anpassen; Laufen: Coach liefert Ziel, Termin, Lauftage, Zeiten, die App baut den Plan
 
 - 1.0.0.66: Apple-Designsprache auf allen Screens („Klar“): Textfelder grau gefüllt und rund ohne Rahmen (48 Stellen), Filter-/Aktions-Chips als Kapseln ohne Rand (34), Fortschritt als dünne Linie statt Welle (19) und schlichter Ring, Lade-Anzeige als Apple-Spinner (33), runde Häkchen wie in Erinnerungen, Regler mit schmaler Spur und weißem Knopf, runde FABs, Menüs runder (14 dp), Scroll-Ende mit Gummiband und Zurückfedern statt Android-Stretch; Bausteine in core/designsystem/component/AppleComponents.kt, Expressive bleibt Material
 

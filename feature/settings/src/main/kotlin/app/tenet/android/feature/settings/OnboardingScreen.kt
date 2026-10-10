@@ -92,7 +92,11 @@ fun OnboardingScreen(
     var page by rememberSaveable { mutableIntStateOf(0) }
     val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
     androidx.compose.runtime.LaunchedEffect(Unit) { settingsViewModel.startOnboarding() }
+    val sport = AppModule.SPORT in settings.enabledModules
+    val steps = if (sport) 5 else 4
     val finish = {
+        // The chosen sports get their first plan right after the welcome screens.
+        settingsViewModel.queueSportSetups(if (sport) SportChoices.map { it.first }.filter { it in settings.sportDisciplines } else emptyList())
         settingsViewModel.completeOnboarding()
         onDone()
     }
@@ -107,14 +111,15 @@ fun OnboardingScreen(
         ) { p ->
             when (p) {
                 0 -> WelcomePage(accountViewModel, onNext = { page = 1 })
-                1 -> ModulesStep(0, 4, settings.enabledModules, settingsViewModel::setModuleEnabled) { page = 2 }
+                1 -> ModulesStep(0, steps, settings.enabledModules, settingsViewModel::setModuleEnabled) { page = if (sport) 5 else 2 }
+                5 -> SportsStep(1, steps, settings.sportDisciplines, settingsViewModel::setSportDiscipline) { page = 2 }
                 2 -> ProfileStep(
-                    1, 4, settings.profile,
+                    steps - 3, steps, settings.profile,
                     onSave = { settingsViewModel.saveProfile(it); page = 3 },
                     onSkip = { page = 3 },
                 )
                 3 -> GoalsStep(
-                    2, 4, settings.profile,
+                    steps - 2, steps, settings.profile,
                     nutrition = AppModule.NUTRITION in settings.enabledModules,
                     waterMl = settings.waterGoalMl,
                 ) { goal, water ->

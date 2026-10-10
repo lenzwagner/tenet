@@ -199,3 +199,15 @@ val TopLevelTabs: List<TopLevelTab> = listOf(
     TopLevelTab.Nutrition,
     TopLevelTab.Settings,
 )
+
+/** All plans of a discipline (GYM, CALISTHENICS, RUNNING): switch, rename, delete, create. */
+@Serializable
+data class PlansRoute(val discipline: String = "GYM")
+
+/** Editor of one gym or calisthenics plan. */
+@Serializable
+data class PlanEditorRoute(val planId: String = "")
+
+/** Chat with the AI coach that drafts a plan for a discipline. */
+@Serializable
+data class PlanChatRoute(val discipline: String = "GYM")

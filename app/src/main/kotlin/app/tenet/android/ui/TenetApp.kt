@@ -259,6 +259,17 @@ fun TenetApp(
         }
     }
 
+    // After the welcome screens: the first plan of each chosen sport, one setup after the other.
+    // App-wide (not tied to a screen): the "handled" write must outlive the setup screen.
+    val setupSettings = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel<app.tenet.android.feature.settings.SettingsViewModel>()
+    val nextSportSetup = settings.pendingSportSetups.firstOrNull()
+    LaunchedEffect(nextSportSetup) {
+        if (nextSportSetup != null) {
+            kotlinx.coroutines.delay(350)
+            navController.navigate(SportSetupRoute(nextSportSetup, useTrainingHistory = false)) { launchSingleTop = true }
+        }
+    }
+
     val appSnackbar = rememberAppSnackbar()
     // Blur of the whole app while a sheet (new entry) floats above it.
     val backdropBlur = remember { mutableFloatStateOf(0f) }
@@ -361,6 +372,8 @@ fun TenetApp(
                             onOpenGymHistory = { navController.navigate(WorkoutHistoryRoute) },
                             onOpenExercise = { id -> navController.navigate(ExerciseDetailRoute(id)) },
                             onOpenCaliPlan = { navController.navigate(CaliPlanDetailRoute) },
+                            onOpenPlans = { d -> navController.navigate(app.tenet.android.navigation.PlansRoute(d.name)) },
+                            disciplines = settings.sportDisciplines,
                         )
                     }
                 }
@@ -530,11 +543,66 @@ fun TenetApp(
                 }
 }
 }
+                composable<app.tenet.android.navigation.PlansRoute> { entry ->
+ SubPageWash(HeaderImage.SPORT) {
+ AreaTheme(AppArea.SPORT) {
+                    val name = entry.toRoute<app.tenet.android.navigation.PlansRoute>().discipline
+                    val discipline = runCatching { app.tenet.android.core.database.entity.Discipline.valueOf(name) }
+                        .getOrDefault(app.tenet.android.core.database.entity.Discipline.GYM)
+                    app.tenet.android.feature.sport.plan.PlansScreen(
+                        discipline = discipline,
+                        onBack = { navController.popBackStack() },
+                        onEdit = { id ->
+                            if (discipline == app.tenet.android.core.database.entity.Discipline.RUNNING) navController.navigate(RunPlanDetailRoute(id))
+                            else navController.navigate(app.tenet.android.navigation.PlanEditorRoute(id))
+                        },
+                        // Gym: start weights from the trainings done so far, when there are any.
+                        onOpenSetup = { navController.navigate(SportSetupRoute(name, useTrainingHistory = true)) },
+                        onOpenChat = { navController.navigate(app.tenet.android.navigation.PlanChatRoute(name)) },
+                    )
+                }
+}
+}
+                composable<app.tenet.android.navigation.PlanEditorRoute> { entry ->
+ SubPageWash(HeaderImage.SPORT) {
+ AreaTheme(AppArea.SPORT) {
+                    app.tenet.android.feature.sport.plan.PlanEditorScreen(
+                        planId = entry.toRoute<app.tenet.android.navigation.PlanEditorRoute>().planId,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+}
+}
+                composable<app.tenet.android.navigation.PlanChatRoute> { entry ->
+ SubPageWash(HeaderImage.SPORT) {
+ AreaTheme(AppArea.SPORT) {
+                    val name = entry.toRoute<app.tenet.android.navigation.PlanChatRoute>().discipline
+                    val discipline = runCatching { app.tenet.android.core.database.entity.Discipline.valueOf(name) }
+                        .getOrDefault(app.tenet.android.core.database.entity.Discipline.GYM)
+                    app.tenet.android.feature.sport.plan.PlanChatScreen(
+                        discipline = discipline,
+                        onBack = { navController.popBackStack() },
+                        onCreated = { id ->
+                            // The chat is done: back to the plans, gym/calisthenics straight into the editor.
+                            navController.popBackStack()
+                            if (discipline != app.tenet.android.core.database.entity.Discipline.RUNNING) {
+                                navController.navigate(app.tenet.android.navigation.PlanEditorRoute(id))
+                            }
+                        },
+                    )
+                }
+}
+}
                 composable<SportSetupRoute> { entry ->
  SubPageWash(HeaderImage.SPORT) {
  AreaTheme(AppArea.SPORT) {
                     val done = { navController.popBackStack(); Unit }
                     val setupRoute = entry.toRoute<SportSetupRoute>()
+                    // First start: leaving this setup (done or skipped) lets the next chosen sport follow.
+                    val activity = androidx.activity.compose.LocalActivity.current
+                    androidx.compose.runtime.DisposableEffect(setupRoute.discipline) {
+                        onDispose { if (activity?.isChangingConfigurations != true) setupSettings.sportSetupHandled(setupRoute.discipline) }
+                    }
                     when (setupRoute.discipline) {
                         "RUNNING" -> RunSetupScreen(onDone = done)
                         "CALISTHENICS" -> CaliSetupScreen(onDone = done)

@@ -177,6 +177,7 @@ fun RunningPage(
         if (showSetup) {
             item(key = "setup") {
                 SetupIntroCard(
+                    discipline = app.tenet.android.core.database.entity.Discipline.RUNNING,
                     icon = Icons.AutoMirrored.Outlined.DirectionsRun,
                     title = "Richte deinen Laufplan ein",
                     body = "Ziel, Termin, dein aktuelles Niveau und deine Lauftage – daraus erstellt Tenet " +
@@ -364,7 +365,7 @@ private fun PlanCard(
 ) {
     TenetCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            CardHeader(Icons.AutoMirrored.Outlined.DirectionsRun, "Trainingsplan", action = { PlanSwitchButton(plans) { onSwitchPlan(it.id) } })
+            CardHeader(Icons.AutoMirrored.Outlined.DirectionsRun, "Trainingsplan", action = { PlanSwitchButton(app.tenet.android.core.database.entity.Discipline.RUNNING) })
 
             val plan = state.overview.plan
             if (plan == null) {

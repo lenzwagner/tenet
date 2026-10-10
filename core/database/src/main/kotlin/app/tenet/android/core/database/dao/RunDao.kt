@@ -34,6 +34,12 @@ interface RunDao {
     @Upsert
     suspend fun upsertRunPlanWorkouts(workouts: List<RunPlanWorkout>)
 
+    @Query("DELETE FROM RunPlanWorkout WHERE plannedWorkoutId IN (SELECT id FROM PlannedWorkout WHERE planId = :planId)")
+    suspend fun deletePlanWorkoutDetails(planId: String)
+
+    @Query("DELETE FROM RunPlanDetail WHERE planId = :planId")
+    suspend fun deletePlanDetail(planId: String)
+
     @Upsert
     suspend fun upsertPlanDetail(detail: RunPlanDetail)
 

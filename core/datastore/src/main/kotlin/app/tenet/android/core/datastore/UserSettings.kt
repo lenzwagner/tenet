@@ -40,6 +40,10 @@ data class UserSettings(
     val companionKind: String = "TENNY",
     val companionNames: Map<String, String> = emptyMap(),
     val enabledModules: Set<AppModule> = AppModule.entries.toSet(),
+    /** Sports in use (GYM, CALISTHENICS, RUNNING); the others are hidden on "Sport". */
+    val sportDisciplines: Set<String> = setOf("GYM", "CALISTHENICS", "RUNNING"),
+    /** Sports whose first plan is still to be set up after the welcome screens, in order. */
+    val pendingSportSetups: List<String> = emptyList(),
     /** 1RM estimation formula used for progress displays (App_Konzept.md 5.2.1). */
     val oneRepMaxFormula: OneRepMaxFormula = OneRepMaxFormula.EPLEY,
     /** Target-pace method for running plans (App_Konzept.md 5.2.3). */

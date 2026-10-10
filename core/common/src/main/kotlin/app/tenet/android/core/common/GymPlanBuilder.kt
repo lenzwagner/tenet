@@ -22,8 +22,9 @@ object GymPlanBuilder {
 
     enum class Split(val label: String, val description: String) {
         FULL_BODY("Ganzkörper", "Jede Einheit trainiert alles · ideal für 2–3 Tage"),
-        UPPER_LOWER("Oberkörper / Unterkörper", "Im Wechsel · ideal für 4 Tage"),
-        PPL("Push / Pull / Beine", "Drücken, Ziehen, Beine · ideal für 3, 5 oder 6 Tage"),
+        UPPER_LOWER("2er-Split · Oberkörper / Unterkörper", "Zwei Einheiten im Wechsel · ideal für 4 Tage"),
+        PPL("3er-Split · Push / Pull / Beine", "Drücken, Ziehen, Beine · ideal für 3, 5 oder 6 Tage"),
+        FOUR_DAY("4er-Split · Brust / Rücken / Beine / Schultern", "Jede Muskelgruppe einmal pro Woche mit viel Volumen · ideal für 4 Tage"),
         CUSTOM("Eigener Split", "Trainingstage selbst benennen und anschließend frei bearbeiten"),
     }
 
@@ -253,6 +254,12 @@ object GymPlanBuilder {
                 "Push" to listOf(Main(Lift.BENCH), Main(Lift.OHP), Acc(SCHRAEGBANK), dips, lateral, Acc(TRIZEPS)),
                 "Pull" to listOf(Main(Lift.DEADLIFT), pull, Main(Lift.ROW), Acc(FACEPULL), Acc(BIZEPS)),
                 "Beine" to listOf(Main(Lift.SQUAT), Acc(RDL), Acc(BEINPRESSE), Acc(BEINBEUGER), Acc(WADEN)),
+            )
+            Split.FOUR_DAY -> listOf(
+                "Brust + Trizeps" to listOf(Main(Lift.BENCH), Acc(SCHRAEGBANK), dips, Acc(TRIZEPS)),
+                "Rücken + Bizeps" to listOf(Main(Lift.DEADLIFT), pull, Main(Lift.ROW), Acc(FACEPULL), Acc(BIZEPS)),
+                "Beine" to listOf(Main(Lift.SQUAT), Acc(RDL), Acc(BEINPRESSE), Acc(BEINBEUGER), Acc(WADEN)),
+                "Schultern + Bauch" to listOf(Main(Lift.OHP), lateral, Acc(FACEPULL), Acc(PLANK)),
             )
             Split.CUSTOM -> input.customRoutineTitles
                 .map(String::trim)

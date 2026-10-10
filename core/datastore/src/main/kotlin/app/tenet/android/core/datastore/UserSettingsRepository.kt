@@ -57,6 +57,8 @@ class UserSettingsRepository @Inject constructor(
                 ?.mapNotNull { runCatching { AppModule.valueOf(it) }.getOrNull() }
                 ?.toSet()
                 ?: AppModule.entries.toSet(),
+            sportDisciplines = prefs[KEY_SPORT_DISCIPLINES]?.takeIf { it.isNotEmpty() } ?: setOf("GYM", "CALISTHENICS", "RUNNING"),
+            pendingSportSetups = prefs[KEY_PENDING_SPORT_SETUPS].orEmpty().split(',').filter { it.isNotBlank() },
             oneRepMaxFormula = prefs[KEY_ONE_REP_MAX_FORMULA]
                 ?.let { runCatching { OneRepMaxFormula.valueOf(it) }.getOrNull() }
                 ?: OneRepMaxFormula.EPLEY,
@@ -257,6 +259,25 @@ class UserSettingsRepository @Inject constructor(
         context.tenetDataStore.edit { it[KEY_COMPANION_KIND] = kind }
     }
 
+    /** At least one sport stays on. */
+    suspend fun setSportDiscipline(discipline: String, enabled: Boolean) {
+        context.tenetDataStore.edit { prefs ->
+            val current = prefs[KEY_SPORT_DISCIPLINES]?.takeIf { it.isNotEmpty() } ?: setOf("GYM", "CALISTHENICS", "RUNNING")
+            val next = if (enabled) current + discipline else current - discipline
+            if (next.isNotEmpty()) prefs[KEY_SPORT_DISCIPLINES] = next
+        }
+    }
+
+    suspend fun setPendingSportSetups(disciplines: List<String>) {
+        context.tenetDataStore.edit { it[KEY_PENDING_SPORT_SETUPS] = disciplines.joinToString(",") }
+    }
+
+    suspend fun sportSetupHandled(discipline: String) {
+        context.tenetDataStore.edit { prefs ->
+            prefs[KEY_PENDING_SPORT_SETUPS] = prefs[KEY_PENDING_SPORT_SETUPS].orEmpty().split(',').filter { it.isNotBlank() && it != discipline }.joinToString(",")
+        }
+    }
+
     suspend fun setModuleEnabled(module: AppModule, enabled: Boolean) {
         context.tenetDataStore.edit { prefs ->
             val current = prefs[KEY_MODULES] ?: AppModule.entries.map { it.name }.toSet()
@@ -275,6 +296,8 @@ class UserSettingsRepository @Inject constructor(
         val KEY_CALENDAR_READ = booleanPreferencesKey("calendar_read")
         val KEY_CALENDAR_WRITE = androidx.datastore.preferences.core.longPreferencesKey("calendar_write_id")
         val KEY_COMPANION_KIND = stringPreferencesKey("companion_kind")
+        val KEY_SPORT_DISCIPLINES = stringSetPreferencesKey("sport_disciplines")
+        val KEY_PENDING_SPORT_SETUPS = stringPreferencesKey("pending_sport_setups")
         val KEY_AMOLED = stringPreferencesKey("amoled_mode")
         val KEY_DESIGN_STYLE = stringPreferencesKey("design_style")
         val KEY_JOURNAL_SERIF = booleanPreferencesKey("journal_serif")
