@@ -1,10 +1,10 @@
 # Tenet – offene ToDos
 
-Stand: 07.10.2026, Version 1.0.0.70 (auf `main` gepusht, APK `tenet-1.0.0.70-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 07.10.2026, Version 1.0.0.71 (auf `main` gepusht, APK `tenet-1.0.0.71-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Übergabe (Session 06.–07.10.2026)
 
-**Stand:** 1.0.0.6 – 1.0.0.70 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
+**Stand:** 1.0.0.6 – 1.0.0.71 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
 
 **Wichtig vor dem nächsten Update am Handy:**
 - Seit 1.0.0.6 ist die Datenbank mit SQLCipher verschlüsselt (Rohschlüssel, im Android Keystore gewrappt, `no_backup/db.key`). Die alte Klartext-DB wird beim ersten Start einmal umgewandelt. Im Emulator geprüft, mit echten Daten noch nicht → vorher mit Google anmelden und synchronisieren.
@@ -105,7 +105,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Alte APKs im Projektordner aufräumen (~40 Stück, je ~10–18 MB, enthalten den NIM-Schlüssel)
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.70)
+## Zuletzt erledigt (0.5.0 – 1.0.0.71)
+
+- 1.0.0.71: Gym: „1 Übung“ statt „1 Übungen“ (Heute-Karte und Mein Plan); Zusammenfassung nach beendetem Gym-Training und aufgeklappte Skill-Leiter im Emulator geprüft
 
 - 1.0.0.70: Sport-Überarbeitung, zweiter Teil: „Freier Lauf“ neben einem Plan-Lauf als schlanke Zeile (Nachtragen/GPX im Menü) statt eigener Karte; Skill-Tree zeigt nur die aktuelle Stufe, „Alle N Stufen zeigen“ klappt die Leiter auf; Lauf-Einheit fasst gleiche Kilometer zusammen („km 1–7“); Unterseiten durchgesehen (laufendes Gym-Training, Skill-Session, Gym-/Calisthenics-/Laufplan-Details, Lauf-Einheit, Lauf-Detail, Setup-Fragebögen)
 

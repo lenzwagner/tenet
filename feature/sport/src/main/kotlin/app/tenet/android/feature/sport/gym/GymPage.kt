@@ -203,7 +203,7 @@ fun GymPage(
                     name = plan?.name,
                     subtitle = plan?.let {
                         val units = overview.workouts.size
-                        (if (units == 1) "1 Einheit" else "$units Einheiten im Wechsel") + " · ${overview.routine.size} Übungen in ${next?.title ?: "der nächsten"}"
+                        (if (units == 1) "1 Einheit" else "$units Einheiten im Wechsel") + " · ${overview.routine.size} ${if (overview.routine.size == 1) "Übung" else "Übungen"} in ${next?.title ?: "der nächsten"}"
                     },
                     days = plan?.let { app.tenet.android.feature.sport.planDays(it.trainingDays) },
                     next = if (overview.workouts.size > 1 && next != null) "Als Nächstes: ${next.title}" + (after?.let { " · danach ${it.title}" } ?: "") else null,
@@ -331,7 +331,7 @@ private fun TodayCard(
         icon = Icons.Outlined.FitnessCenter,
         state = state,
         title = overview.mainWorkout?.title ?: plan?.name ?: "Gym",
-        subtitle = if (plan == null) "Bibliothek wird geladen …" else "${overview.routine.size} Übungen · ${plan.goal ?: "Kraft"}",
+        subtitle = if (plan == null) "Bibliothek wird geladen …" else "${overview.routine.size} ${if (overview.routine.size == 1) "Übung" else "Übungen"} · ${plan.goal ?: "Kraft"}",
         nextLabel = nextTrainingDayLabel(plan?.trainingDays),
         onClick = onOpenPlan.takeIf { plan != null },
         extra = {
