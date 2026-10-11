@@ -155,6 +155,8 @@ fun GymPage(
         viewModel.sessionEvents.collect { sessionId -> onOpenSession(sessionId) }
     }
 
+    var progressOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    var bodyOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     Box(Modifier.fillMaxSize()) {
         val listState = rememberReselectListState()
         LazyColumn(
@@ -190,44 +192,79 @@ fun GymPage(
                     onDiscardStale = viewModel::discardActiveSession,
                 )
             }
-            item {
-                val plans by viewModel.plans.collectAsStateWithLifecycle()
-                RoutineCard(
-                    overview = overview,
-                    plans = plans,
-                    onSwitchPlan = viewModel::switchPlan,
-                    onTrainingDays = viewModel::setTrainingDays,
-                    onEdit = onOpenRoutineEditor,
-                    onOpenLibrary = onOpenLibrary,
-                    onOpenPlan = { overview.plan?.id?.let(onOpenPlan) },
-                    onSetup = { showPlanSourceDialog = true },
+            // 2. Mein Plan: what it is, on which days, what comes next – editing lives one level deeper.
+            item(key = "plan") {
+                val plan = overview.plan
+                val editPlan = app.tenet.android.feature.sport.LocalEditPlan.current
+                val next = overview.mainWorkout
+                val after = overview.workouts.getOrNull((overview.workouts.indexOf(next) + 1) % overview.workouts.size.coerceAtLeast(1))
+                app.tenet.android.feature.sport.PlanSummaryCard(
+                    discipline = app.tenet.android.core.database.entity.Discipline.GYM,
+                    name = plan?.name,
+                    subtitle = plan?.let {
+                        val units = overview.workouts.size
+                        (if (units == 1) "1 Einheit" else "$units Einheiten im Wechsel") + " · ${overview.routine.size} Übungen in ${next?.title ?: "der nächsten"}"
+                    },
+                    days = plan?.let { app.tenet.android.feature.sport.planDays(it.trainingDays) },
+                    next = if (overview.workouts.size > 1 && next != null) "Als Nächstes: ${next.title}" + (after?.let { " · danach ${it.title}" } ?: "") else null,
+                    primaryLabel = "Plan bearbeiten",
+                    onPrimary = { plan?.id?.let { id -> editPlan?.invoke(id) ?: onOpenRoutineEditor() } },
+                    onOpen = { plan?.id?.let(onOpenPlan) },
                 )
             }
-            item { SessionsCard(overview, onOpenSession = onOpenSummary, onOpenHistory = onOpenHistory) }
-            item { MuscleWeekCard(muscleWeek) }
-            item { PrBadgeCard(personalBests = progressState.personalBests) }
-            item { ProgressCard(overview) }
-            item {
-                OneRmHistoryCard(
-                    sets = progressState.sets,
-                    exercises = progressState.exercises,
-                    formula = progressState.formula,
-                )
+            // 3. What was trained.
+            // Only once there is something to show.
+            if (overview.sessions.isNotEmpty()) {
+                item(key = "sessions") { SessionsCard(overview, onOpenSession = onOpenSummary, onOpenHistory = onOpenHistory) }
             }
-            item {
-                VolumeHistoryCard(
-                    sets = progressState.sets,
-                    muscleGroups = progressState.muscleGroups,
-                )
+            // 4. Everything else folded away.
+            item(key = "progress-head") {
+                app.tenet.android.feature.sport.SectionToggle(
+                    Icons.AutoMirrored.Outlined.TrendingUp,
+                    "Fortschritt",
+                    "Wochenziel, Bestwerte, 1RM- und Volumen-Verlauf, Sätze pro Muskel",
+                    progressOpen,
+                ) { progressOpen = !progressOpen }
             }
-            item {
-                BodyMetricCard(
-                    metrics = progressState.bodyMetrics,
-                    metricsLoaded = progressState.bodyMetricsLoaded,
-                    lastPromptDate = progressState.lastWeightPromptDate,
-                    onWeeklyPromptDismiss = viewModel::dismissWeeklyWeightPrompt,
-                    onSave = viewModel::saveBodyMetric,
-                )
+            if (progressOpen) {
+                item(key = "progress") { ProgressCard(overview) }
+                item(key = "pr") { PrBadgeCard(personalBests = progressState.personalBests) }
+                item(key = "orm") {
+                    OneRmHistoryCard(
+                        sets = progressState.sets,
+                        exercises = progressState.exercises,
+                        formula = progressState.formula,
+                    )
+                }
+                item(key = "volume") {
+                    VolumeHistoryCard(
+                        sets = progressState.sets,
+                        muscleGroups = progressState.muscleGroups,
+                    )
+                }
+                item(key = "muscle") { MuscleWeekCard(muscleWeek) }
+            }
+            item(key = "body-head") {
+                app.tenet.android.feature.sport.SectionToggle(
+                    Icons.Outlined.AccessibilityNew,
+                    "Körper",
+                    progressState.bodyMetrics.maxByOrNull { it.date }?.let { "%.1f kg".format(java.util.Locale.GERMAN, it.weight) } ?: "Gewicht und Verlauf",
+                    bodyOpen,
+                ) { bodyOpen = !bodyOpen }
+            }
+            if (bodyOpen) {
+                item(key = "body") {
+                    BodyMetricCard(
+                        metrics = progressState.bodyMetrics,
+                        metricsLoaded = progressState.bodyMetricsLoaded,
+                        lastPromptDate = progressState.lastWeightPromptDate,
+                        onWeeklyPromptDismiss = viewModel::dismissWeeklyWeightPrompt,
+                        onSave = viewModel::saveBodyMetric,
+                    )
+                }
+            }
+            item(key = "library") {
+                app.tenet.android.feature.sport.LinkRow(Icons.Outlined.FitnessCenter, "Übungs-Bibliothek", "Alle Übungen mit Technik und Verlauf", onOpenLibrary)
             }
         }
 

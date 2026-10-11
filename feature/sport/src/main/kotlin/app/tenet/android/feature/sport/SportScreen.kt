@@ -89,6 +89,10 @@ fun SportScreen(
     onOpenCaliPlan: () -> Unit = {},
     /** All plans of a discipline: switch, edit, create. */
     onOpenPlans: (Discipline) -> Unit = {},
+    /** Editor of a gym or calisthenics plan. */
+    onEditPlan: (planId: String) -> Unit = {},
+    /** Week plan across all sports (rest days, rules). */
+    onOpenWeekPlan: () -> Unit = {},
     /** Sports in use (Discipline names); the others get no tab. */
     disciplines: Set<String> = emptySet(),
 ) {
@@ -133,7 +137,11 @@ fun SportScreen(
                 },
             )
 
-            androidx.compose.runtime.CompositionLocalProvider(LocalOpenPlans provides onOpenPlans) {
+            androidx.compose.runtime.CompositionLocalProvider(
+                LocalOpenPlans provides onOpenPlans,
+                LocalEditPlan provides onEditPlan,
+                LocalOpenWeek provides onOpenWeekPlan,
+            ) {
             HorizontalPager(
                 state = pagerState,
                 beyondViewportPageCount = 1,

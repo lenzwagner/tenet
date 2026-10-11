@@ -157,6 +157,7 @@ fun RunningPage(
     }
 
     val listState = rememberReselectListState()
+    var statsOpen by rememberSaveable { mutableStateOf(false) }
     PullToRefreshBox(
         isRefreshing = refreshing,
         onRefresh = { viewModel.refresh { snackbar?.show(it) } },
@@ -207,26 +208,48 @@ fun RunningPage(
                 freeRun = state.nextUnit != null,
             )
         }
-        // Without a plan the setup card above already asks for one: no second "Plan erstellen".
-        if (!(showSetup && state.overview.plan == null)) {
-            item {
-                val plans by viewModel.plans.collectAsStateWithLifecycle()
-                PlanCard(
-                    state = state,
-                    onCreatePlan = onOpenSetup,
-                    onOpenPlan = onOpenPlan,
-                    plans = plans,
-                    onSwitchPlan = viewModel::switchPlan,
+        // 2. Mein Plan (same card as gym and calisthenics). Without a plan the setup
+        // card above already asks for one.
+        if (!(showSetup && state.overview.plan == null) && !state.loading) {
+            item(key = "plan") {
+                val plan = state.overview.plan
+                val detail = state.overview.detail
+                val goal = RunGoal.fromName(detail?.goalId)
+                val dateFmt = java.time.format.DateTimeFormatter.ofPattern("d. MMM yyyy", Locale.GERMAN)
+                // The coming week shows the pattern of run days.
+                val runDays = state.planWeeks.getOrNull((state.currentWeek + 1).coerceAtMost(state.planWeeks.lastIndex).coerceAtLeast(0))
+                    ?.units?.mapNotNull { it.date?.dayOfWeek?.value }?.toSet()
+                PlanSummaryCard(
+                    discipline = app.tenet.android.core.database.entity.Discipline.RUNNING,
+                    name = plan?.let { goal.label },
+                    subtitle = plan?.let {
+                        "Ziel am ${state.goalDate?.format(dateFmt) ?: "–"} · ${detail?.runsPerWeek ?: "–"} Läufe pro Woche · Woche ${(state.currentWeek + 1).coerceIn(1, state.weeks.coerceAtLeast(1))} von ${state.weeks}"
+                    },
+                    days = plan?.let { runDays ?: emptySet() }?.takeIf { it.isNotEmpty() },
+                    next = null,
+                    note = plan?.let { if (detail?.current5kSec == null) "Keine Formzeit hinterlegt – Zielpaces sind aus." else "Form 5 km: ${formatTime(detail.current5kSec!!)}" },
+                    primaryLabel = "Plan & Prognose",
+                    onPrimary = { plan?.id?.let(onOpenPlan) },
+                    onOpen = { plan?.id?.let(onOpenPlan) },
                 )
             }
         }
+        // 3. The week and the latest runs.
         if (state.planWeeks.isNotEmpty()) {
             item(key = "plan-week") { PlanWeekCard(state.planWeeks, state.currentWeek, onOpenWorkout) }
         }
-        item { VolumeCard(state) }
-        state.form?.let { form -> item(key = "form") { app.tenet.android.feature.sport.run.FormCard(form) } }
-        if (state.records.isNotEmpty()) item { RecordsCard(state, onOpenRun) }
-        item { RecentRunsCard(state, onOpenRun) }
+        if (state.overview.runs.isNotEmpty()) {
+            item(key = "recent") { RecentRunsCard(state, onOpenRun) }
+        }
+        // 4. Folded away.
+        item(key = "stats-head") {
+            SectionToggle(Icons.Outlined.BarChart, "Statistik", "Umfang pro Woche und Monat, Form, Bestzeiten", statsOpen) { statsOpen = !statsOpen }
+        }
+        if (statsOpen) {
+            item(key = "volume") { VolumeCard(state) }
+            state.form?.let { form -> item(key = "form") { app.tenet.android.feature.sport.run.FormCard(form) } }
+            if (state.records.isNotEmpty()) item(key = "records") { RecordsCard(state, onOpenRun) }
+        }
     }
     }
 }

@@ -242,6 +242,7 @@ fun CalisthenicsPage(
         )
     }
 
+    var timelineOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     Box(Modifier.fillMaxSize()) {
         val listState = rememberReselectListState()
         LazyColumn(
@@ -277,7 +278,23 @@ fun CalisthenicsPage(
                     onStartStrength = { showStrengthSheet = true },
                 )
             }
-            item {
+            // 2. Mein Plan (same card as gym and running).
+            item(key = "plan") {
+                val plan = overview.plan
+                val editPlan = app.tenet.android.feature.sport.LocalEditPlan.current
+                app.tenet.android.feature.sport.PlanSummaryCard(
+                    discipline = app.tenet.android.core.database.entity.Discipline.CALISTHENICS,
+                    name = plan?.name,
+                    subtitle = plan?.let { "Kraft-Block mit ${overview.routine.size} Übungen · dazu dein Skill-Training" },
+                    days = plan?.let { app.tenet.android.feature.sport.planDays(it.trainingDays) },
+                    next = null,
+                    primaryLabel = "Plan bearbeiten",
+                    onPrimary = { plan?.id?.let { id -> editPlan?.invoke(id) ?: onOpenPlan() } },
+                    onOpen = onOpenPlan,
+                )
+            }
+            // 3. The core of calisthenics: the skills and where you stand.
+            item(key = "skills") {
                 SkillTreeCard(
                     uiState = uiState,
                     onSelectSkill = viewModel::selectSkill,
@@ -287,20 +304,19 @@ fun CalisthenicsPage(
                     onDeleteVideo = viewModel::deleteFormVideo,
                 )
             }
-            item {
-                val plans by viewModel.plans.collectAsStateWithLifecycle()
-                PlanCard(
-                    overview,
-                    onSetup = onOpenSetup,
-                    onOpenPlan = onOpenPlan,
-                    onOpenExercise = onOpenExercise,
-                    plans = plans,
-                    onSwitchPlan = viewModel::switchPlan,
-                    onTrainingDays = viewModel::setTrainingDays,
-                )
+            if (overview.sessions.isNotEmpty()) {
+                item(key = "sessions") { SessionsCard(overview, onOpenSummary) }
             }
-            item { SessionsCard(overview, onOpenSummary) }
-            item { TimelineCard(uiState) }
+            // 4. Folded away.
+            item(key = "timeline-head") {
+                app.tenet.android.feature.sport.SectionToggle(
+                    Icons.Outlined.MilitaryTech,
+                    "Aufstiege",
+                    "Wann du welche Skill-Stufe erreicht hast",
+                    timelineOpen,
+                ) { timelineOpen = !timelineOpen }
+            }
+            if (timelineOpen) item(key = "timeline") { TimelineCard(uiState) }
         }
 
         // Gestures live in the innermost node: as children of the FAB's own

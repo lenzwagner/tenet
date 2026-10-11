@@ -376,6 +376,8 @@ fun TenetApp(
                             onOpenCaliPlan = { navController.navigate(CaliPlanDetailRoute) },
                             onOpenPlans = { d -> navController.navigate(app.tenet.android.navigation.PlansRoute(d.name)) },
                             disciplines = settings.sportDisciplines,
+                            onEditPlan = { id -> navController.navigate(app.tenet.android.navigation.PlanEditorRoute(id)) },
+                            onOpenWeekPlan = { navController.navigate(app.tenet.android.navigation.WeekPlanRoute) },
                         )
                     }
                 }
