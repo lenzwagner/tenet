@@ -93,6 +93,38 @@ internal fun StartRunCard(
     /** A plan workout is shown above: this starts a run outside the plan. */
     freeRun: Boolean = false,
 ) {
+    // Next to a planned run this is the side entrance: one slim row instead of a card of its own.
+    if (freeRun && !recording && unfinishedStart == null) {
+        var more by remember { mutableStateOf(false) }
+        TenetCard(onClick = { onStart(FREE_RUN) }, modifier = Modifier.fillMaxWidth()) {
+            Row(Modifier.padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.AutoMirrored.Outlined.DirectionsRun, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Freier Lauf", style = MaterialTheme.typography.titleMedium)
+                    Text("Ohne Plan loslaufen", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Box {
+                    androidx.compose.material3.IconButton(onClick = { more = true }) {
+                        Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = "Nachtragen oder importieren")
+                    }
+                    DropdownMenu(expanded = more, onDismissRequest = { more = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Lauf nachtragen") },
+                            leadingIcon = { Icon(Icons.Outlined.EditCalendar, contentDescription = null) },
+                            onClick = { more = false; onManual() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("GPX importieren") },
+                            leadingIcon = { Icon(Icons.Outlined.FileOpen, contentDescription = null) },
+                            onClick = { more = false; onImportGpx() },
+                        )
+                    }
+                }
+            }
+        }
+        return
+    }
     TenetCard(
         Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(

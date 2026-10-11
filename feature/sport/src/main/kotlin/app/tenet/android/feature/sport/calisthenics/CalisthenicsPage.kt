@@ -476,7 +476,16 @@ private fun SkillTreeCard(
                 }
             }
 
-            uiState.ladder.forEach { row -> LadderRow(row, onClick = { onOpenExercise(row.step.exerciseId) }) }
+            // Only the step you are on; the whole ladder unfolds on demand.
+            var allSteps by androidx.compose.runtime.saveable.rememberSaveable(uiState.selectedSkillId) { mutableStateOf(false) }
+            val current = uiState.ladder.firstOrNull { it.step.id == uiState.currentStep?.id }
+            val shown = if (allSteps || current == null) uiState.ladder else listOf(current)
+            shown.forEach { row -> LadderRow(row, onClick = { onOpenExercise(row.step.exerciseId) }) }
+            if (current != null && uiState.ladder.size > 1) {
+                TextButton(shapes = ButtonDefaults.shapes(), onClick = { allSteps = !allSteps }) {
+                    Text(if (allSteps) "Weniger zeigen" else "Alle ${uiState.ladder.size} Stufen zeigen")
+                }
+            }
 
             // Technique over the weeks: tap to play, "Vergleichen" for two side by side.
             if (formVideos.isNotEmpty()) {

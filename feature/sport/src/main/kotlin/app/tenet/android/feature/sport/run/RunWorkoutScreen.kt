@@ -295,12 +295,29 @@ fun RunWorkoutScreen(
             // Interval sessions already list each rep with its pace; mixed km averages would only confuse.
             val continuous = u.workout.segments.none { it.kind == app.tenet.android.core.common.RunWorkoutStructure.Kind.RECOVERY }
             if (splits.size >= 2 && !u.race && continuous) {
+                // Runs of equal kilometres collapse into one row ("km 1–8"): a steady run is one line, not eight.
+                val groups = buildList<IntRange> {
+                    var start = 0
+                    for (i in 1..splits.size) {
+                        val same = i < splits.size && splits[i].kind == splits[start].kind &&
+                            splits[i].paceSecPerKm == splits[start].paceSecPerKm && splits[i].distanceM >= 1000 && splits[start].distanceM >= 1000
+                        if (!same) {
+                            add(start until i)
+                            start = i
+                        }
+                    }
+                }
                 item(key = "splits-h") { SectionTitle(Icons.Outlined.Timeline, "Pace je Kilometer") }
                 item(key = "splits") {
-                    SegmentedRows(count = splits.size, containerColor = MaterialTheme.colorScheme.surfaceContainer) { i ->
-                        val sp = splits[i]
+                    SegmentedRows(count = groups.size, containerColor = MaterialTheme.colorScheme.surfaceContainer) { g ->
+                        val range = groups[g]
+                        val sp = splits[range.first]
                         Text(
-                            if (sp.distanceM >= 1000) "km ${sp.km}" else "km ${sp.km} · ${sp.distanceM} m",
+                            when {
+                                range.count() > 1 -> "km ${sp.km}–${splits[range.last].km}"
+                                sp.distanceM >= 1000 -> "km ${sp.km}"
+                                else -> "km ${sp.km} · ${sp.distanceM} m"
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.weight(1f),
                         )
