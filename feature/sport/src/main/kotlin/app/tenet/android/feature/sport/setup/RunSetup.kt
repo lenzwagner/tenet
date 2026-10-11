@@ -58,7 +58,9 @@ import kotlinx.coroutines.launch
 enum class RunnerLevel(val label: String, val description: String, val volume: Float) {
     BEGINNER("Einsteiger", "Bis 10 km pro Woche oder gerade erst angefangen", 0.8f),
     REGULAR("Regelmäßig", "Etwa 15–30 km pro Woche", 1f),
-    AMBITIOUS("Ambitioniert", "Mehr als 30 km pro Woche", 1.15f),
+    AMBITIOUS("Ambitioniert", "Etwa 30–50 km pro Woche", 1.15f),
+    ADVANCED("Fortgeschritten", "Etwa 50–80 km pro Woche · am besten 5–6 Lauftage", 1.5f),
+    HIGH("Leistungsorientiert", "80–100 km pro Woche und mehr · 6 Lauftage", 2.1f),
 }
 
 /** Recent result the 5 km form is derived from. */
@@ -304,6 +306,16 @@ private fun RunPlanPreview(s: RunSetupState) {
     val anchor = s.form5kSec?.let { PaceAnchor(5_000, it) }
     val dayNames = listOf("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")
     Text("${s.goal.label} · $weeks Wochen", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+    // What the chosen level and days add up to: first week and the biggest week.
+    val easyPace = anchor?.let { RunPaceMath.targetPaceSecPerKm(RunZone.EASY, it, app.tenet.android.core.common.PaceMethod.VDOT) } ?: 360
+    val km1 = RunPlanMath.estimateWeekKm(week1, easyPace)
+    val kmPeak = (0 until weeks).maxOf { w ->
+        RunPlanMath.estimateWeekKm(RunPlanMath.planWeek(s.goal, w, s.runs, totalWeeks = weeks, taper = s.taper, days = s.days.map { it - 1 }, volume = s.level.volume), easyPace)
+    }
+    SetupHint("Umfang: etwa ${km1.toInt()} km in Woche 1, bis etwa ${kmPeak.toInt()} km in der stärksten Woche (${s.runs} Läufe pro Woche).")
+    if (s.level.volume >= 1.5f && s.runs < 5) {
+        SetupHint("Für ${s.level.description.substringBefore(" ·").removePrefix("Etwa ")} brauchst du mehr Lauftage – mit ${s.runs} Läufen wird jeder einzelne sehr lang. Geh einen Schritt zurück und wähle 5–6 Tage.")
+    }
     TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("Woche 1", style = MaterialTheme.typography.titleSmall)

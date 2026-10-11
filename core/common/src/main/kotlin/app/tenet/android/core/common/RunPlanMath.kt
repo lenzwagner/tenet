@@ -226,12 +226,58 @@ object RunPlanMath {
         }
     }
 
-    /** Upper bound for the long run per goal [minutes]. */
-    private fun longRunCapSec(goal: RunGoal): Int = when (goal) {
-        RunGoal.FIVE_K, RunGoal.TEN_K, RunGoal.GENERAL -> 90 * 60
-        RunGoal.HALF -> 150 * 60
-        RunGoal.MARATHON -> 180 * 60
+    /** Upper bound for the long run per goal [s]; high-volume runners ([volume] ≥ 1.5) go longer. */
+    private fun longRunCapSec(goal: RunGoal, volume: Float = 1f): Int {
+        val high = volume >= HIGH_VOLUME
+        return when (goal) {
+            RunGoal.FIVE_K, RunGoal.TEN_K, RunGoal.GENERAL -> if (high) 150 * 60 else 90 * 60
+            RunGoal.HALF -> if (high) 165 * 60 else 150 * 60
+            RunGoal.MARATHON -> if (high) 190 * 60 else 180 * 60
+        }
     }
+
+    /** From here on the plan is high mileage: longer long runs, more reps, capped quality. */
+    private const val HIGH_VOLUME = 1.45f
+
+    /**
+     * How much of the [volume] scale a zone takes: easy, recovery and long runs carry
+     * the mileage; tempo grows only with its square root and intervals by reps, so
+     * 90 km a week does not mean an hour at threshold.
+     */
+    private fun zoneScale(zone: RunZone, volume: Float, goal: RunGoal): Float {
+        // Half and marathon plans start from longer runs: above the regular levels the
+        // scale is evened out, so "80–100 km" means the same for every goal.
+        val v = if (volume > 1.2f) {
+            volume * when (goal) {
+                RunGoal.HALF -> 0.87f
+                RunGoal.MARATHON -> 0.75f
+                else -> 1f
+            }
+        } else {
+            volume
+        }
+        return if (zone == RunZone.TEMPO) kotlin.math.sqrt(v.coerceAtLeast(0.1f)) else v
+    }
+
+    /** Longest sensible single run of a zone [s] (the long run has its own cap). */
+    private fun zoneCapSec(zone: RunZone): Int = when (zone) {
+        RunZone.TEMPO -> 50 * 60
+        RunZone.RECOVERY -> 75 * 60
+        else -> 120 * 60
+    }
+
+    /**
+     * Rough kilometres of a week for a preview: time-based runs at [easyPaceSecPerKm]
+     * (tempo a bit faster), intervals with about 4 km of warm-up, jog rests and cool-down.
+     */
+    fun estimateWeekKm(units: List<PlanUnit>, easyPaceSecPerKm: Int = 360): Float =
+        units.sumOf { u ->
+            when {
+                u.zone == RunZone.INTERVAL -> (u.targetDistanceM ?: 0) / 1000.0 + 4.0
+                u.zone == RunZone.TEMPO -> (u.targetDurationSec ?: 0) / (easyPaceSecPerKm * 0.86) + 3.0
+                else -> (u.targetDurationSec ?: 0) / easyPaceSecPerKm.toDouble()
+            }
+        }.toFloat()
 
     fun intervalSpecJson(reps: Int, lengthM: Int, restSec: Int): String =
         """[{"reps":$reps,"lengthM":$lengthM,"restSec":$restSec}]"""
@@ -258,7 +304,7 @@ object RunPlanMath {
         taper: Boolean = false,
         /** Chosen weekdays 0 (Mo) … 6 (So); null = default template days. */
         days: List<Int>? = null,
-        /** Volume scale for the runner's level (0.8 beginner … 1.15 ambitious). */
+        /** Volume scale for the runner's level (0.8 beginner … 1.0 regular … 2.1 for 80–100 km a week). */
         volume: Float = 1f,
     ): List<PlanUnit> = assignDays(weeklyTemplate(runsPerWeek), days).map { (dayIndex, zone) ->
         val tapering = totalWeeks != null && isTaperWeek(goal, weekIndex, totalWeeks, taper)
@@ -269,11 +315,13 @@ object RunPlanMath {
         val build = !tapering && !unload
         if (zone == RunZone.INTERVAL) {
             val length = intervalLength(goal)
-            val reps = if (tapering) {
+            val baseReps = if (tapering) {
                 (intervalReps(peakWeek) - (taperWeeks(goal) - weeksToRace)).coerceAtLeast(2)
             } else {
                 intervalReps(weekIndex)
             }
+            // High mileage: more reps (square root of the volume), at most 12.
+            val reps = if (volume > 1.2f) (baseReps * kotlin.math.sqrt(volume)).let { kotlin.math.round(it).toInt() }.coerceIn(baseReps, 12) else baseReps
             val rest = if (length >= 1000) 120 else 90
             // Build weeks rotate classic → progressive → pyramid; unload and taper stay classic.
             val (blocks, title) = when {
@@ -291,8 +339,8 @@ object RunPlanMath {
             )
         } else {
             val factor = if (tapering) peakLoad(peakWeek) * taperFactor(goal, weeksToRace) else loadFactor(weekIndex)
-            val duration = (baseDuration(goal, zone) * factor * volume).toInt()
-                .let { if (zone == RunZone.LONG) it.coerceAtMost(longRunCapSec(goal)) else it }
+            val duration = (baseDuration(goal, zone) * factor * zoneScale(zone, volume, goal)).toInt()
+                .let { if (zone == RunZone.LONG) it.coerceAtMost(longRunCapSec(goal, volume)) else it.coerceAtMost(zoneCapSec(zone)) }
             when {
                 // Every second build week: threshold as blocks instead of one piece (cruise intervals).
                 zone == RunZone.TEMPO && build && weekIndex % 2 == 1 && duration >= 16 * 60 -> {

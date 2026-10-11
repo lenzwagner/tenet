@@ -195,11 +195,12 @@ class PlanAssistant @Inject constructor(
             {"reply": 1–3 Sätze: welche Eckdaten du gewählt hast und warum,
              "run": {"goal": "FIVE_K"|"TEN_K"|"HALF"|"MARATHON"|"GENERAL", "date": "YYYY-MM-DD" (Wettkampf- bzw. Zieltag), "runsPerWeek": 2–6,
                      "days": [ISO-Wochentage 1=Mo … 7=So, genau so viele wie runsPerWeek], "current5k": "MM:SS" oder null, "target": "H:MM:SS" oder "MM:SS" oder null,
-                     "volume": 0.7 (wenig) … 1.0 (normal) … 1.3 (viel)}}
+                     "volume": Umfangs-Faktor nach Wochenkilometern: bis 10 km → 0.8, 15–30 km → 1.0, 30–50 km → 1.15, 50–80 km → 1.5, 80–100 km und mehr → 2.1}}
             Regeln:
             - Ohne Zieldatum: 5 km → 8 Wochen, 10 km → 10, Halbmarathon → 12, Marathon → 16, "fit bleiben" → 8 Wochen ab heute.
             - "current5k" nur, wenn der Nutzer eine aktuelle Zeit nennt (auch aus 10-km- oder Pace-Angaben grob umrechnen), sonst null.
             - "target" ist die Zielzeit über die Zieldistanz, nur wenn genannt.
+            - Nennt der Nutzer Wochenkilometer (z. B. "80–100 km"), danach "volume" wählen; ab 50 km pro Woche 5–6 Lauftage ansetzen.
             - Den langen Lauf aufs Wochenende legen, harte Einheiten nicht an aufeinanderfolgenden Tagen.
             - Fehlt etwas, triff eine sinnvolle Annahme und nenne sie in reply. Nur ohne jeden Bezug zum Laufen: "run": null und nachfragen.$now${if (talk.isNotBlank()) "\n\nBISHERIGES GESPRÄCH:\n$talk" else ""}
 
@@ -229,7 +230,7 @@ class PlanAssistant @Inject constructor(
             days = days.takeIf { it.size == runs }.orEmpty(),
             current5kSec = seconds(o.optString("current5k"))?.takeIf { it in 12 * 60..60 * 60 },
             targetTimeSec = seconds(o.optString("target"))?.takeIf { it in 12 * 60..7 * 3600 },
-            volume = o.optDouble("volume", 1.0).toFloat().coerceIn(0.7f, 1.3f),
+            volume = o.optDouble("volume", 1.0).toFloat().coerceIn(0.7f, 2.6f),
         )
     }
 

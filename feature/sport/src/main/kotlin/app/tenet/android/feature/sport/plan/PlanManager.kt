@@ -787,8 +787,10 @@ private fun Proposal(answer: PlanAssistant.Answer, saving: Boolean, onAccept: (a
                     run.current5kSec?.let { "Aktuell 5 km in ${it / 60}:${"%02d".format(it % 60)}" },
                     run.targetTimeSec?.let { t -> "Zielzeit " + if (t >= 3600) "${t / 3600}:${"%02d".format(t % 3600 / 60)}:${"%02d".format(t % 60)}" else "${t / 60}:${"%02d".format(t % 60)}" },
                     when {
-                        run.volume < 0.9f -> "Umfang: eher wenig"
-                        run.volume > 1.1f -> "Umfang: eher viel"
+                        run.volume < 0.9f -> "Umfang: bis etwa 10 km pro Woche"
+                        run.volume >= 2f -> "Umfang: etwa 80–100 km pro Woche"
+                        run.volume >= 1.45f -> "Umfang: etwa 50–80 km pro Woche"
+                        run.volume > 1.1f -> "Umfang: etwa 30–50 km pro Woche"
                         else -> null
                     },
                 ).forEach { Text(it, style = MaterialTheme.typography.bodyMedium) }
