@@ -2,6 +2,7 @@ package app.tenet.android.core.data.ai
 
 import app.tenet.android.core.common.PaceMethod
 import app.tenet.android.core.common.RunPlanMath
+import app.tenet.android.core.common.RunZone
 import app.tenet.android.core.data.PlanRepository
 import app.tenet.android.core.data.RunningRepository
 import app.tenet.android.core.database.entity.Discipline
@@ -39,8 +40,21 @@ class PlanAssistant @Inject constructor(
         val current5kSec: Int?,
         val targetTimeSec: Int?,
         val volume: Float,
+        /** Which kind of run on which day (0 = Mo … 6 = So); empty = the standard mix. */
+        val sessions: List<Pair<Int, RunZone>> = emptyList(),
+        /** Wanted kilometres in the biggest week; null = from [volume]. */
+        val weeklyKm: Int? = null,
     ) {
         val weeks: Int get() = RunPlanMath.weekCount(app.tenet.android.core.common.WeekMath.weekStart(LocalDate.now()), goalDate)
+    }
+
+    /**
+     * What the user set in the form: kilometres per week and how many runs of each
+     * kind. These numbers hold; the model only places them on days and explains.
+     */
+    data class RunWish(val weeklyKm: Int?, val long: Int, val tempo: Int, val interval: Int, val easy: Int) {
+        val zones: List<RunZone>
+            get() = List(easy) { RunZone.EASY } + List(tempo) { RunZone.TEMPO } + List(interval) { RunZone.INTERVAL } + List(long) { RunZone.LONG }
     }
 
     /** Draft exercise with its name, for showing the proposal before it is stored. */
@@ -59,10 +73,22 @@ class PlanAssistant @Inject constructor(
 
     val enabled: Boolean get() = ai.config.value.usable
 
-    suspend fun chat(discipline: Discipline, history: List<Turn>, message: String, current: Answer?): Answer {
+    suspend fun chat(
+        discipline: Discipline,
+        history: List<Turn>,
+        message: String,
+        current: Answer?,
+        /** Running form values that must hold (null = free chat). */
+        wish: RunWish? = null,
+        /** Rest days (ISO 1–7) no plan may train on. */
+        restDays: Set<Int> = emptySet(),
+    ): Answer {
         if (!enabled) return Answer("Die KI ist aus oder ohne Schlüssel (Einstellungen → KI).", failed = true)
         val talk = history.takeLast(8).joinToString("\n") { "Nutzer: ${it.user}\nCoach: ${it.assistant}" }
-        val prompt = if (discipline == Discipline.RUNNING) runPrompt(talk, message, current?.run) else strengthPrompt(discipline, talk, message, current)
+        val rest = restDays.filter { it in 1..7 }.sorted()
+        val restLine = if (rest.isEmpty()) "" else "\nRUHETAGE des Nutzers (dort NIE ein Training einplanen): " +
+            rest.joinToString(", ") { java.time.DayOfWeek.of(it).getDisplayName(java.time.format.TextStyle.FULL, Locale.GERMAN) }
+        val prompt = (if (discipline == Discipline.RUNNING) runPrompt(talk, message, current?.run) else strengthPrompt(discipline, talk, message, current)) + restLine
         val json = ai.chat(
             prompt, MODELS, maxTokens = 3000, timeoutMs = 60_000, configuredFirst = false,
             accept = { AiAssistant.extractJson(it) != null },
@@ -70,7 +96,18 @@ class PlanAssistant @Inject constructor(
             ?: return Answer("Ich erreiche die KI gerade nicht (${ai.lastError ?: "keine Antwort"}). Versuch es gleich nochmal.", failed = true)
         val reply = json.optString("reply").takeIf { it.isNotBlank() && it != "null" } ?: "Hier ist mein Vorschlag."
         return if (discipline == Discipline.RUNNING) {
-            Answer(reply, run = json.optJSONObject("run")?.let(::parseRun) ?: current?.run)
+            // Times only as the user stated them: the model must not make up a goal time or a 5 km time.
+            val said = (history.map { it.user } + message).joinToString(" ").lowercase(Locale.GERMAN)
+            val hasTime = Regex("""\d{1,2}:\d{2}""").containsMatchIn(said) || Regex("""\d+\s*(min|minuten|stunden|h)\b""").containsMatchIn(said)
+            val saidTarget = hasTime && Regex("zielzeit|unter |sub |in \\d|schaffen|wunschzeit").containsMatchIn(said)
+            val said5k = hasTime && Regex("aktuell|bestzeit|derzeit|momentan|laufe ich|5-km-zeit|5 km in").containsMatchIn(said)
+            val parsed = (json.optJSONObject("run")?.let(::parseRun) ?: current?.run)?.let { r ->
+                r.copy(
+                    targetTimeSec = r.targetTimeSec.takeIf { saidTarget } ?: current?.run?.targetTimeSec,
+                    current5kSec = r.current5kSec.takeIf { said5k } ?: current?.run?.current5kSec,
+                )
+            }
+            Answer(reply, run = parsed?.let { fit(it, wish, rest.map { d -> d - 1 }.toSet()) })
         } else {
             val plan = json.optJSONObject("plan") ?: return Answer(reply, current?.draft, current?.preview.orEmpty())
             parsePlan(discipline, reply, plan)
@@ -78,17 +115,70 @@ class PlanAssistant @Inject constructor(
     }
 
     /** Creates the running plan of [draft] with the app's generator (it becomes the active plan). */
-    suspend fun createRunPlan(draft: RunDraft): String = running.createPlan(
-        goal = draft.goal,
-        goalDate = draft.goalDate,
-        runsPerWeek = draft.runsPerWeek,
-        current5kSec = draft.current5kSec,
-        paceMethod = PaceMethod.VDOT,
-        taper = true,
-        targetTimeSec = draft.targetTimeSec,
-        days = draft.days.takeIf { it.size == draft.runsPerWeek },
-        volume = draft.volume,
-    )
+    suspend fun createRunPlan(draft: RunDraft): String {
+        val template = draft.sessions.sortedBy { it.first }.takeIf { it.size in 2..6 }
+        return running.createPlan(
+            goal = draft.goal,
+            goalDate = draft.goalDate,
+            runsPerWeek = template?.size ?: draft.runsPerWeek,
+            current5kSec = draft.current5kSec,
+            paceMethod = PaceMethod.VDOT,
+            taper = true,
+            targetTimeSec = draft.targetTimeSec,
+            // An own mix already says which run is on which day.
+            days = if (template != null) null else draft.days.takeIf { it.size == draft.runsPerWeek },
+            volume = volumeOf(draft),
+            template = template,
+        )
+    }
+
+    /** Volume scale of a draft: from the wanted weekly kilometres when given. */
+    fun volumeOf(draft: RunDraft): Float {
+        val km = draft.weeklyKm ?: return draft.volume
+        val template = draft.sessions.sortedBy { it.first }.ifEmpty { RunPlanMath.weeklyTemplate(draft.runsPerWeek) }
+        val easyPace = draft.current5kSec?.let {
+            app.tenet.android.core.common.RunPaceMath.targetPaceSecPerKm(RunZone.EASY, app.tenet.android.core.common.PaceAnchor(5_000, it), PaceMethod.VDOT)
+        } ?: 360
+        return RunPlanMath.volumeForWeeklyKm(draft.goal, km, draft.weeks, template, easyPace)
+    }
+
+    /** Kilometres of the biggest week of [draft], for the proposal card. */
+    fun peakKm(draft: RunDraft): Int {
+        val template = draft.sessions.sortedBy { it.first }.ifEmpty { RunPlanMath.weeklyTemplate(draft.runsPerWeek) }
+        val easyPace = draft.current5kSec?.let {
+            app.tenet.android.core.common.RunPaceMath.targetPaceSecPerKm(RunZone.EASY, app.tenet.android.core.common.PaceAnchor(5_000, it), PaceMethod.VDOT)
+        } ?: 360
+        val volume = volumeOf(draft)
+        return (0 until draft.weeks.coerceAtLeast(1)).maxOf { w ->
+            RunPlanMath.estimateWeekKm(RunPlanMath.planWeek(draft.goal, w, template.size, totalWeeks = draft.weeks, taper = true, volume = volume, template = template), easyPace)
+        }.toInt()
+    }
+
+    /**
+     * Makes a draft hold: the form's kilometres and run mix win over the model's, no
+     * run lands on a rest day, at most six runs. The model's day choice is kept when
+     * it fits; otherwise the runs are spread with hard days apart.
+     */
+    private fun fit(draft: RunDraft, wish: RunWish?, rest: Set<Int>): RunDraft {
+        val wanted = wish?.zones?.take(6)
+        var sessions = draft.sessions.filter { it.first !in rest }.distinctBy { it.first }.take(6)
+        val counts = { list: List<RunZone> -> list.groupingBy { it }.eachCount() }
+        if (wanted != null && (sessions.size != wanted.size || counts(sessions.map { it.second }) != counts(wanted))) {
+            val free = (0..6).filter { it !in rest }
+            val n = wanted.size.coerceAtMost(free.size)
+            // The model's days when they fit, else evenly over the free days.
+            val days = sessions.map { it.first }.sorted().takeIf { it.size == n }
+                ?: List(n) { i -> free[(i * free.size) / n] }
+            sessions = RunPlanMath.assignDays(wanted.take(n).mapIndexed { i, z -> i to z }, days)
+        }
+        if (sessions.size < 2) sessions = emptyList()
+        return draft.copy(
+            sessions = sessions.sortedBy { it.first },
+            runsPerWeek = if (sessions.isEmpty()) draft.runsPerWeek else sessions.size,
+            days = if (sessions.isEmpty()) draft.days.filter { it !in rest } else sessions.map { it.first }.sorted(),
+            weeklyKm = wish?.weeklyKm ?: draft.weeklyKm,
+        )
+    }
 
     // ---- Strength (gym, calisthenics) ----------------------------------------------
 
@@ -112,6 +202,8 @@ class PlanAssistant @Inject constructor(
             Regeln:
             - Planname und Namen der Einheiten auf Deutsch (z. B. "Ganzkörper · Klimmzug-Fokus", "Push", "Beine").
             - Übungen NUR aus dem KATALOG, Name exakt wie dort. Was es dort nicht gibt, durch die ähnlichste Katalog-Übung ersetzen und das in reply sagen.
+            - Nennt der Nutzer eine Split-Kombination (z. B. "Brust + Schultern / Rücken / Beine / Arme"), dann GENAU diese Einheiten, in dieser Reihenfolge, mit diesen Namen – und in jeder Einheit nur Übungen für die genannten Muskelgruppen.
+            - Ziel Kraft, Hypertrophie (Muskelaufbau) oder Kraftausdauer bestimmt Wiederholungen und Pausen (siehe Volumen-Regel).
             - Split so, wie der Nutzer ihn nennt (2er = Oberkörper/Unterkörper, 3er = Push/Pull/Beine, 4er z. B. Brust+Trizeps / Rücken+Bizeps / Beine / Schultern+Bauch). Ohne Angabe: passend zu den Tagen.
             - Volumen: wenig ≈ 3–4 Übungen je Einheit, normal ≈ 5–6, viel ≈ 7–8; Sätze 2–5. Kraft: 3–6 Wdh. und 150–240 s Pause, Muskelaufbau: 8–12 Wdh. und 90–150 s, Ausdauer: 12–20 Wdh. und 45–75 s.
             - Schwere Grundübungen zuerst, Isolationsübungen danach. Keine Übung doppelt in einer Einheit.
@@ -195,11 +287,15 @@ class PlanAssistant @Inject constructor(
             {"reply": 1–3 Sätze: welche Eckdaten du gewählt hast und warum,
              "run": {"goal": "FIVE_K"|"TEN_K"|"HALF"|"MARATHON"|"GENERAL", "date": "YYYY-MM-DD" (Wettkampf- bzw. Zieltag), "runsPerWeek": 2–6,
                      "days": [ISO-Wochentage 1=Mo … 7=So, genau so viele wie runsPerWeek], "current5k": "MM:SS" oder null, "target": "H:MM:SS" oder "MM:SS" oder null,
+                     "weeklyKm": gewünschte Wochenkilometer als Zahl oder null,
+                     "sessions": [{"day": ISO-Wochentag 1–7, "type": "EASY"|"LONG"|"TEMPO"|"INTERVAL"}] – genau ein Eintrag pro Lauf,
                      "volume": Umfangs-Faktor nach Wochenkilometern: bis 10 km → 0.8, 15–30 km → 1.0, 30–50 km → 1.15, 50–80 km → 1.5, 80–100 km und mehr → 2.1}}
             Regeln:
             - Ohne Zieldatum: 5 km → 8 Wochen, 10 km → 10, Halbmarathon → 12, Marathon → 16, "fit bleiben" → 8 Wochen ab heute.
             - "current5k" nur, wenn der Nutzer eine aktuelle Zeit nennt (auch aus 10-km- oder Pace-Angaben grob umrechnen), sonst null.
             - "target" ist die Zielzeit über die Zieldistanz, nur wenn genannt.
+            - Lauf-Arten: EASY = lockerer Lauf, LONG = langer Lauf, TEMPO = Tempo-/Pace-Lauf, INTERVAL = Intervalle. Nennt der Nutzer eine Aufteilung (z. B. "1 Long Run, 1 Tempolauf, 1 Intervall, 2 lockere"), genau diese Anzahl je Art in "sessions". Ohne Angabe: 2 Läufe = EASY+LONG, 3 = EASY+INTERVAL+LONG, ab 4 zusätzlich TEMPO, Rest EASY.
+            - Tage: LONG aufs Wochenende, TEMPO und INTERVAL nie an aufeinanderfolgenden Tagen und nicht direkt vor LONG, dazwischen EASY oder frei.
             - Nennt der Nutzer Wochenkilometer (z. B. "80–100 km"), danach "volume" wählen; ab 50 km pro Woche 5–6 Lauftage ansetzen.
             - Den langen Lauf aufs Wochenende legen, harte Einheiten nicht an aufeinanderfolgenden Tagen.
             - Fehlt etwas, triff eine sinnvolle Annahme und nenne sie in reply. Nur ohne jeden Bezug zum Laufen: "run": null und nachfragen.$now${if (talk.isNotBlank()) "\n\nBISHERIGES GESPRÄCH:\n$talk" else ""}
@@ -223,7 +319,20 @@ class PlanAssistant @Inject constructor(
             )
         val days = o.optJSONArray("days")?.let { a -> (0 until a.length()).map { a.optInt(it) }.filter { it in 1..7 }.distinct().sorted().map { it - 1 } }.orEmpty()
         val runs = o.optInt("runsPerWeek", days.size.takeIf { it > 0 } ?: 3).coerceIn(2, 6)
+        val sessions = o.optJSONArray("sessions").objects().mapNotNull { e ->
+            val day = e.optInt("day", 0).takeIf { it in 1..7 } ?: return@mapNotNull null
+            val zone = when (e.optString("type").uppercase()) {
+                "EASY", "RECOVERY" -> RunZone.EASY
+                "LONG" -> RunZone.LONG
+                "TEMPO", "PACE" -> RunZone.TEMPO
+                "INTERVAL", "INTERVALS" -> RunZone.INTERVAL
+                else -> return@mapNotNull null
+            }
+            day - 1 to zone
+        }.distinctBy { it.first }.take(6)
         return RunDraft(
+            sessions = sessions,
+            weeklyKm = o.optInt("weeklyKm", 0).takeIf { it in 5..250 },
             goal = goal,
             goalDate = date,
             runsPerWeek = runs,

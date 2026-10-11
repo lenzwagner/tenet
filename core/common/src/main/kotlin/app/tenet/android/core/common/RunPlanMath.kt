@@ -259,6 +259,30 @@ object RunPlanMath {
         return if (zone == RunZone.TEMPO) kotlin.math.sqrt(v.coerceAtLeast(0.1f)) else v
     }
 
+    /**
+     * Volume scale that brings the plan's biggest week to about [targetKm] kilometres
+     * for this mix of runs (bisection over [estimateWeekKm]).
+     */
+    fun volumeForWeeklyKm(
+        goal: RunGoal,
+        targetKm: Int,
+        weeks: Int,
+        template: List<Pair<Int, RunZone>>,
+        easyPaceSecPerKm: Int = 360,
+        taper: Boolean = true,
+    ): Float {
+        fun peak(volume: Float) = (0 until weeks.coerceAtLeast(1)).maxOf { w ->
+            estimateWeekKm(planWeek(goal, w, template.size, totalWeeks = weeks, taper = taper, volume = volume, template = template), easyPaceSecPerKm)
+        }
+        var lo = 0.4f
+        var hi = 4f
+        repeat(18) {
+            val mid = (lo + hi) / 2
+            if (peak(mid) < targetKm) lo = mid else hi = mid
+        }
+        return ((lo + hi) / 2).coerceIn(0.4f, 4f)
+    }
+
     /** Longest sensible single run of a zone [s] (the long run has its own cap). */
     private fun zoneCapSec(zone: RunZone): Int = when (zone) {
         RunZone.TEMPO -> 50 * 60
@@ -306,7 +330,13 @@ object RunPlanMath {
         days: List<Int>? = null,
         /** Volume scale for the runner's level (0.8 beginner … 1.0 regular … 2.1 for 80–100 km a week). */
         volume: Float = 1f,
-    ): List<PlanUnit> = assignDays(weeklyTemplate(runsPerWeek), days).map { (dayIndex, zone) ->
+        /**
+         * Own mix of run types (day 0 = Mo … 6 = So to zone), e.g. two easy runs, one
+         * tempo, one interval session, one long run; null = the standard template.
+         * With [days] the units are spread over them, else the template's days hold.
+         */
+        template: List<Pair<Int, RunZone>>? = null,
+    ): List<PlanUnit> = assignDays(template ?: weeklyTemplate(runsPerWeek), days).map { (dayIndex, zone) ->
         val tapering = totalWeeks != null && isTaperWeek(goal, weekIndex, totalWeeks, taper)
         val weeksToRace = if (totalWeeks != null) totalWeeks - 1 - weekIndex else Int.MAX_VALUE
         // Taper weeks scale from the last build week's level.

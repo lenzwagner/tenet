@@ -100,6 +100,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -582,29 +583,39 @@ data class PlanChatState(
     val pending: String? = null,
     val answer: PlanAssistant.Answer? = null,
     val saving: Boolean = false,
+    /** Running form values that keep holding while the plan is refined. */
+    val wish: PlanAssistant.RunWish? = null,
+    /** Kilometres of the proposal's biggest week (running). */
+    val runKm: Int? = null,
 )
 
 @HiltViewModel
 class PlanChatViewModel @Inject constructor(
     private val assistant: PlanAssistant,
     private val plans: PlanRepository,
+    private val settings: app.tenet.android.core.datastore.UserSettingsRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow(PlanChatState())
     val state: StateFlow<PlanChatState> = _state.asStateFlow()
     val enabled: Boolean get() = assistant.enabled
 
-    fun send(discipline: Discipline, text: String) {
+    /** [wish]: the running form's numbers (kept for later messages); null = keep what was set. */
+    fun send(discipline: Discipline, text: String, wish: PlanAssistant.RunWish? = null) {
         val s = _state.value
         if (text.isBlank() || s.pending != null) return
-        _state.value = s.copy(pending = text.trim())
+        val holding = wish ?: s.wish
+        _state.value = s.copy(pending = text.trim(), wish = holding)
         viewModelScope.launch {
-            val answer = runCatching { assistant.chat(discipline, s.turns, text.trim(), s.answer) }
+            val rest = runCatching { settings.settings.first().restDays }.getOrDefault(emptySet())
+            val answer = runCatching { assistant.chat(discipline, s.turns, text.trim(), s.answer, holding, rest) }
                 .getOrElse { PlanAssistant.Answer("Das ging schief: ${it.message}", failed = true) }
+            val kept = if (answer.failed) s.answer else answer
             _state.value = _state.value.copy(
                 turns = s.turns + PlanAssistant.Turn(text.trim(), answer.reply),
                 pending = null,
                 // A failed call keeps the proposal reached so far.
-                answer = if (answer.failed) s.answer else answer,
+                answer = kept,
+                runKm = kept?.run?.let { runCatching { assistant.peakKm(it) }.getOrNull() },
             )
         }
     }
@@ -721,6 +732,15 @@ fun PlanChatScreen(
                 )
             }
             if (state.turns.isEmpty() && state.pending == null) {
+                // Set the key figures here, the coach builds the plan from them.
+                when (discipline) {
+                    Discipline.RUNNING -> item(key = "form") { RunForm(enabled = viewModel.enabled) { msg, wish -> viewModel.send(discipline, msg, wish) } }
+                    Discipline.GYM -> item(key = "form") { GymForm(enabled = viewModel.enabled) { msg -> viewModel.send(discipline, msg) } }
+                    else -> Unit
+                }
+                item(key = "examples-h") {
+                    Text("Oder frei beschreiben:", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 item(key = "examples") {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(examples) { ex -> TenetFilterChip(selected = false, onClick = { send(ex) }, label = { Text(ex, maxLines = 1) }) }
@@ -745,6 +765,7 @@ fun PlanChatScreen(
                 item(key = "proposal") {
                     Proposal(
                         answer = answer,
+                        runKm = state.runKm,
                         saving = state.saving,
                         onAccept = { activate -> viewModel.accept(discipline, activate, onCreated) },
                     )
@@ -769,7 +790,7 @@ private fun Bubble(text: String, user: Boolean) {
 }
 
 @Composable
-private fun Proposal(answer: PlanAssistant.Answer, saving: Boolean, onAccept: (activate: Boolean) -> Unit) {
+private fun Proposal(answer: PlanAssistant.Answer, runKm: Int? = null, saving: Boolean, onAccept: (activate: Boolean) -> Unit) {
     TenetCard(Modifier.fillMaxWidth(), border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             val run = answer.run
@@ -783,10 +804,12 @@ private fun Proposal(answer: PlanAssistant.Answer, saving: Boolean, onAccept: (a
                 val days = run.days.joinToString(" · ") { DayOfWeek.of(it + 1).getDisplayName(TextStyle.SHORT, Locale.GERMAN).take(2) }
                 listOfNotNull(
                     "Zieltag " + run.goalDate.format(DateTimeFormatter.ofPattern("d. MMMM yyyy", Locale.GERMAN)) + " · ${run.weeks} Wochen",
-                    "${run.runsPerWeek} Läufe pro Woche" + if (days.isNotBlank()) " ($days)" else "",
+                    runKm?.let { "Bis etwa $it km in der stärksten Woche" },
+                    if (run.sessions.isEmpty()) "${run.runsPerWeek} Läufe pro Woche" + (if (days.isNotBlank()) " ($days)" else "") else null,
                     run.current5kSec?.let { "Aktuell 5 km in ${it / 60}:${"%02d".format(it % 60)}" },
                     run.targetTimeSec?.let { t -> "Zielzeit " + if (t >= 3600) "${t / 3600}:${"%02d".format(t % 3600 / 60)}:${"%02d".format(t % 60)}" else "${t / 60}:${"%02d".format(t % 60)}" },
-                    when {
+                    // The kilometre line above already says it when known.
+                    if (runKm != null) null else when {
                         run.volume < 0.9f -> "Umfang: bis etwa 10 km pro Woche"
                         run.volume >= 2f -> "Umfang: etwa 80–100 km pro Woche"
                         run.volume >= 1.45f -> "Umfang: etwa 50–80 km pro Woche"
@@ -794,6 +817,22 @@ private fun Proposal(answer: PlanAssistant.Answer, saving: Boolean, onAccept: (a
                         else -> null
                     },
                 ).forEach { Text(it, style = MaterialTheme.typography.bodyMedium) }
+                if (run.sessions.isNotEmpty()) {
+                    Column {
+                        Text("${run.sessions.size} Läufe pro Woche", style = MaterialTheme.typography.titleSmall)
+                        run.sessions.sortedBy { it.first }.forEach { (day, zone) ->
+                            Row {
+                                Text(
+                                    DayOfWeek.of(day + 1).getDisplayName(TextStyle.SHORT, Locale.GERMAN).take(2),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.width(36.dp),
+                                )
+                                Text(zone.runLabel(), style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
+                }
                 Text("Die App berechnet daraus alle Einheiten mit Tempo. Der Plan wird dein aktiver Laufplan.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Button(onClick = { onAccept(true) }, enabled = !saving, modifier = Modifier.fillMaxWidth()) { Text("Plan erstellen") }
             } else if (draft != null) {
@@ -819,6 +858,179 @@ private fun Proposal(answer: PlanAssistant.Answer, saving: Boolean, onAccept: (a
                 }
             }
             Spacer(Modifier.height(0.dp))
+        }
+    }
+}
+
+
+private fun app.tenet.android.core.common.RunZone.runLabel() = when (this) {
+    app.tenet.android.core.common.RunZone.LONG -> "Long Run"
+    app.tenet.android.core.common.RunZone.TEMPO -> "Tempolauf (Pace Run)"
+    app.tenet.android.core.common.RunZone.INTERVAL -> "Intervalle"
+    else -> "Lockerer Lauf"
+}
+
+@Composable
+private fun FormLabel(text: String) =
+    Text(text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+@Composable
+private fun <T> Chips(options: List<T>, selected: T, label: (T) -> String, onSelect: (T) -> Unit) {
+    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        options.forEach { o -> TenetFilterChip(selected = o == selected, onClick = { onSelect(o) }, label = { Text(label(o)) }) }
+    }
+}
+
+/**
+ * Running: the key figures to set – goal, weeks, kilometres per week and how many
+ * runs of each kind. The coach places them on days and the app works out the units.
+ */
+@Composable
+private fun RunForm(enabled: Boolean, onSubmit: (String, PlanAssistant.RunWish) -> Unit) {
+    var goal by rememberSaveable { mutableStateOf(RunPlanMath.RunGoal.TEN_K) }
+    var weeks by rememberSaveable { mutableStateOf(12) }
+    var km by rememberSaveable { mutableStateOf(50f) }
+    var long by rememberSaveable { mutableStateOf(1) }
+    var tempo by rememberSaveable { mutableStateOf(1) }
+    var interval by rememberSaveable { mutableStateOf(1) }
+    var easy by rememberSaveable { mutableStateOf(2) }
+    var fiveK by rememberSaveable { mutableStateOf("") }
+    var target by rememberSaveable { mutableStateOf("") }
+    val runs = long + tempo + interval + easy
+    TenetCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Deine Vorgaben", style = MaterialTheme.typography.titleMedium)
+            FormLabel("Ziel")
+            Chips(RunPlanMath.RunGoal.entries.toList(), goal, { it.label }) { goal = it }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Stepper("Wochen", "$weeks", { weeks = (weeks - 1).coerceAtLeast(4) }, { weeks = (weeks + 1).coerceAtMost(30) }, Modifier.weight(1f))
+                Spacer(Modifier.weight(1f))
+            }
+            FormLabel("Kilometer pro Woche (stärkste Woche): ${km.toInt()} km")
+            app.tenet.android.core.designsystem.component.TenetSlider(
+                value = km,
+                onValueChange = { km = (it / 5f).let { v -> kotlin.math.round(v) } * 5f },
+                valueRange = 10f..140f,
+            )
+            FormLabel("Läufe pro Woche: $runs" + if (runs !in 2..6) " · bitte 2 bis 6" else "")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Stepper("Long Run", "$long", { long = (long - 1).coerceAtLeast(0) }, { long = (long + 1).coerceAtMost(2) }, Modifier.weight(1f))
+                Stepper("Tempo / Pace", "$tempo", { tempo = (tempo - 1).coerceAtLeast(0) }, { tempo = (tempo + 1).coerceAtMost(3) }, Modifier.weight(1f))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Stepper("Intervall", "$interval", { interval = (interval - 1).coerceAtLeast(0) }, { interval = (interval + 1).coerceAtMost(3) }, Modifier.weight(1f))
+                Stepper("Easy", "$easy", { easy = (easy - 1).coerceAtLeast(0) }, { easy = (easy + 1).coerceAtMost(6) }, Modifier.weight(1f))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TenetTextField(value = fiveK, onValueChange = { fiveK = it.take(8) }, label = { Text("5 km aktuell") }, placeholder = { Text("24:30") }, singleLine = true, modifier = Modifier.weight(1f))
+                TenetTextField(value = target, onValueChange = { target = it.take(8) }, label = { Text("Zielzeit") }, placeholder = { Text("optional") }, singleLine = true, modifier = Modifier.weight(1f))
+            }
+            Button(
+                onClick = {
+                    val parts = listOfNotNull(
+                        "$long Long Run".takeIf { long > 0 },
+                        "$tempo Tempolauf (Pace Run)".takeIf { tempo > 0 },
+                        "$interval Intervall-Einheit".takeIf { interval > 0 },
+                        "$easy lockere Läufe (Easy)".takeIf { easy > 0 },
+                    )
+                    val msg = "Laufplan: Ziel ${goal.label} in $weeks Wochen. Etwa ${km.toInt()} km pro Woche in der stärksten Woche. " +
+                        "$runs Läufe pro Woche: ${parts.joinToString(", ")}." +
+                        (if (fiveK.isNotBlank()) " Aktuelle 5-km-Zeit ${fiveK.trim()}." else "") +
+                        (if (target.isNotBlank()) " Zielzeit ${target.trim()}." else "")
+                    onSubmit(msg, PlanAssistant.RunWish(km.toInt(), long, tempo, interval, easy))
+                },
+                enabled = enabled && runs in 2..6,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Outlined.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Plan von der KI erstellen")
+            }
+        }
+    }
+}
+
+private val GymSplits = listOf(
+    "Ganzkörper" to listOf("Ganzkörper A / Ganzkörper B"),
+    "2er-Split" to listOf("Oberkörper / Unterkörper", "Push / Pull"),
+    "3er-Split" to listOf("Push / Pull / Beine", "Brust + Rücken / Beine / Schultern + Arme"),
+    "4er-Split" to listOf(
+        "Brust + Trizeps / Rücken + Bizeps / Beine / Schultern + Bauch",
+        "Brust + Schultern / Rücken / Beine / Arme",
+        "Brust + Bizeps / Rücken + Trizeps / Beine / Schultern",
+        "Oberkörper Kraft / Unterkörper Kraft / Oberkörper Volumen / Unterkörper Volumen",
+    ),
+    "5er-Split" to listOf("Brust / Rücken / Beine / Schultern / Arme", "Push / Pull / Beine / Oberkörper / Unterkörper"),
+)
+
+/**
+ * Gym: goal (strength or hypertrophy), days, split and which muscle groups go
+ * together – the coach builds the plan from the catalogue.
+ */
+@Composable
+private fun GymForm(enabled: Boolean, onSubmit: (String) -> Unit) {
+    val goals = listOf(
+        "Kraft" to "Kraft (3–6 Wiederholungen, lange Pausen)",
+        "Hypertrophie" to "Hypertrophie / Muskelaufbau (8–12 Wiederholungen)",
+        "Kraftausdauer" to "Kraftausdauer (12–20 Wiederholungen, kurze Pausen)",
+    )
+    var goal by rememberSaveable { mutableStateOf(1) }
+    var days by rememberSaveable { mutableStateOf(4) }
+    var split by rememberSaveable { mutableStateOf(3) }
+    var combo by rememberSaveable { mutableStateOf(0) }
+    var own by rememberSaveable { mutableStateOf("") }
+    var volume by rememberSaveable { mutableStateOf(1) }
+    var extra by rememberSaveable { mutableStateOf("") }
+    val volumes = listOf("wenig", "normal", "viel")
+    val combos = GymSplits[split].second
+    TenetCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Deine Vorgaben", style = MaterialTheme.typography.titleMedium)
+            FormLabel("Ziel")
+            Chips(goals.indices.toList(), goal, { goals[it].first }) { goal = it }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Stepper("Trainingstage", "$days", { days = (days - 1).coerceAtLeast(2) }, { days = (days + 1).coerceAtMost(6) }, Modifier.weight(1f))
+                Spacer(Modifier.weight(1f))
+            }
+            FormLabel("Split")
+            Chips(GymSplits.indices.toList(), split, { GymSplits[it].first }) { split = it; combo = 0 }
+            FormLabel("Kombination")
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                combos.forEachIndexed { i, c ->
+                    TenetFilterChip(selected = own.isBlank() && combo.coerceIn(0, combos.lastIndex) == i, onClick = { combo = i; own = "" }, label = { Text(c) })
+                }
+            }
+            TenetTextField(
+                value = own,
+                onValueChange = { own = it.take(160) },
+                label = { Text("Eigene Kombination (optional)") },
+                placeholder = { Text("z. B. Brust + Schultern / Rücken + Arme / Beine") },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            FormLabel("Volumen")
+            Chips(volumes.indices.toList(), volume, { volumes[it] }) { volume = it }
+            TenetTextField(
+                value = extra,
+                onValueChange = { extra = it.take(240) },
+                label = { Text("Weitere Wünsche (optional)") },
+                placeholder = { Text("z. B. kein Kreuzheben, Fokus Brust, nur Kurzhanteln") },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Button(
+                onClick = {
+                    val chosen = own.trim().ifBlank { combos[combo.coerceIn(0, combos.lastIndex)] }
+                    onSubmit(
+                        "Gym-Plan: Ziel ${goals[goal].second}. $days Trainingstage pro Woche. ${GymSplits[split].first} mit genau dieser Kombination: $chosen. " +
+                            "Volumen: ${volumes[volume]}." + if (extra.isNotBlank()) " Weitere Wünsche: ${extra.trim()}." else "",
+                    )
+                },
+                enabled = enabled,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Outlined.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Plan von der KI erstellen")
+            }
         }
     }
 }

@@ -1,10 +1,10 @@
 # Tenet – offene ToDos
 
-Stand: 07.10.2026, Version 1.0.0.72 (auf `main` gepusht, APK `tenet-1.0.0.72-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
+Stand: 07.10.2026, Version 1.0.0.73 (auf `main` gepusht, APK `tenet-1.0.0.73-release.apk`). Abgeleitet aus `App_Konzept.md`, dem aktuellen Code und den Tests im Emulator.
 
 ## Übergabe (Session 06.–07.10.2026)
 
-**Stand:** 1.0.0.6 – 1.0.0.72 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
+**Stand:** 1.0.0.6 – 1.0.0.73 gebaut, committet und gepusht, Unit-Tests grün (u. a. neu: MacroOptimizer, RunPaceProgression, GoalCheck, RunFueling, RunWorkoutVariants). Details je Version unten unter „Zuletzt erledigt“.
 
 **Wichtig vor dem nächsten Update am Handy:**
 - Seit 1.0.0.6 ist die Datenbank mit SQLCipher verschlüsselt (Rohschlüssel, im Android Keystore gewrappt, `no_backup/db.key`). Die alte Klartext-DB wird beim ersten Start einmal umgewandelt. Im Emulator geprüft, mit echten Daten noch nicht → vorher mit Google anmelden und synchronisieren.
@@ -105,7 +105,9 @@ Im Emulator nicht möglich.
 - [ ] Der NIM-Schlüssel aus `local.properties` wird in die APK gebaut. Für eine private App okay, vor einer Weitergabe entfernen.
 - [ ] Alte APKs im Projektordner aufräumen (~40 Stück, je ~10–18 MB, enthalten den NIM-Schlüssel)
 
-## Zuletzt erledigt (0.5.0 – 1.0.0.72)
+## Zuletzt erledigt (0.5.0 – 1.0.0.73)
+
+- 1.0.0.73: KI-Coach mit Vorgaben-Formular. Laufen: Ziel, Wochen, Wunsch-Kilometer pro Woche (10–140), Anzahl Long Run / Tempo-Pace / Intervall / Easy, optionale Zeiten → KI legt die Läufe auf Tage (Ruhetage frei, harte Tage getrennt), die App rechnet die Einheiten so, dass die stärkste Woche die Wunsch-Kilometer trifft (eigener Lauf-Mix im Generator, volumeForWeeklyKm); Formularwerte gelten, erfundene Zielzeiten werden verworfen. Gym: Ziel Kraft/Hypertrophie/Kraftausdauer, Trainingstage, Split (Ganzkörper bis 5er), Kombination zur Auswahl (z. B. Brust + Schultern / Rücken / Beine / Arme) oder eigene, Volumen, Wünsche → KI baut den Plan aus dem Katalog genau mit diesen Einheiten; KI kennt jetzt die Ruhetage
 
 - 1.0.0.72: Laufplan-Umfang: neue Stufen „Fortgeschritten“ (50–80 km/Woche) und „Leistungsorientiert“ (80–100 km und mehr), „Ambitioniert“ = 30–50 km; Generator trägt hohen Umfang über lockere/lange Läufe (längere Long-Run-Obergrenzen, mehr Intervall-Wiederholungen, Tempo gedeckelt), Halbmarathon/Marathon angeglichen; Setup-Vorschau zeigt geschätzte Wochenkilometer (Woche 1 und stärkste Woche) und warnt bei zu wenigen Lauftagen; KI-Coach kennt die Stufen (RunVolumeLevelTest)
 

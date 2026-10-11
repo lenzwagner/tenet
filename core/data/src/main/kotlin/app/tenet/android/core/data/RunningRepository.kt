@@ -119,6 +119,8 @@ class RunningRepository @Inject constructor(
         /** Chosen weekdays 0 (Mo) … 6 (So), one per run; null = default days. */
         days: List<Int>? = null,
         volume: Float = 1f,
+        /** Own mix of run types (day 0 = Mo … 6 = So to zone); null = the standard template. */
+        template: List<Pair<Int, app.tenet.android.core.common.RunZone>>? = null,
     ): String {
         sportDao.deactivatePlans(Discipline.RUNNING)
 
@@ -148,7 +150,8 @@ class RunningRepository @Inject constructor(
         )
 
         val weeks = RunPlanMath.weekCount(planStart, goalDate)
-        val template = RunPlanMath.weeklyTemplate(runsPerWeek)
+        @Suppress("NAME_SHADOWING")
+        val template = template ?: RunPlanMath.weeklyTemplate(runsPerWeek)
         val goalIsMarathon = goal == RunPlanMath.RunGoal.MARATHON
         // Paces get faster over the plan: from today's form to the goal form.
         val goal5k = current5kSec?.let { RunPlanMath.goal5kSec(it, goal, targetTimeSec, weeks, taper) }
@@ -156,7 +159,7 @@ class RunningRepository @Inject constructor(
         val planned = mutableListOf<PlannedWorkout>()
         val details = mutableListOf<RunPlanWorkout>()
         for (week in 0 until weeks) {
-            val units = RunPlanMath.planWeek(goal, week, runsPerWeek, totalWeeks = weeks, taper = taper, days = days, volume = volume)
+            val units = RunPlanMath.planWeek(goal, week, runsPerWeek, totalWeeks = weeks, taper = taper, days = days, volume = volume, template = template)
             val anchor = if (current5kSec != null && goal5k != null) {
                 PaceAnchor(distanceM = 5000, timeSec = RunPlanMath.anchor5kForWeek(current5kSec, goal5k, week, weeks, goal, taper))
             } else {
