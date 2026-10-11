@@ -204,6 +204,9 @@ val TopLevelTabs: List<TopLevelTab> = listOf(
 @Serializable
 data class PlansRoute(val discipline: String = "GYM")
 
+/** One week for all sports: rest days, training days, rules between the plans. */
+@Serializable data object WeekPlanRoute
+
 /** Editor of one gym or calisthenics plan. */
 @Serializable
 data class PlanEditorRoute(val planId: String = "")

@@ -262,6 +262,8 @@ fun TenetApp(
     // After the welcome screens: the first plan of each chosen sport, one setup after the other.
     // App-wide (not tied to a screen): the "handled" write must outlive the setup screen.
     val setupSettings = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel<app.tenet.android.feature.settings.SettingsViewModel>()
+    // Keeps rest days and the rules between the sports applied to whatever plan is active.
+    androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel<app.tenet.android.feature.sport.plan.PlanSyncViewModel>().start()
     val nextSportSetup = settings.pendingSportSetups.firstOrNull()
     LaunchedEffect(nextSportSetup) {
         if (nextSportSetup != null) {
@@ -559,7 +561,15 @@ fun TenetApp(
                         // Gym: start weights from the trainings done so far, when there are any.
                         onOpenSetup = { navController.navigate(SportSetupRoute(name, useTrainingHistory = true)) },
                         onOpenChat = { navController.navigate(app.tenet.android.navigation.PlanChatRoute(name)) },
+                        onOpenWeek = { navController.navigate(app.tenet.android.navigation.WeekPlanRoute) },
                     )
+                }
+}
+}
+                composable<app.tenet.android.navigation.WeekPlanRoute> {
+ SubPageWash(HeaderImage.SPORT) {
+ AreaTheme(AppArea.SPORT) {
+                    app.tenet.android.feature.sport.plan.WeekPlanScreen(onBack = { navController.popBackStack() })
                 }
 }
 }

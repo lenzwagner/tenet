@@ -42,6 +42,10 @@ data class UserSettings(
     val enabledModules: Set<AppModule> = AppModule.entries.toSet(),
     /** Sports in use (GYM, CALISTHENICS, RUNNING); the others are hidden on "Sport". */
     val sportDisciplines: Set<String> = setOf("GYM", "CALISTHENICS", "RUNNING"),
+    /** Rest days for every sport (ISO weekdays 1 = Mo … 7 = So): no plan trains on them. */
+    val restDays: Set<Int> = emptySet(),
+    /** Rules between the sports' plans: CALI_NOT_RUN, GYM_NOT_RUN, GYM_NOT_CALI. */
+    val planRules: Set<String> = emptySet(),
     /** Sports whose first plan is still to be set up after the welcome screens, in order. */
     val pendingSportSetups: List<String> = emptyList(),
     /** 1RM estimation formula used for progress displays (App_Konzept.md 5.2.1). */

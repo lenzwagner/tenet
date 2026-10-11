@@ -58,6 +58,8 @@ class UserSettingsRepository @Inject constructor(
                 ?.toSet()
                 ?: AppModule.entries.toSet(),
             sportDisciplines = prefs[KEY_SPORT_DISCIPLINES]?.takeIf { it.isNotEmpty() } ?: setOf("GYM", "CALISTHENICS", "RUNNING"),
+            restDays = prefs[KEY_REST_DAYS].orEmpty().mapNotNull { it.toIntOrNull() }.filter { it in 1..7 }.toSet(),
+            planRules = prefs[KEY_PLAN_RULES].orEmpty(),
             pendingSportSetups = prefs[KEY_PENDING_SPORT_SETUPS].orEmpty().split(',').filter { it.isNotBlank() },
             oneRepMaxFormula = prefs[KEY_ONE_REP_MAX_FORMULA]
                 ?.let { runCatching { OneRepMaxFormula.valueOf(it) }.getOrNull() }
@@ -268,6 +270,22 @@ class UserSettingsRepository @Inject constructor(
         }
     }
 
+    /** At most six rest days. */
+    suspend fun setRestDay(isoDay: Int, rest: Boolean) {
+        context.tenetDataStore.edit { prefs ->
+            val current = prefs[KEY_REST_DAYS].orEmpty()
+            val next = if (rest) current + isoDay.toString() else current - isoDay.toString()
+            if (next.size <= 6) prefs[KEY_REST_DAYS] = next
+        }
+    }
+
+    suspend fun setPlanRule(rule: String, on: Boolean) {
+        context.tenetDataStore.edit { prefs ->
+            val current = prefs[KEY_PLAN_RULES].orEmpty()
+            prefs[KEY_PLAN_RULES] = if (on) current + rule else current - rule
+        }
+    }
+
     suspend fun setPendingSportSetups(disciplines: List<String>) {
         context.tenetDataStore.edit { it[KEY_PENDING_SPORT_SETUPS] = disciplines.joinToString(",") }
     }
@@ -296,6 +314,8 @@ class UserSettingsRepository @Inject constructor(
         val KEY_CALENDAR_READ = booleanPreferencesKey("calendar_read")
         val KEY_CALENDAR_WRITE = androidx.datastore.preferences.core.longPreferencesKey("calendar_write_id")
         val KEY_COMPANION_KIND = stringPreferencesKey("companion_kind")
+        val KEY_REST_DAYS = stringSetPreferencesKey("rest_days")
+        val KEY_PLAN_RULES = stringSetPreferencesKey("plan_rules")
         val KEY_SPORT_DISCIPLINES = stringSetPreferencesKey("sport_disciplines")
         val KEY_PENDING_SPORT_SETUPS = stringPreferencesKey("pending_sport_setups")
         val KEY_AMOLED = stringPreferencesKey("amoled_mode")

@@ -153,6 +153,8 @@ fun PlansScreen(
     onEdit: (planId: String) -> Unit,
     onOpenSetup: () -> Unit,
     onOpenChat: () -> Unit,
+    /** Rest days and rules across all sports. */
+    onOpenWeek: () -> Unit = {},
     viewModel: PlansViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(discipline) { viewModel.load(discipline) }
@@ -201,6 +203,14 @@ fun PlansScreen(
             if (list == null) {
                 item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { TenetSpinner() } }
             } else {
+                item(key = "week") {
+                    NewPlanOption(
+                        Icons.Outlined.CheckCircle,
+                        "Wochenplan abstimmen",
+                        "Ruhetage für alle Sportarten und Regeln wie „Calisthenics nur an lauffreien Tagen“ – gilt für jeden Plan.",
+                        onOpenWeek,
+                    )
+                }
                 if (list.isEmpty()) {
                     item { Text("Noch kein Plan. Leg unten deinen ersten an.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }

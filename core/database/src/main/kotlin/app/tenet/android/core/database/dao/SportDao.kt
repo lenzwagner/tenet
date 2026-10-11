@@ -100,6 +100,19 @@ interface SportDao {
     )
     suspend fun exerciseHistory(exerciseId: String): List<ExerciseHistoryRow>
 
+    /**
+     * Moves every unit of a plan from one weekday to another, from [fromWeek] on (in
+     * [fromWeek] itself only days after [afterDay]); the race day (sortOrder 99) stays.
+     */
+    @Query(
+        """
+        UPDATE PlannedWorkout SET dayIndex = :to
+        WHERE planId = :planId AND dayIndex = :from AND sortOrder != 99
+          AND (weekIndex > :fromWeek OR (weekIndex = :fromWeek AND dayIndex > :afterDay))
+        """,
+    )
+    suspend fun movePlanDay(planId: String, from: Int, to: Int, fromWeek: Int, afterDay: Int)
+
     /** Moves a planned unit to another weekday of its week (0 = Mo). */
     @Query("UPDATE PlannedWorkout SET dayIndex = :dayIndex WHERE id = :id")
     suspend fun movePlannedDay(id: String, dayIndex: Int)
