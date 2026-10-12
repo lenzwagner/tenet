@@ -46,6 +46,7 @@ class UserSettingsRepository @Inject constructor(
             calendarRead = prefs[KEY_CALENDAR_READ] ?: false,
             calendarWriteId = prefs[KEY_CALENDAR_WRITE]?.takeIf { it >= 0 },
             companionKind = prefs[KEY_COMPANION_KIND] ?: "TENNY",
+            companionHome = prefs[KEY_COMPANION_HOME] ?: false,
             companionNames = prefs.asMap().entries.mapNotNull { (key, value) ->
                 if (key.name.startsWith("pet_name_") && value is String && value.isNotBlank())
                     key.name.removePrefix("pet_name_") to value else null
@@ -257,6 +258,10 @@ class UserSettingsRepository @Inject constructor(
         }
     }
 
+    suspend fun setCompanionHome(home: Boolean) {
+        context.tenetDataStore.edit { it[KEY_COMPANION_HOME] = home }
+    }
+
     suspend fun setCompanionKind(kind: String) {
         context.tenetDataStore.edit { it[KEY_COMPANION_KIND] = kind }
     }
@@ -287,7 +292,11 @@ class UserSettingsRepository @Inject constructor(
     }
 
     suspend fun setPendingSportSetups(disciplines: List<String>) {
-        context.tenetDataStore.edit { it[KEY_PENDING_SPORT_SETUPS] = disciplines.joinToString(",") }
+        // A sport that already has its plan (set up before, or plans from the account) is not asked again.
+        context.tenetDataStore.edit { prefs ->
+            val done = prefs[KEY_SPORT_SETUP] ?: emptySet()
+            prefs[KEY_PENDING_SPORT_SETUPS] = disciplines.filter { it !in done }.joinToString(",")
+        }
     }
 
     suspend fun sportSetupHandled(discipline: String) {
@@ -314,6 +323,7 @@ class UserSettingsRepository @Inject constructor(
         val KEY_CALENDAR_READ = booleanPreferencesKey("calendar_read")
         val KEY_CALENDAR_WRITE = androidx.datastore.preferences.core.longPreferencesKey("calendar_write_id")
         val KEY_COMPANION_KIND = stringPreferencesKey("companion_kind")
+        val KEY_COMPANION_HOME = booleanPreferencesKey("companion_home")
         val KEY_REST_DAYS = stringSetPreferencesKey("rest_days")
         val KEY_PLAN_RULES = stringSetPreferencesKey("plan_rules")
         val KEY_SPORT_DISCIPLINES = stringSetPreferencesKey("sport_disciplines")

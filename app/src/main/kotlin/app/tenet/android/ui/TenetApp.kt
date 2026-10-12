@@ -275,10 +275,10 @@ fun TenetApp(
     val appSnackbar = rememberAppSnackbar()
     // Blur of the whole app while a sheet (new entry) floats above it.
     val backdropBlur = remember { mutableFloatStateOf(0f) }
-    // Companion: the house button sends it home until the app is opened again.
-    var companionHome by remember { mutableStateOf(false) }
+    // Companion: the house button sends it home; it stays there until called back, also across app starts.
+    val companionHome = settings.companionHome
     val companionControl = if (settings.companion) {
-        app.tenet.android.core.designsystem.header.CompanionControl(visible = !companionHome) { companionHome = !companionHome }
+        app.tenet.android.core.designsystem.header.CompanionControl(visible = !companionHome) { setupSettings.setCompanionHome(!companionHome) }
     } else {
         null
     }
@@ -562,7 +562,7 @@ fun TenetApp(
                         },
                         // Gym: start weights from the trainings done so far, when there are any.
                         onOpenSetup = { navController.navigate(SportSetupRoute(name, useTrainingHistory = true)) },
-                        onOpenChat = { navController.navigate(app.tenet.android.navigation.PlanChatRoute(name)) },
+                        onOpenChat = { split -> navController.navigate(app.tenet.android.navigation.PlanChatRoute(name, split)) },
                         onOpenWeek = { navController.navigate(app.tenet.android.navigation.WeekPlanRoute) },
                     )
                 }
@@ -588,11 +588,13 @@ fun TenetApp(
                 composable<app.tenet.android.navigation.PlanChatRoute> { entry ->
  SubPageWash(HeaderImage.SPORT) {
  AreaTheme(AppArea.SPORT) {
-                    val name = entry.toRoute<app.tenet.android.navigation.PlanChatRoute>().discipline
+                    val route = entry.toRoute<app.tenet.android.navigation.PlanChatRoute>()
+                    val name = route.discipline
                     val discipline = runCatching { app.tenet.android.core.database.entity.Discipline.valueOf(name) }
                         .getOrDefault(app.tenet.android.core.database.entity.Discipline.GYM)
                     app.tenet.android.feature.sport.plan.PlanChatScreen(
                         discipline = discipline,
+                        initialSplit = route.split,
                         onBack = { navController.popBackStack() },
                         onCreated = { id ->
                             // The chat is done: back to the plans, gym/calisthenics straight into the editor.
@@ -907,6 +909,20 @@ fun TenetApp(
                     kind = app.tenet.android.core.designsystem.component.CompanionKind.of(settings.companionKind),
                     name = settings.companionNames[settings.companionKind]
                         ?: app.tenet.android.core.designsystem.component.CompanionKind.of(settings.companionKind).label,
+                    onOpen = { open ->
+                        when (open.kind) {
+                            app.tenet.android.core.data.companion.CompanionAgent.OpenKind.ENTRY ->
+                                navController.navigate(EntryEditorRoute(open.id, open.extra.ifBlank { "NOTE" }))
+                            app.tenet.android.core.data.companion.CompanionAgent.OpenKind.RUN ->
+                                navController.navigate(app.tenet.android.navigation.RunDetailRoute(open.id))
+                            app.tenet.android.core.data.companion.CompanionAgent.OpenKind.WORKOUT ->
+                                navController.navigate(WorkoutSummaryRoute(open.id))
+                            app.tenet.android.core.data.companion.CompanionAgent.OpenKind.RECIPE ->
+                                navController.navigate(RecipeDetailRoute(open.id))
+                            app.tenet.android.core.data.companion.CompanionAgent.OpenKind.NUTRITION -> openTab(TopLevelTab.Nutrition)
+                            app.tenet.android.core.data.companion.CompanionAgent.OpenKind.BODY -> openTab(TopLevelTab.Sport)
+                        }
+                    },
                     onNavigate = { dest ->
                         when (dest) {
                             app.tenet.android.core.data.companion.CompanionAgent.Destination.TODAY -> openTab(TopLevelTab.Today)

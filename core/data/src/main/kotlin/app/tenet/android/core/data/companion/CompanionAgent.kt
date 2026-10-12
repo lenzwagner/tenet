@@ -13,6 +13,7 @@ import app.tenet.android.core.data.health.TodayFeedRepository
 import app.tenet.android.core.database.entity.Discipline
 import app.tenet.android.core.database.entity.Entry
 import app.tenet.android.core.database.entity.EntryType
+import app.tenet.android.core.database.entity.Food
 import app.tenet.android.core.database.entity.MealType
 import java.time.LocalDate
 import java.time.LocalTime
@@ -43,12 +44,19 @@ class CompanionAgent @Inject constructor(
     private val readiness: app.tenet.android.core.data.health.ReadinessRepository,
     private val running: app.tenet.android.core.data.RunningRepository,
     private val recipes: app.tenet.android.core.data.sync.RecipeImporter,
+    private val memory: CompanionMemory,
 ) {
     /** Where the app should go, when the user asked to open something. */
     enum class Destination { TODAY, SPORT, JOURNAL, NUTRITION, SETTINGS }
 
-    /** [acted]: something was stored – the chat closes and a short note confirms it. */
-    data class Reply(val text: String, val navigate: Destination? = null, val acted: Boolean = false)
+    /** What an [Open] leads to. */
+    enum class OpenKind { ENTRY, RUN, WORKOUT, RECIPE, NUTRITION, BODY }
+
+    /** Something just stored that can be opened: [id] of the entry/run/session/recipe, [extra] = entry type. */
+    data class Open(val label: String, val kind: OpenKind, val id: String = "", val extra: String = "")
+
+    /** [acted]: something was stored; [opens]: what of it can be opened from the chat. */
+    data class Reply(val text: String, val navigate: Destination? = null, val acted: Boolean = false, val opens: List<Open> = emptyList())
 
     val aiEnabled: Boolean get() = ai.config.value.usable
 
@@ -60,18 +68,48 @@ class CompanionAgent @Inject constructor(
         text: String,
         name: String = "Tenny",
         history: List<Turn> = emptyList(),
+        /** Photos as data URIs ("trag diesen Riegel ein"). */
+        images: List<String> = emptyList(),
         onStep: (String) -> Unit = {},
     ): Reply {
-        if (text.isBlank()) return Reply("Sag mir, was ich tun soll.")
-        if (!aiEnabled) return offline(text)
+        if (text.isBlank() && images.isEmpty()) return Reply("Sag mir, was ich tun soll.")
+        if (!aiEnabled) return if (images.isEmpty()) offline(text) else Reply("Für Fotos brauche ich die KI (Einstellungen → KI).")
+        val reply = answer(text.ifBlank { "Was ist auf dem Foto? Wenn es ein Lebensmittel ist, trag es ein." }, name, history, images, onStep)
+        // Remembered for a day: later messages may refer to it ("ergänze das").
+        memory.add(text.ifBlank { "(Foto)" } + if (images.isNotEmpty() && text.isNotBlank()) " (mit Foto)" else "", reply.text)
+        return reply
+    }
+
+    private suspend fun answer(text: String, name: String, history: List<Turn>, images: List<String>, onStep: (String) -> Unit): Reply {
         // chat(): retries when NIM is busy, turns thinking off and falls back to a second
         // model – the plain json() call gave up after 30 s on slower models.
         val talk = history.takeLast(6).joinToString("\n") { "Nutzer: ${it.user}\n$name: ${it.assistant}" }
+        // A photo is read first by a model that sees; the request itself then runs as usual on what was found.
+        val photo = if (images.isEmpty()) null else {
+            onStep("liest das Foto")
+            ai.chat(PHOTO_READ, VISION_MODELS, images = images, maxTokens = 500, timeoutMs = 60_000, configuredFirst = false, accept = { AiAssistant.extractJson(it) != null })
+                ?.let { AiAssistant.extractJson(it) }
+                ?: return Reply("Ich konnte das Foto nicht lesen (${ai.lastError ?: "keine Antwort"}). Versuch es nochmal oder sag mir, was es ist.")
+        }
+        val now = System.currentTimeMillis()
+        val earlier = memory.turns(now).takeLast(12).joinToString("\n") { t ->
+            val min = (now - t.at) / 60_000
+            val ago = if (min < 60) "vor $min min" else "vor ${min / 60} h"
+            "- $ago · Nutzer: ${t.user.replace('\n', ' ').take(200)} → ${t.reply.replace('\n', ' ').take(200)}"
+        }
+        val lastNote = memory.lastNote?.takeIf { now - it.at < NOTE_MEMORY_MS }
         val prompt = SYSTEM.replace("\"Tenny\"", "\"$name\"") + "\n\nKONTEXT\n" + context() +
+            (if (earlier.isNotBlank()) "\n\nVERLAUF DER LETZTEN 24 STUNDEN (nur um Bezüge wie „das“, „die Liste“, „dort“ zu verstehen; nichts daraus erneut eintragen)\n$earlier" else "") +
+            (lastNote?.let { "\n\nZULETZT BEARBEITETE NOTIZ: „${it.title.ifBlank { "Ohne Titel" }}“ – „ergänze das“, „füg noch … hinzu“ ohne Namen meint diese Notiz (append_note mit genau diesem Titel)." } ?: "") +
+            (photo?.let { "\n\nFOTO (vom Nutzer angehängt, bereits ausgelesen – „das“, „dieser“, „dieses“ in der Nachricht meint es): $it\n" + PHOTO } ?: "") +
             (if (talk.isNotBlank()) "\n\nBISHERIGES GESPRÄCH (deine Rückfragen und seine Antworten gehören zusammen)\n$talk" else "") +
             "\n\nNACHRICHT DES NUTZERS (nur darauf reagieren): " + text
+        val chosen = ai.config.value.companionModel
         val answer = ai.chat(
-            prompt, fastModels(), maxTokens = 900, timeoutMs = 30_000, configuredFirst = false,
+            prompt,
+            // A photo needs a model that sees; else the chosen one, then the fast ones.
+            listOfNotNull(chosen.takeIf { it.isNotBlank() }) + fastModels(),
+            maxTokens = 900, timeoutMs = 30_000, configuredFirst = false,
             accept = { AiAssistant.extractJson(it) != null },
         )
 
@@ -79,6 +117,7 @@ class CompanionAgent @Inject constructor(
             // No guessing from the sentence here: that once logged "Federweißer" for a question.
             ?: return Reply("Ich erreiche die KI gerade nicht (${ai.lastError ?: "keine Antwort"}). Versuch es gleich nochmal.")
         val done = mutableListOf<String>()
+        val opens = mutableListOf<Open>()
         var navigate: Destination? = null
         val actions = answer.optJSONArray("actions") ?: JSONArray()
         val asks = mutableListOf<String>()
@@ -102,6 +141,12 @@ class CompanionAgent @Inject constructor(
                 }
                 a.put("exercises", kept)
             }
+            // The label's values belong to the one product in the photo.
+            if (photo != null && a.optString("type") == "log_food") {
+                a.optJSONArray("items")?.takeIf { it.length() == 1 }?.optJSONObject(0)?.let { item ->
+                    listOf("kcal100", "protein100", "carbs100", "fat100", "brand").forEach { k -> if (!item.has(k) && photo.has(k) && !photo.isNull(k)) item.put(k, photo.get(k)) }
+                }
+            }
             // Something essential missing: ask instead of storing half an entry.
             missing(a)?.let {
                 asks += it
@@ -113,21 +158,36 @@ class CompanionAgent @Inject constructor(
             }
             runCatching {
                 when (a.optString("type")) {
-                    "log_food" -> done += logFood(a)
+                    "log_food" -> done += logFood(a, opens)
                     "add_water" -> done += addWater(a.optInt("ml"))
-                    "create_note" -> done += if (isList(a)) {
-                        createNote(a.optString("title"), noteItems(a, "body"))
-                    } else {
-                        createTextNote(a.optString("title"), a.optString("body"))
+                    "create_note" -> {
+                        // "Ergänze das" right after a list was written: the model sometimes starts a new note.
+                        val target = lastNote?.takeIf { FOLLOW_UP.containsMatchIn(text) && !NEW_NOTE.containsMatchIn(text) && !namesNote(a.optString("title"), text) }
+                            ?.let { entries.get(it.id)?.entry }
+                        done += when {
+                            target != null && !said(noteItems(a, "body"), text) -> "Was soll ich in „${target.title.ifBlank { "Notiz" }}“ ergänzen?"
+                            target != null -> appendTo(target, noteItems(a, "body"), opens)
+                            isList(a) -> createNote(a.optString("title"), noteItems(a, "body"), opens)
+                            else -> createTextNote(a.optString("title"), a.optString("body"), opens)
+                        }
                     }
-                    "append_note" -> done += appendNote(noteTitle(a.optString("title"), (history.map { it.user } + text).joinToString(" ")), noteItems(a, "text"))
-                    "log_weight" -> done += logWeight(a.optDouble("kg", Double.NaN))
-                    "diary" -> done += diary(a)
-                    "dream" -> done += dream(a)
-                    "import_recipe" -> done += importRecipe(a.optString("url"), onStep)
-                    "log_gym" -> done += logStrength(Discipline.GYM, a)
-                    "log_cali" -> done += logStrength(Discipline.CALISTHENICS, a)
-                    "log_run" -> done += logRun(a)
+                    "append_note" -> {
+                        // No note named in this message: the one just worked on is meant.
+                        val target = lastNote?.takeIf { !namesNote(a.optString("title"), text) || a.optString("title").trim().equals(it.title, ignoreCase = true) }
+                            ?.let { entries.get(it.id)?.entry }
+                        done += if (!said(noteItems(a, "text"), (history.map { it.user } + text).joinToString(" "))) {
+                            // Nothing of it was said: the model made the points up (e.g. from an example).
+                            "Was soll ich ${target?.let { "in „${it.title.ifBlank { "Notiz" }}“ " }.orEmpty()}ergänzen?"
+                        } else if (target != null) appendTo(target, noteItems(a, "text"), opens)
+                        else appendNote(noteTitle(a.optString("title"), (history.map { it.user } + text).joinToString(" ")), noteItems(a, "text"), opens)
+                    }
+                    "log_weight" -> done += logWeight(a.optDouble("kg", Double.NaN)).also { if (it.isNotBlank()) opens += Open("Gewichtsverlauf", OpenKind.BODY) }
+                    "diary" -> done += diary(a, opens)
+                    "dream" -> done += dream(a, opens)
+                    "import_recipe" -> done += importRecipe(a.optString("url"), onStep, opens)
+                    "log_gym" -> done += logStrength(Discipline.GYM, a, opens)
+                    "log_cali" -> done += logStrength(Discipline.CALISTHENICS, a, opens)
+                    "log_run" -> done += logRun(a, opens)
                     "navigate" -> navigate = runCatching { Destination.valueOf(a.optString("to").uppercase()) }.getOrNull()
                 }
             }.onFailure { done += "Das hat nicht geklappt: ${a.optString("type")}" }
@@ -135,14 +195,30 @@ class CompanionAgent @Inject constructor(
         val reply = answer.optString("reply").takeIf { it.isNotBlank() && it != "null" }
         val stored = done.filter { it.isNotBlank() }
         if (asks.isNotEmpty()) {
-            return Reply((stored + asks).joinToString("\n"), navigate, acted = false)
+            return Reply((stored + asks).joinToString("\n"), navigate, acted = false, opens = opens.distinct())
         }
         return Reply(
             // After an action the app's own confirmation is enough; the model's text is for answers.
             if (stored.isNotEmpty()) stored.joinToString("\n") else reply ?: "Hm, da weiß ich gerade nichts zu.",
             navigate,
             acted = stored.any { it.startsWith("✓") },
+            opens = opens.distinct(),
         )
+    }
+
+    /** At least one of the [items] occurs in what the user [said] (word start is enough: "Badehosen"). */
+    private fun said(items: List<String>, said: String): Boolean {
+        val s = norm(said)
+        // The request's own words do not count ("Ergänze" is no point "Ergänzung").
+        return items.any { item -> norm(item).split(' ').any { w -> w.length >= 3 && COMMAND_STEMS.none { w.startsWith(it) } && s.contains(w.take(5)) } }
+    }
+
+    /** The user named a note in this message: the model's title as said, or "auf die/in meine … ". */
+    private fun namesNote(modelTitle: String, said: String): Boolean {
+        val m = modelTitle.trim()
+        return (m.length > 2 && said.contains(m, ignoreCase = true)) || said.contains("einkauf", ignoreCase = true) ||
+            // "zu der Liste" names none: any list could be meant.
+            NOTE_TARGET.findAll(said).any { it.groupValues[1].lowercase(Locale.GERMAN) !in GENERIC_NOTE_WORDS }
     }
 
     /** Lower case, umlauts spelled out, letters only: "Klimmzüge" and "klimmzuege" match. */
@@ -231,7 +307,7 @@ class CompanionAgent @Inject constructor(
             return Reply("Ohne KI verstehe ich nur Essen wie „100 g Haferflocken“. Den NVIDIA-Schlüssel trägst du unter Einstellungen → KI ein.")
         }
         val lines = phrases.map { logPhrase(it, defaultMeal()) }
-        return Reply(lines.joinToString("\n"))
+        return Reply(lines.joinToString("\n"), opens = if (lines.any { it.startsWith("✓") }) listOf(Open("Ernährung heute", OpenKind.NUTRITION)) else emptyList())
     }
 
     /** Small models this key can use, fastest first; looked up once per app start. */
@@ -252,7 +328,7 @@ class CompanionAgent @Inject constructor(
 
     // ---- Actions --------------------------------------------------------------
 
-    private suspend fun logFood(a: JSONObject): List<String> {
+    private suspend fun logFood(a: JSONObject, opens: MutableList<Open>): List<String> {
         val items = a.optJSONArray("items") ?: return emptyList()
         return (0 until items.length()).mapNotNull { i ->
             val o = items.optJSONObject(i) ?: return@mapNotNull null
@@ -260,12 +336,24 @@ class CompanionAgent @Inject constructor(
             val grams = o.optDouble("grams", Double.NaN).takeIf { !it.isNaN() && it >= 1 }?.toFloat()?.coerceAtMost(3000f)
                 ?: return@mapNotNull null
             val meal = runCatching { MealType.valueOf(o.optString("meal").uppercase()) }.getOrNull() ?: defaultMeal()
-            logPhrase(FoodPhrase(name = name, grams = grams, count = null, explicit = o.optBoolean("explicit", true), meal = meal.name), meal)
-        }
+            logPhrase(FoodPhrase(name = name, grams = grams, count = null, explicit = o.optBoolean("explicit", true), meal = meal.name), meal, label(o))
+        }.also { lines -> if (lines.any { it.startsWith("✓") }) opens += Open("Ernährung heute", OpenKind.NUTRITION) }
     }
 
-    private suspend fun logPhrase(p: FoodPhrase, meal: MealType): String {
+    /** Nutrition values read off a photographed label (per 100 g), for products the search does not know. */
+    private fun label(o: JSONObject): Food? {
+        val kcal = o.optDouble("kcal100", Double.NaN).takeIf { !it.isNaN() && it in 1.0..950.0 } ?: return null
+        fun g(k: String) = o.optDouble(k, 0.0).takeIf { !it.isNaN() && it in 0.0..100.0 }?.toFloat() ?: 0f
+        return Food(
+            id = newUuid(), name = cap(o.optString("name")), brand = o.optString("brand").takeIf { it.isNotBlank() && it != "null" },
+            kcalPer100 = kcal.toFloat(), proteinPer100 = g("protein100"), carbsPer100 = g("carbs100"), fatPer100 = g("fat100"),
+        )
+    }
+
+    private suspend fun logPhrase(p: FoodPhrase, meal: MealType, fromLabel: Food? = null): String {
         val match = food.searchLocal(p.name).firstOrNull()
+            // The label in the photo beats a guess from the online search.
+            ?: fromLabel?.also { food.saveFood(it) }
             ?: withTimeoutOrNull(6_000) { runCatching { food.searchOnline(p.name).firstOrNull() }.getOrNull() }
             ?: return "„${p.name}“ habe ich nicht gefunden – bitte selbst suchen."
         val (grams, _) = PortionMath.adjust(p, food.recentAmounts(match.id))
@@ -298,34 +386,44 @@ class CompanionAgent @Inject constructor(
     private fun isList(a: JSONObject) = (a.optJSONArray("items")?.length() ?: 0) > 0 ||
         a.optString("body").lines().any { it.trimStart().startsWith("-") || it.trimStart().startsWith("*") || it.trimStart().startsWith("•") }
 
-    private suspend fun createTextNote(title: String, body: String): String {
+    /** The note is remembered as "the one just worked on" and offered to open. */
+    private fun noted(id: String, title: String, opens: MutableList<Open>) {
+        memory.lastNote = CompanionMemory.Note(id, title, System.currentTimeMillis())
+        opens += Open("Notiz „${title.ifBlank { "Ohne Titel" }}“", OpenKind.ENTRY, id, EntryType.NOTE.name)
+    }
+
+    private suspend fun createTextNote(title: String, body: String, opens: MutableList<Open>): String {
         if (title.isBlank() && body.isBlank()) return ""
         val now = System.currentTimeMillis()
+        val id = newUuid()
         entries.save(
             Entry(
-                id = newUuid(), type = EntryType.NOTE, title = cap(title), body = cap(body.takeIf { it != "null" }.orEmpty()),
+                id = id, type = EntryType.NOTE, title = cap(title), body = cap(body.takeIf { it != "null" }.orEmpty()),
                 createdAt = now, updatedAt = now, entryDate = LocalDate.now().toString(),
             ),
             diaryMeta = null,
             dreamMeta = null,
         )
+        noted(id, cap(title), opens)
         return "✓ Notiz „${cap(title).ifBlank { "Ohne Titel" }}“ angelegt"
     }
 
     private fun cap(text: String) = text.trim().replaceFirstChar { it.titlecase(Locale.GERMAN) }
 
     /** New note; items become an unchecked checklist, each starting with a capital letter. */
-    private suspend fun createNote(title: String, items: List<String>): String {
+    private suspend fun createNote(title: String, items: List<String>, opens: MutableList<Open>): String {
         if (title.isBlank() && items.isEmpty()) return ""
         val now = System.currentTimeMillis()
+        val id = newUuid()
         entries.save(
             Entry(
-                id = newUuid(), type = EntryType.NOTE, title = cap(title), body = items.joinToString("\n") { "- [ ] $it" },
+                id = id, type = EntryType.NOTE, title = cap(title), body = items.joinToString("\n") { "- [ ] $it" },
                 createdAt = now, updatedAt = now, entryDate = LocalDate.now().toString(),
             ),
             diaryMeta = null,
             dreamMeta = null,
         )
+        noted(id, cap(title), opens)
         return "✓ Notiz „${cap(title).ifBlank { "Ohne Titel" }}“ angelegt" + if (items.isEmpty()) "" else ": " + items.joinToString(", ")
     }
 
@@ -344,16 +442,29 @@ class CompanionAgent @Inject constructor(
     }
 
     /** Adds items to a note found by title (new note if there is none); checklists get unchecked items. */
-    private suspend fun appendNote(title: String, items: List<String>): String {
+    private suspend fun appendNote(title: String, items: List<String>, opens: MutableList<Open>): String {
         if (items.isEmpty()) return ""
         val note = entries.findByTitle(title)
             // Only a note whose title really is (or contains) the name, never one that merely mentions it.
             ?: entries.search(title).firstOrNull { it.type == EntryType.NOTE && title.isNotBlank() && it.title.contains(title.trim(), ignoreCase = true) }
-            ?: return createNote(title, items)
+            ?: return createNote(title, items, opens)
+        return appendTo(note, items, opens)
+    }
+
+    /** Adds [items] to [note]; what is already on it is not added twice. */
+    private suspend fun appendTo(note: Entry, items: List<String>, opens: MutableList<Open>): String {
         val body = note.body.trimEnd()
+        val have = body.lines().map { it.replace(Regex("""^\s*([-*•]\s*)?(\[[ xX]?]\s*)?"""), "").trim().lowercase(Locale.GERMAN) }.toSet()
+        @Suppress("NAME_SHADOWING")
+        val items = items.filter { it.lowercase(Locale.GERMAN) !in have }
+        if (items.isEmpty()) {
+            noted(note.id, note.title, opens)
+            return "Das steht schon in „${note.title.ifBlank { "Notiz" }}“."
+        }
         val isList = body.isEmpty() || body.lines().any { it.trimStart().startsWith("- [") }
         val lines = items.joinToString("\n") { if (isList) "- [ ] $it" else it }
         entries.updateBody(note.id, if (body.isEmpty()) lines else "$body\n$lines")
+        noted(note.id, note.title, opens)
         return "✓ In „${note.title.ifBlank { "Notiz" }}“ ergänzt: ${items.joinToString(", ")}"
     }
 
@@ -364,7 +475,7 @@ class CompanionAgent @Inject constructor(
         a.optString("date").takeIf { it.isNotBlank() && it != "null" }?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.now()
 
     /** Diary entry with mood, energy, sleep quality (1–5); today's entry is completed, not doubled. */
-    private suspend fun diary(a: JSONObject): String {
+    private suspend fun diary(a: JSONObject, opens: MutableList<Open>): String {
         val mood = scale(a, "mood") ?: return ""
         val date = day(a).toString()
         val text = a.optString("text").takeIf { it.isNotBlank() && it != "null" }.orEmpty()
@@ -386,12 +497,13 @@ class CompanionAgent @Inject constructor(
                 .copy(mood = mood, energy = scale(a, "energy") ?: old?.energy, sleepQuality = scale(a, "sleep") ?: old?.sleepQuality),
             dreamMeta = null,
         )
+        opens += Open("Tagebucheintrag", OpenKind.ENTRY, entry.id, EntryType.DIARY.name)
         val parts = listOfNotNull("Stimmung $mood/5", scale(a, "energy")?.let { "Energie $it/5" }, scale(a, "sleep")?.let { "Schlaf $it/5" })
         return "✓ Tagebuch · " + parts.joinToString(", ")
     }
 
     /** Dream: "had": false stores the no-dream day like the button on "Heute". */
-    private suspend fun dream(a: JSONObject): String {
+    private suspend fun dream(a: JSONObject, opens: MutableList<Open>): String {
         val date = day(a).toString()
         val now = System.currentTimeMillis()
         if (!a.optBoolean("had", true)) {
@@ -418,19 +530,21 @@ class CompanionAgent @Inject constructor(
                 emotions = emotions?.takeIf { it.isNotEmpty() }?.joinToString(","),
             ),
         )
+        opens += Open("Traum „$title“", OpenKind.ENTRY, id, EntryType.DREAM.name)
         return "✓ Traum „$title“ gespeichert"
     }
 
-    private suspend fun importRecipe(url: String, onStep: (String) -> Unit): String {
+    private suspend fun importRecipe(url: String, onStep: (String) -> Unit, opens: MutableList<Open>): String {
         if (!url.startsWith("http")) return "Das ist kein gültiger Rezept-Link."
         val recipe = recipes.fromUrl(url) { onStep(it.trimEnd('.', '…', ' ').replaceFirstChar { c -> c.lowercase() }) }
             .getOrElse { return "Rezept-Import fehlgeschlagen: ${it.message}" }
-        recipes.save(recipe).getOrElse { return "Rezept „${recipe.title}“ gefunden, aber nicht gespeichert: ${it.message}" }
+        val id = recipes.save(recipe).getOrElse { return "Rezept „${recipe.title}“ gefunden, aber nicht gespeichert: ${it.message}" }
+        opens += Open("Rezept „${recipe.title}“", OpenKind.RECIPE, id)
         return "✓ Rezept „${recipe.title}“ importiert · ${recipe.ingredients.size} Zutaten"
     }
 
     /** Gym or calisthenics session told afterwards. */
-    private suspend fun logStrength(discipline: Discipline, a: JSONObject): String {
+    private suspend fun logStrength(discipline: Discipline, a: JSONObject, opens: MutableList<Open>): String {
         val arr = a.optJSONArray("exercises") ?: return ""
         val exercises = (0 until arr.length()).mapNotNull { i ->
             val o = arr.optJSONObject(i) ?: return@mapNotNull null
@@ -450,20 +564,22 @@ class CompanionAgent @Inject constructor(
         }
         if (exercises.isEmpty()) return ""
         val end = day(a).let { d -> if (d == LocalDate.now()) System.currentTimeMillis() else d.atTime(18, 0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() }
-        val (found, unknown) = sport.logPastSession(discipline, exercises, a.optInt("minutes", 0).takeIf { it > 0 }, end)
         val label = if (discipline == Discipline.GYM) "Gym" else "Calisthenics"
+        val (found, unknown) = sport.logPastSession(discipline, exercises, a.optInt("minutes", 0).takeIf { it > 0 }, end) {
+            opens += Open("$label-Training", OpenKind.WORKOUT, it)
+        }
         if (found.isEmpty()) return "Übungen nicht gefunden: ${unknown.joinToString(", ")} – bitte im Katalog anlegen."
         return "✓ $label-Training · ${found.joinToString(", ")}" + if (unknown.isNotEmpty()) " (unbekannt: ${unknown.joinToString(", ")})" else ""
     }
 
-    private suspend fun logRun(a: JSONObject): String {
+    private suspend fun logRun(a: JSONObject, opens: MutableList<Open>): String {
         val km = a.optDouble("km", Double.NaN).takeIf { !it.isNaN() && it > 0 } ?: return ""
         val minutes = a.optDouble("minutes", Double.NaN).takeIf { !it.isNaN() && it > 0 } ?: return ""
         val sec = (minutes * 60).roundToInt()
         val start = day(a).let { d ->
             if (d == LocalDate.now()) java.time.LocalDateTime.now().minusSeconds(sec.toLong()) else d.atTime(18, 0)
         }
-        running.addManualRun(start, (km * 1000).toFloat(), sec, a.optInt("avg_hr", 0).takeIf { it > 0 }, a.optString("notes").takeIf { it != "null" }.orEmpty())
+        opens += Open("Lauf", OpenKind.RUN, running.addManualRun(start, (km * 1000).toFloat(), sec, a.optInt("avg_hr", 0).takeIf { it > 0 }, a.optString("notes").takeIf { it != "null" }.orEmpty()))
         val pace = sec / km
         return "✓ Lauf ${"%.1f".format(Locale.GERMAN, km)} km · ${minutes.roundToInt()} min (${(pace / 60).toInt()}:${"%02d".format((pace % 60).roundToInt().coerceAtMost(59))} /km)"
     }
@@ -551,6 +667,30 @@ class CompanionAgent @Inject constructor(
             "openai/gpt-oss-20b",
         )
 
+        /** Models that understand images. */
+        private val VISION_MODELS = listOf("meta/llama-3.2-11b-vision-instruct", "nvidia/llama-3.2-11b-vision-instruct")
+
+        /** How long "the note just worked on" stays the target of "ergänze das". */
+        private const val NOTE_MEMORY_MS = 6 * 60 * 60 * 1000L
+        private val FOLLOW_UP = Regex("ergänz|ergaenz|füg|fueg|hinzu|dazu|außerdem|ausserdem|\\bnoch\\b|\\bauch\\b", RegexOption.IGNORE_CASE)
+        private val NEW_NOTE = Regex("neue[nrs]?\\s+(\\p{L}+\\s+)?(liste|notiz|checkliste)|\\banlegen\\b|\\berstell", RegexOption.IGNORE_CASE)
+        private val NOTE_TARGET = Regex("(?:auf|in|zu)\\s+(?:die|der|den|das|meine|meiner|meinen|mein)\\s+([\\p{L}-]{3,})", RegexOption.IGNORE_CASE)
+        private val COMMAND_STEMS = listOf("ergae", "fueg", "schre", "hinzu", "dazu", "notiz", "liste", "punkt", "eintr")
+        private val GENERIC_NOTE_WORDS = setOf("liste", "notiz", "checkliste", "notizen", "aufzählung")
+
+        private val PHOTO_READ = """
+            Lies dieses Foto aus. Antworte NUR mit JSON, auf Deutsch:
+            {"what": was zu sehen ist (1 Satz), "product": Produkt- oder Gerichtname wie auf der Packung oder null, "brand": Marke oder null,
+             "grams": Gewicht eines Stücks bzw. der Packung in Gramm laut Aufdruck oder null,
+             "kcal100": kcal pro 100 g laut Nährwerttabelle oder null, "protein100": g, "carbs100": g, "fat100": g (jeweils pro 100 g, nur ablesen, nie raten),
+             "text": sonstiger gut lesbarer Text im Bild, kurz}
+        """.trimIndent()
+
+        private val PHOTO = """
+            Soll es eingetragen werden (z. B. "trag diesen Riegel ein"): log_food mit "name" = product aus dem FOTO, "grams" = grams aus dem FOTO (fehlt es: realistisch schätzen), "explicit": true.
+            Bei einer Frage zum Foto: in reply mit dem FOTO-Inhalt beantworten. Ist darauf nichts Brauchbares: das in reply sagen, keine Aktion.
+        """.trimIndent()
+
         private val SYSTEM = """
             Du bist "Tenny", der freundliche Begleiter in der Fitness- und Journal-App Tenet. Antworte immer auf Deutsch, kurz (1–3 Sätze), du duzt.
             Du kannst Fragen zu Training, Ernährung, Gesundheit und Notizen mit dem KONTEXT beantworten und Aktionen ausführen.
@@ -561,6 +701,7 @@ class CompanionAgent @Inject constructor(
             {"type":"add_water","ml": Zahl}
             {"type":"create_note","title": Titel, "items": ["Punkt", …]}  für Listen (Einkaufsliste …), sonst "body": Text
             {"type":"append_note","title": Titel genau wie vom Nutzer genannt, "items": ["Punkt", …]}  z. B. "schreib Milch auf die Einkaufsliste" → title "Einkaufsliste" (gibt es sie nicht, legt die App sie an)
+              "Ergänze das", "füg noch X hinzu", "auch noch Y" ohne Namen → append_note auf die ZULETZT BEARBEITETE NOTIZ, NIE eine neue Notiz.
               Punkte NUR aus der Nachricht des Nutzers, Wort für Wort, jeden einzeln – auch ähnliche (Toilettenpapier UND Klopapier).
               NIE Punkte aus dem KONTEXT oder aus Beispielen übernehmen, nichts zusammenfassen, nichts abhaken.
             {"type":"log_weight","kg": Zahl}

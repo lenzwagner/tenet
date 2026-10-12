@@ -36,7 +36,7 @@ class SetupBuilderTest {
                 split = Split.CUSTOM,
                 days = listOf(1, 2, 3, 4, 5, 6),
                 bodyweightKg = 80f,
-                customRoutineTitles = listOf("Brust", "Rücken", "Arme", "Beine"),
+                customUnits = listOf("Brust", "Rücken", "Arme", "Beine").map { GymSplits.SplitUnit(it, emptyList()) },
             ),
         )
 
@@ -45,6 +45,40 @@ class SetupBuilderTest {
         assertTrue(plan.routines[1].exercises.any { it.exerciseId == "ex-rudern" })
         assertTrue(plan.routines[2].exercises.any { it.exerciseId == "ex-bizepscurl" })
         assertTrue(plan.routines[3].exercises.any { it.exerciseId == "ex-kniebeugen" })
+    }
+
+    @Test
+    fun ownCombination_buildsEachUnitFromItsMuscleGroups() {
+        val choice = GymSplits.Choice(size = 2, own = listOf(
+            setOf(GymSplits.Muscle.CHEST, GymSplits.Muscle.BICEPS),
+            setOf(GymSplits.Muscle.BACK, GymSplits.Muscle.TRICEPS),
+            setOf(GymSplits.Muscle.LEGS),
+        ))
+        assertEquals("Brust + Bizeps / Rücken + Trizeps / Beine", choice.label)
+        assertEquals(choice, GymSplits.Choice.decode(choice.encode()))
+        val input = GymPlanBuilder.Input(Goal.HYPERTROPHY, Level.INTERMEDIATE, Split.CUSTOM, listOf(1, 3, 5), 80f, customUnits = choice.units, customName = choice.sizeLabel)
+        val plan = GymPlanBuilder.build(input)
+
+        assertEquals("3er-Split · Muskelaufbau", plan.name)
+        val first = plan.routines[0].exercises.map { it.exerciseId }
+        assertEquals(listOf("ex-bankdruecken", "ex-schraegbank", "ex-g-dips", "ex-bizepscurl", "ex-hammercurl"), first)
+        assertTrue(plan.routines[1].exercises.any { it.exerciseId == "ex-trizepsdruecken" })
+        assertTrue(plan.routines.all { r -> r.exercises.map { it.exerciseId }.distinct().size == r.exercises.size })
+        // A lift the setup knows gets its weight wherever it is added; an unknown exercise none.
+        assertEquals(plan.routines[0].exercises[0].startWeightKg, GymPlanBuilder.startWeight(input, "ex-bankdruecken", 8))
+        assertNull(GymPlanBuilder.startWeight(input, "ex-butterfly", 12))
+    }
+
+    @Test
+    fun presets_keepTheSplitLengthAndNameTheirMuscles() {
+        GymSplits.sizes.forEach { size ->
+            size.combos.forEach { combo ->
+                assertEquals(size.unitCount, combo.units.size)
+                assertTrue(combo.units.all { it.muscles.isNotEmpty() })
+                assertEquals(combo.units.size, combo.units.map { it.title }.distinct().size)
+            }
+        }
+        assertEquals(listOf(GymSplits.Muscle.BICEPS, GymSplits.Muscle.TRICEPS), GymSplits.musclesOf("Arme"))
     }
 
     @Test

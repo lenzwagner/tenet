@@ -93,7 +93,7 @@ fun OnboardingScreen(
     val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
     androidx.compose.runtime.LaunchedEffect(Unit) { settingsViewModel.startOnboarding() }
     val sport = AppModule.SPORT in settings.enabledModules
-    val steps = if (sport) 5 else 4
+    val steps = if (sport) 6 else 5
     val finish = {
         // The chosen sports get their first plan right after the welcome screens.
         settingsViewModel.queueSportSetups(if (sport) SportChoices.map { it.first }.filter { it in settings.sportDisciplines } else emptyList())
@@ -114,18 +114,33 @@ fun OnboardingScreen(
                 1 -> ModulesStep(0, steps, settings.enabledModules, settingsViewModel::setModuleEnabled) { page = if (sport) 5 else 2 }
                 5 -> SportsStep(1, steps, settings.sportDisciplines, settingsViewModel::setSportDiscipline) { page = 2 }
                 2 -> ProfileStep(
-                    steps - 3, steps, settings.profile,
+                    steps - 4, steps, settings.profile,
                     onSave = { settingsViewModel.saveProfile(it); page = 3 },
                     onSkip = { page = 3 },
                 )
                 3 -> GoalsStep(
-                    steps - 2, steps, settings.profile,
+                    steps - 3, steps, settings.profile,
                     nutrition = AppModule.NUTRITION in settings.enabledModules,
                     waterMl = settings.waterGoalMl,
                 ) { goal, water ->
                     settings.profile?.let { settingsViewModel.saveProfileWithGoal(it.copy(goal = goal)) }
                     settingsViewModel.setWaterGoal(water)
-                    page = 4
+                    page = 6
+                }
+                6 -> {
+                    val ai by settingsViewModel.aiConfig.collectAsStateWithLifecycle()
+                    CompanionStep(
+                        steps - 2, steps,
+                        enabled = settings.companion,
+                        kind = app.tenet.android.core.designsystem.component.CompanionKind.of(settings.companionKind),
+                        names = settings.companionNames,
+                        model = ai.companionModel,
+                        onEnabled = settingsViewModel::setCompanion,
+                        onKind = { settingsViewModel.setCompanionKind(it.name) },
+                        onRename = settingsViewModel::setCompanionName,
+                        onModel = settingsViewModel::setCompanionModel,
+                        onNext = { page = 4 },
+                    )
                 }
                 else -> PermissionsPage(settingsViewModel, onDone = finish)
             }

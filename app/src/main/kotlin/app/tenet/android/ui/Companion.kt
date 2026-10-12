@@ -77,7 +77,35 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.net.Uri
+import android.util.Base64
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.AddPhotoAlternate
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
 import app.tenet.android.core.data.companion.CompanionAgent
+import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.ByteArrayOutputStream
+import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import app.tenet.android.core.designsystem.component.rememberDictation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -94,7 +122,10 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 @HiltViewModel
-class CompanionViewModel @Inject constructor(private val agent: CompanionAgent) : ViewModel() {
+class CompanionViewModel @Inject constructor(
+    private val agent: CompanionAgent,
+    @ApplicationContext private val context: Context,
+) : ViewModel() {
     init {
         viewModelScope.launch { runCatching { agent.warmUp() } }
     }
@@ -109,8 +140,11 @@ class CompanionViewModel @Inject constructor(private val agent: CompanionAgent) 
     val step: StateFlow<String?> = _step.asStateFlow()
     private val _reply = MutableStateFlow<String?>(null)
     val reply: StateFlow<String?> = _reply.asStateFlow()
-    /** Something was stored: close the chat and confirm briefly. */
-    private val _done = Channel<String>(Channel.BUFFERED)
+    private val _opens = MutableStateFlow<List<CompanionAgent.Open>>(emptyList())
+    /** What the last answer stored and can be opened from the chat (note, dream, run …). */
+    val opens: StateFlow<List<CompanionAgent.Open>> = _opens.asStateFlow()
+    /** Something was stored: confirm briefly; second = it can be opened, so the chat keeps the answer. */
+    private val _done = Channel<Pair<String, Boolean>>(Channel.BUFFERED)
     val done = _done.receiveAsFlow()
     private val _navigate = Channel<CompanionAgent.Destination>(Channel.BUFFERED)
     val navigate = _navigate.receiveAsFlow()
@@ -119,22 +153,29 @@ class CompanionViewModel @Inject constructor(private val agent: CompanionAgent) 
     private val history = mutableListOf<CompanionAgent.Turn>()
 
     /** Runs in the background: the page stays where it is. */
-    fun send(text: String, name: String) {
-        if (text.isBlank() || _busy.value) return
+    fun send(text: String, name: String, photo: Uri? = null) {
+        if ((text.isBlank() && photo == null) || _busy.value) return
         _busy.value = true
-        _request.value = text
+        _request.value = text.ifBlank { "Foto" }
         _reply.value = null
+        _opens.value = emptyList()
         _step.value = null
         viewModelScope.launch {
-            val r = runCatching { agent.handle(text, name, history.toList()) { _step.value = it } }
-                .getOrElse { CompanionAgent.Reply("Ups, das ging schief: ${it.message}") }
+            val image = photo?.let { encode(it) }
+            val r = when {
+                photo != null && image == null -> CompanionAgent.Reply("Das Foto konnte ich nicht lesen.")
+                else -> runCatching { agent.handle(text, name, history.toList(), listOfNotNull(image)) { _step.value = it } }
+                    .getOrElse { CompanionAgent.Reply("Ups, das ging schief: ${it.message}") }
+            }
             // Done: the topic is closed. Asked back or answered: keep it for the next message.
             if (r.acted) history.clear() else history += CompanionAgent.Turn(text, r.text)
             while (history.size > 6) history.removeAt(0)
+            _opens.value = r.opens
             if (r.acted) {
-                _reply.value = null
-                _request.value = null
-                _done.send(r.text)
+                // Something to open: the answer stays in the chat with its "Öffnen" buttons.
+                _reply.value = r.text.takeIf { r.opens.isNotEmpty() }
+                if (r.opens.isEmpty()) _request.value = null
+                _done.send(r.text to r.opens.isNotEmpty())
             } else {
                 _reply.value = r.text
             }
@@ -144,7 +185,36 @@ class CompanionViewModel @Inject constructor(private val agent: CompanionAgent) 
         }
     }
 
-    fun clearReply() { _reply.value = null }
+    fun clearReply() {
+        _reply.value = null
+        _opens.value = emptyList()
+    }
+
+    /** The photo as a JPEG data URI: upright, longest side 1280 px (enough to read a label). */
+    private suspend fun encode(uri: Uri): String? = withContext(Dispatchers.IO) {
+        runCatching {
+            val bytes = context.contentResolver.openInputStream(uri)!!.use { it.readBytes() }
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+            var sample = 1
+            while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 2560) sample *= 2
+            var bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })!!
+            val degrees = when (android.media.ExifInterface(bytes.inputStream()).getAttributeInt(android.media.ExifInterface.TAG_ORIENTATION, 1)) {
+                android.media.ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+                android.media.ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+                android.media.ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+                else -> 0f
+            }
+            val scale = (1280f / maxOf(bitmap.width, bitmap.height)).coerceAtMost(1f)
+            if (degrees != 0f || scale < 1f) {
+                val matrix = Matrix().apply { postScale(scale, scale); postRotate(degrees) }
+                bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            }
+            val out = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, out)
+            "data:image/jpeg;base64," + Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+        }.getOrNull()
+    }
 }
 
 /**
@@ -157,6 +227,8 @@ fun CompanionOverlay(
     visible: Boolean,
     kind: app.tenet.android.core.designsystem.component.CompanionKind,
     onNavigate: (CompanionAgent.Destination) -> Unit,
+    /** Opens something the companion just stored (note, dream, run, recipe …). */
+    onOpen: (CompanionAgent.Open) -> Unit,
     name: String = kind.label,
     viewModel: CompanionViewModel = hiltViewModel(),
 ) {
@@ -164,6 +236,7 @@ fun CompanionOverlay(
     val reply by viewModel.reply.collectAsStateWithLifecycle()
     val request by viewModel.request.collectAsStateWithLifecycle()
     val step by viewModel.step.collectAsStateWithLifecycle()
+    val opens by viewModel.opens.collectAsStateWithLifecycle()
     var chatOpen by remember { mutableStateOf(false) }
     // Closed while working: the creature carries on and says so in a small bubble when done.
     var bubble by remember { mutableStateOf<String?>(null) }
@@ -177,7 +250,9 @@ fun CompanionOverlay(
     // A task done (food logged, note extended …): the chat closes, a snackbar confirms.
     val snackbar = app.tenet.android.core.designsystem.component.LocalAppSnackbar.current
     LaunchedEffect(Unit) {
-        viewModel.done.collect { text ->
+        viewModel.done.collect { (text, canOpen) ->
+            // Open chat and something to open: the answer stays there with its buttons.
+            if (chatOpen && canOpen) return@collect
             // Every addition gets the toast; with the chat closed the creature also says so.
             if (!chatOpen) bubble = "Fertig ✓"
             chatOpen = false
@@ -190,7 +265,7 @@ fun CompanionOverlay(
     }
     // An answer that arrives with the chat closed: the bubble points to it.
     LaunchedEffect(reply) {
-        if (reply != null && !chatOpen) bubble = "Antwort ist da"
+        if (reply != null && !chatOpen) bubble = if (opens.isEmpty()) "Antwort ist da" else "Fertig ✓ · öffnen?"
     }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -350,7 +425,13 @@ fun CompanionOverlay(
                 step = step,
                 busy = busy,
                 reply = reply,
-                onSend = { viewModel.send(it, name) },
+                opens = opens,
+                onOpen = {
+                    chatOpen = false
+                    viewModel.clearReply()
+                    onOpen(it)
+                },
+                onSend = { text, photo -> viewModel.send(text, name, photo) },
                 onClose = {
                     chatOpen = false
                     viewModel.clearReply()
@@ -370,15 +451,25 @@ private fun ChatPanel(
     step: String?,
     busy: Boolean,
     reply: String?,
-    onSend: (String) -> Unit,
+    opens: List<CompanionAgent.Open>,
+    onOpen: (CompanionAgent.Open) -> Unit,
+    onSend: (String, Uri?) -> Unit,
     onClose: () -> Unit,
 ) {
     var text by remember { mutableStateOf("") }
-    val dictation = rememberDictation("Was soll $name tun?") { onSend(it) }
+    // A photo to send along ("trag diesen Riegel ein").
+    var photo by remember { mutableStateOf<Uri?>(null) }
+    var photoMenu by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val gallery = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { if (it != null) photo = it }
+    var shot by remember { mutableStateOf<Uri?>(null) }
+    val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { taken -> if (taken) photo = shot }
+    val dictation = rememberDictation("Was soll $name tun?") { onSend(it, photo); photo = null }
     val submit = {
-        if (text.isNotBlank()) {
-            onSend(text.trim())
+        if (text.isNotBlank() || photo != null) {
+            onSend(text.trim(), photo)
             text = ""
+            photo = null
         }
     }
     Surface(
@@ -413,11 +504,60 @@ private fun ChatPanel(
                 color = if (reply == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.heightIn(max = 200.dp).verticalScroll(rememberScrollState()),
             )
+            if (reply != null && opens.isNotEmpty()) {
+                @OptIn(ExperimentalLayoutApi::class)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    opens.forEach { open ->
+                        FilledTonalButton(onClick = { onOpen(open) }) {
+                            Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("${open.label} öffnen", maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
+            if (photo != null) {
+                Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.secondaryContainer) {
+                    Row(Modifier.padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.Image, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Foto angehängt", style = MaterialTheme.typography.labelLarge)
+                        IconButton(onClick = { photo = null }) { Icon(Icons.Outlined.Close, contentDescription = "Foto entfernen", modifier = Modifier.size(18.dp)) }
+                    }
+                }
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
+                Box {
+                    IconButton(onClick = { photoMenu = true }, enabled = !busy, shapes = IconButtonDefaults.shapes()) {
+                        Icon(Icons.Outlined.AddPhotoAlternate, contentDescription = "Foto anhängen")
+                    }
+                    DropdownMenu(expanded = photoMenu, onDismissRequest = { photoMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Foto aufnehmen") },
+                            leadingIcon = { Icon(Icons.Outlined.PhotoCamera, null) },
+                            onClick = {
+                                photoMenu = false
+                                runCatching {
+                                    val file = File(context.cacheDir, "companion").apply { mkdirs() }.resolve("photo.jpg")
+                                    shot = FileProvider.getUriForFile(context, context.packageName + ".files", file)
+                                    camera.launch(shot!!)
+                                }
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Aus Galerie") },
+                            leadingIcon = { Icon(Icons.Outlined.PhotoLibrary, null) },
+                            onClick = {
+                                photoMenu = false
+                                runCatching { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+                            },
+                        )
+                    }
+                }
                 app.tenet.android.core.designsystem.component.TenetTextField(
                     value = text,
                     onValueChange = { text = it },
-                    placeholder = { Text("Nachricht an $name") },
+                    placeholder = { Text(if (photo != null) "Was soll $name damit tun?" else "Nachricht an $name") },
                     // Longer messages wrap instead of scrolling sideways, so the cursor can reach every word.
                     singleLine = false,
                     maxLines = 5,
@@ -426,8 +566,8 @@ private fun ChatPanel(
                     keyboardActions = KeyboardActions(onSend = { submit() }),
                     modifier = Modifier.weight(1f),
                 )
-                IconButton(onClick = { if (text.isBlank()) dictation.launch() else submit() }, enabled = !busy, shapes = IconButtonDefaults.shapes()) {
-                    if (text.isBlank()) {
+                IconButton(onClick = { if (text.isBlank() && photo == null) dictation.launch() else submit() }, enabled = !busy, shapes = IconButtonDefaults.shapes()) {
+                    if (text.isBlank() && photo == null) {
                         Icon(Icons.Outlined.Mic, contentDescription = "Sprechen")
                     } else {
                         Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = "Senden")

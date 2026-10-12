@@ -31,6 +31,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import app.tenet.android.core.common.GymPlanBuilder
+import app.tenet.android.core.common.GymSplits
 import app.tenet.android.core.common.OneRepMaxFormula
 import app.tenet.android.core.common.GymPlanBuilder.Goal
 import app.tenet.android.core.common.GymPlanBuilder.Level
@@ -38,6 +39,19 @@ import app.tenet.android.core.common.GymPlanBuilder.Lift
 import app.tenet.android.core.common.GymPlanBuilder.Split
 import app.tenet.android.core.common.Sex
 import app.tenet.android.core.data.SportRepository
+import app.tenet.android.core.data.ai.PlanAssistant
+import app.tenet.android.core.database.entity.MeasureType
+import app.tenet.android.feature.sport.plan.SplitPicker
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material3.IconButton
+import app.tenet.android.feature.sport.plan.matching
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.saveable.rememberSaveable
 import app.tenet.android.core.database.entity.Discipline
 import app.tenet.android.core.database.entity.Exercise
 import app.tenet.android.core.datastore.UserSettingsRepository
@@ -60,32 +74,39 @@ data class GymSetupState(
     val level: Level = Level.BEGINNER,
     /** ISO weekdays 1–7. */
     val days: Set<Int> = setOf(1, 3, 5),
-    val split: Split? = null,
-    val customRoutineTitles: List<String> = emptyList(),
+    /** Split and muscle-group combination; null = the one recommended for the days. */
+    val choice: GymSplits.Choice? = null,
     val bodyweight: String = "",
     val female: Boolean = false,
     /** Lift → (weight, reps) as typed. */
     val lifts: Map<Lift, Pair<String, String>> = emptyMap(),
     val names: Map<String, String> = emptyMap(),
     val exercises: List<Exercise> = emptyList(),
-    /** Preview-only changes; generated reps/weights still follow selected goal and strength data. */
-    val previewEdits: Map<String, PreviewExerciseEdit> = emptyMap(),
+    /**
+     * Exercises chosen in the preview, per routine (index): swapped, added, removed
+     * or set by the AI coach. Weights still follow the strength data.
+     */
+    val previewEdits: Map<Int, List<PreviewExerciseEdit>> = emptyMap(),
+    val aiBusy: Boolean = false,
+    /** The coach's answer to the last request. */
+    val aiNote: String? = null,
     val historyMode: Boolean = false,
     val historyLiftCount: Int? = null,
     val busy: Boolean = false,
     val formula: OneRepMaxFormula = OneRepMaxFormula.EPLEY,
 ) {
-    val effectiveSplit: Split get() = split ?: GymPlanBuilder.recommendedSplit(days.size)
+    val effectiveChoice: GymSplits.Choice get() = choice ?: GymSplits.Choice.recommended(days.size)
 
     fun input() = GymPlanBuilder.Input(
         goal = goal,
         level = level,
-        split = effectiveSplit,
+        split = effectiveChoice.builtin ?: Split.CUSTOM,
         days = days.sorted(),
         bodyweightKg = bodyweight.toFloatOrNullDe(),
         female = female,
         formula = formula,
-        customRoutineTitles = customRoutineTitles,
+        customUnits = effectiveChoice.units,
+        customName = effectiveChoice.sizeLabel,
         lifts = lifts.mapNotNull { (lift, v) ->
             val r = v.second.toIntOrNull()
             // Pull-ups/dips: empty weight with reps = bodyweight only.
@@ -100,18 +121,25 @@ data class GymSetupState(
     )
 
     fun plan(): GymPlanBuilder.Plan {
-        val generated = GymPlanBuilder.build(input())
+        val input = input()
+        val generated = GymPlanBuilder.build(input)
         return generated.copy(
-            routines = generated.routines.map { routine ->
+            routines = generated.routines.mapIndexed { index, routine ->
+                val edits = previewEdits[index] ?: return@mapIndexed routine
                 routine.copy(
-                    exercises = routine.exercises.mapIndexed { index, exercise ->
-                        previewEdits["${routine.title}:$index"]?.let { edit ->
-                            exercise.copy(
-                                exerciseId = edit.exerciseId,
-                                sets = edit.sets,
-                                startWeightKg = if (edit.exerciseId == exercise.exerciseId) exercise.startWeightKg else null,
-                            )
-                        } ?: exercise
+                    exercises = edits.map { edit ->
+                        val base = routine.exercises.firstOrNull { it.exerciseId == edit.exerciseId }
+                        if (base != null && (edit.reps == null || edit.reps == base.reps)) return@map base.copy(sets = edit.sets)
+                        val measure = exercises.firstOrNull { it.id == edit.exerciseId }?.measureType
+                        val timed = measure == MeasureType.DURATION || measure == MeasureType.HOLD
+                        val reps = edit.reps ?: if (timed) 45 else goal.accReps
+                        GymPlanBuilder.PlannedExercise(
+                            exerciseId = edit.exerciseId,
+                            sets = edit.sets,
+                            reps = reps,
+                            restSec = goal.accRestSec,
+                            startWeightKg = if (timed) null else GymPlanBuilder.startWeight(input, edit.exerciseId, reps),
+                        )
                     },
                 )
             },
@@ -119,17 +147,20 @@ data class GymSetupState(
     }
 }
 
-data class PreviewExerciseEdit(val exerciseId: String, val sets: Int)
+/** [reps]: set by the AI coach; null = from the goal. */
+data class PreviewExerciseEdit(val exerciseId: String, val sets: Int, val reps: Int? = null)
 
 @HiltViewModel
 class GymSetupViewModel @Inject constructor(
     private val repository: SportRepository,
     private val settings: UserSettingsRepository,
+    private val assistant: PlanAssistant,
 ) : ViewModel() {
     private val _state = MutableStateFlow(GymSetupState())
     val state: StateFlow<GymSetupState> = _state
     private val _done = MutableSharedFlow<Unit>()
     val done = _done.asSharedFlow()
+    val aiEnabled: Boolean get() = assistant.enabled
 
     init {
         viewModelScope.launch {
@@ -172,17 +203,50 @@ class GymSetupViewModel @Inject constructor(
         }
     }
 
-    fun editPreview(routineTitle: String, index: Int, exerciseId: String? = null, sets: Int? = null) {
+    /** Changes the exercise list of routine [routine] in the preview. */
+    private fun editRoutine(routine: Int, change: (List<PreviewExerciseEdit>) -> List<PreviewExerciseEdit>) {
         _state.update { state ->
-            val planExercise = state.plan().routines.firstOrNull { it.title == routineTitle }?.exercises?.getOrNull(index)
-                ?: return@update state
-            val key = "$routineTitle:$index"
-            state.copy(
-                previewEdits = state.previewEdits + (key to PreviewExerciseEdit(
-                    exerciseId = exerciseId ?: planExercise.exerciseId,
-                    sets = (sets ?: planExercise.sets).coerceIn(1, 10),
-                )),
-            )
+            val current = state.plan().routines.getOrNull(routine)?.exercises ?: return@update state
+            val edits = state.previewEdits[routine] ?: current.map { PreviewExerciseEdit(it.exerciseId, it.sets) }
+            state.copy(previewEdits = state.previewEdits + (routine to change(edits).distinctBy { it.exerciseId }))
+        }
+    }
+
+    fun swapExercise(routine: Int, index: Int, exerciseId: String) =
+        editRoutine(routine) { list -> list.mapIndexed { i, e -> if (i == index) PreviewExerciseEdit(exerciseId, e.sets) else e } }
+
+    fun setSets(routine: Int, index: Int, sets: Int) =
+        editRoutine(routine) { list -> list.mapIndexed { i, e -> if (i == index) e.copy(sets = sets.coerceIn(1, 10)) else e } }
+
+    fun addExercise(routine: Int, exerciseId: String) = editRoutine(routine) { it + PreviewExerciseEdit(exerciseId, 3) }
+
+    fun removeExercise(routine: Int, index: Int) = editRoutine(routine) { list -> list.filterIndexed { i, _ -> i != index } }
+
+    /** The AI coach picks the exercises for the chosen split from the catalogue; [wish] = extra requests. */
+    fun fillWithAi(wish: String) {
+        val s = _state.value
+        if (s.aiBusy) return
+        _state.update { it.copy(aiBusy = true, aiNote = null) }
+        viewModelScope.launch {
+            val choice = s.effectiveChoice
+            val message = "Gym-Plan: Ziel ${s.goal.label} (${s.goal.description}). Erfahrung: ${s.level.label}. " +
+                "${s.days.size} Trainingstage pro Woche; die ${choice.units.size} Einheiten wechseln sich fortlaufend ab, unabhängig von der Zahl der Tage. " +
+                "${choice.sizeLabel} mit genau dieser Kombination: ${choice.label}." +
+                if (wish.isNotBlank()) " Weitere Wünsche: ${wish.trim()}." else ""
+            val answer = runCatching { assistant.chat(Discipline.GYM, emptyList(), message, null) }
+                .getOrElse { PlanAssistant.Answer("Das ging schief: ${it.message}", failed = true) }
+            val workouts = answer.draft?.workouts.orEmpty()
+            _state.update { now ->
+                // The split changed meanwhile: the answer no longer fits.
+                if (now.effectiveChoice != choice) return@update now.copy(aiBusy = false)
+                if (answer.failed || workouts.isEmpty()) return@update now.copy(aiBusy = false, aiNote = answer.reply)
+                val titles = choice.units.map { it.title }
+                val edits = titles.indices.mapNotNull { i ->
+                    (workouts.firstOrNull { it.title.equals(titles[i], ignoreCase = true) } ?: workouts.getOrNull(i))
+                        ?.let { w -> i to w.exercises.map { PreviewExerciseEdit(it.exerciseId, it.sets, it.reps) } }
+                }
+                now.copy(aiBusy = false, aiNote = answer.reply, previewEdits = now.previewEdits + edits)
+            }
         }
     }
 
@@ -207,17 +271,6 @@ private val STEPS = listOf(
     "Dein Plan",
 )
 
-private val CUSTOM_SPLIT_EXAMPLES = listOf(
-    "Brust", "Rücken", "Arme", "Beine", "Schultern", "Ganzkörper A", "Ganzkörper B",
-)
-
-private fun customSplitTitles(current: List<String>, count: Int): List<String> =
-    List(count.coerceIn(2, 7)) { index ->
-        current.getOrNull(index)?.takeIf(String::isNotBlank) ?: CUSTOM_SPLIT_EXAMPLES[index]
-    }
-
-private fun defaultCustomRoutineCount(trainingDays: Int): Int = trainingDays.coerceIn(2, 4)
-
 @Composable
 fun GymSetupScreen(
     onDone: () -> Unit,
@@ -233,8 +286,7 @@ fun GymSetupScreen(
         stepTitles = STEPS,
         canContinue = when (s.step) {
             2 -> s.days.size >= 2
-            3 -> s.effectiveSplit != Split.CUSTOM ||
-                (s.customRoutineTitles.size in 2..7 && s.customRoutineTitles.all(String::isNotBlank))
+            3 -> s.effectiveChoice.valid
             else -> true
         },
         busy = s.busy,
@@ -247,7 +299,8 @@ fun GymSetupScreen(
             0 -> ChoiceCards(
                 options = Goal.entries,
                 selected = s.goal,
-                onSelect = { viewModel.update { copy(goal = it) } },
+                // Repetitions follow the goal again.
+                onSelect = { viewModel.update { copy(goal = it, previewEdits = previewEdits.mapValues { (_, list) -> list.map { e -> e.copy(reps = null) } }) } },
                 title = { it.label },
                 description = { it.description },
             )
@@ -264,13 +317,8 @@ fun GymSetupScreen(
                     onChange = { set ->
                         viewModel.update {
                             val selectedDays = set.map { it.value }.toSet()
-                            copy(
-                                days = selectedDays,
-                                split = null,
-                                customRoutineTitles = customRoutineTitles.ifEmpty {
-                                    customSplitTitles(emptyList(), defaultCustomRoutineCount(selectedDays.size))
-                                },
-                            )
+                            // A split chosen by hand stays; the recommendation follows the days.
+                            copy(days = selectedDays, previewEdits = if (choice == null) emptyMap() else previewEdits)
                         }
                     },
                 )
@@ -280,72 +328,15 @@ fun GymSetupScreen(
                 )
             }
             3 -> {
-                val recommended = GymPlanBuilder.recommendedSplit(s.days.size)
-                ChoiceCards(
-                    options = Split.entries,
-                    selected = s.effectiveSplit,
-                    onSelect = { selected ->
-                        viewModel.update {
-                            copy(
-                                split = selected,
-                                customRoutineTitles = if (selected == Split.CUSTOM) {
-                                    customRoutineTitles.ifEmpty {
-                                        customSplitTitles(emptyList(), defaultCustomRoutineCount(days.size))
-                                    }
-                                } else {
-                                    customRoutineTitles
-                                },
-                            )
-                        }
-                    },
-                    title = { it.label },
-                    description = { it.description },
-                    badge = { if (it == recommended) "Empfohlen" else null },
+                SplitPicker(
+                    choice = s.effectiveChoice,
+                    onChange = { viewModel.update { copy(choice = it, previewEdits = emptyMap(), aiNote = null) } },
+                    recommended = GymSplits.Choice.recommended(s.days.size),
                 )
-                if (s.effectiveSplit == Split.CUSTOM) {
-                    val routineCount = s.customRoutineTitles.size.coerceIn(2, 7)
-                    SetupHint("Trainingstage und Split-Länge sind unabhängig. Einheiten rotieren fortlaufend über Wochengrenzen.")
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text("Einheiten im Zyklus", modifier = Modifier.weight(1f))
-                        TextButton(
-                            enabled = routineCount > 2,
-                            onClick = {
-                                viewModel.update {
-                                    copy(customRoutineTitles = customSplitTitles(customRoutineTitles, routineCount - 1))
-                                }
-                            },
-                        ) { Text("−") }
-                        Text("$routineCount", style = MaterialTheme.typography.titleMedium)
-                        TextButton(
-                            enabled = routineCount < 7,
-                            onClick = {
-                                viewModel.update {
-                                    copy(customRoutineTitles = customSplitTitles(customRoutineTitles, routineCount + 1))
-                                }
-                            },
-                        ) { Text("+") }
-                    }
-                    customSplitTitles(s.customRoutineTitles, routineCount).forEachIndexed { index, title ->
-                        app.tenet.android.core.designsystem.component.TenetTextField(
-                            value = title,
-                            onValueChange = { value ->
-                                viewModel.update {
-                                    val titles = customSplitTitles(customRoutineTitles, routineCount).toMutableList()
-                                    titles[index] = value
-                                    copy(customRoutineTitles = titles)
-                                }
-                            },
-                            label = { Text("Einheit ${index + 1}") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
-                SetupHint("Die Einheiten wechseln sich ab: nach A kommt B, nach Push kommt Pull und so weiter.")
+                SetupHint(
+                    "Split-Länge und Trainingstage sind unabhängig: Die Einheiten wechseln sich fortlaufend ab – nach Push kommt Pull und so weiter. " +
+                        "Die Übungen wählst du im letzten Schritt, selbst oder mit dem KI-Coach.",
+                )
             }
             4 -> {
                 if (s.historyMode) {
@@ -407,7 +398,15 @@ fun GymSetupScreen(
                     }
                 }
             }
-            else -> PlanPreview(s, viewModel::editPreview)
+            else -> PlanPreview(
+                s = s,
+                aiEnabled = viewModel.aiEnabled,
+                onAi = viewModel::fillWithAi,
+                onSwap = viewModel::swapExercise,
+                onSets = viewModel::setSets,
+                onAdd = viewModel::addExercise,
+                onRemove = viewModel::removeExercise,
+            )
         }
     }
 }
@@ -415,44 +414,118 @@ fun GymSetupScreen(
 @Composable
 private fun PlanPreview(
     s: GymSetupState,
-    onEdit: (routineTitle: String, index: Int, exerciseId: String?, sets: Int?) -> Unit,
+    aiEnabled: Boolean,
+    onAi: (wish: String) -> Unit,
+    onSwap: (routine: Int, index: Int, exerciseId: String) -> Unit,
+    onSets: (routine: Int, index: Int, sets: Int) -> Unit,
+    onAdd: (routine: Int, exerciseId: String) -> Unit,
+    onRemove: (routine: Int, index: Int) -> Unit,
 ) {
     val plan = s.plan()
-    var swapTarget by remember { mutableStateOf<Pair<String, Int>?>(null) }
+    val units = s.effectiveChoice.units
+    var swapTarget by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    var addTarget by remember { mutableStateOf<Int?>(null) }
+    var wish by rememberSaveable { mutableStateOf("") }
     Text(plan.name, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
     SetupHint("${s.days.size} Tage pro Woche · ${plan.routines.joinToString(" → ") { it.title }} im Wechsel")
-    plan.routines.forEach { routine ->
+    TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("KI-Coach", style = MaterialTheme.typography.titleMedium)
+            }
+            Text(
+                if (aiEnabled) "Lass die Übungen für deinen Split von der KI zusammenstellen – oder wähle sie unten selbst."
+                else "Die KI ist aus oder ohne Schlüssel. Schalte sie unter Einstellungen → KI ein, dann stellt der Coach die Übungen zusammen.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            if (aiEnabled) {
+                app.tenet.android.core.designsystem.component.TenetTextField(
+                    value = wish,
+                    onValueChange = { wish = it.take(240) },
+                    label = { Text("Wünsche (optional)") },
+                    placeholder = { Text("z. B. kein Kreuzheben, viel Volumen, nur Kurzhanteln") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (s.aiBusy) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        app.tenet.android.core.designsystem.component.TenetSpinner(Modifier.size(32.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Coach stellt die Übungen zusammen …", style = MaterialTheme.typography.labelLarge)
+                    }
+                } else {
+                    Button(onClick = { onAi(wish) }, modifier = Modifier.fillMaxWidth()) {
+                        Text(if (s.aiNote == null) "Übungen von der KI wählen lassen" else "Nochmal von der KI wählen lassen")
+                    }
+                }
+            }
+            s.aiNote?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+        }
+    }
+    plan.routines.forEachIndexed { r, routine ->
         TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(routine.title, style = MaterialTheme.typography.titleMedium)
+                if (routine.exercises.isEmpty()) SetupHint("Noch keine Übungen.")
                 routine.exercises.forEachIndexed { index, ex ->
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        ExerciseThumb(ex.exerciseId, size = 36.dp)
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(s.names[ex.exerciseId] ?: ex.exerciseId, style = MaterialTheme.typography.bodyMedium)
-                            TextButton(onClick = { swapTarget = routine.title to index }) { Text("Übung wechseln") }
+                    Column {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            ExerciseThumb(ex.exerciseId, size = 36.dp)
+                            Spacer(Modifier.width(10.dp))
+                            Text(s.names[ex.exerciseId] ?: ex.exerciseId, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                            IconButton(onClick = { onRemove(r, index) }, modifier = Modifier.size(36.dp)) {
+                                Icon(Icons.Outlined.Close, contentDescription = "Entfernen", modifier = Modifier.size(18.dp))
+                            }
                         }
-                        TextButton(onClick = { onEdit(routine.title, index, null, ex.sets - 1) }, enabled = ex.sets > 1) { Text("−") }
-                        Text("${ex.sets} × ${ex.reps}", style = MaterialTheme.typography.labelLarge)
-                        TextButton(onClick = { onEdit(routine.title, index, null, ex.sets + 1) }, enabled = ex.sets < 10) { Text("+") }
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(onClick = { swapTarget = r to index }) { Text("Übung wechseln") }
+                            Spacer(Modifier.weight(1f))
+                            TextButton(onClick = { onSets(r, index, ex.sets - 1) }, enabled = ex.sets > 1) { Text("−") }
+                            Text("${ex.sets} × ${ex.reps}", style = MaterialTheme.typography.labelLarge)
+                            TextButton(onClick = { onSets(r, index, ex.sets + 1) }, enabled = ex.sets < 10) { Text("+") }
+                        }
                     }
+                }
+                TextButton(onClick = { addTarget = r }) {
+                    Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Übung hinzufügen")
                 }
             }
         }
     }
 
-    swapTarget?.let { (routineTitle, index) ->
-        val routine = plan.routines.first { it.title == routineTitle }
+    swapTarget?.let { (r, index) ->
+        val routine = plan.routines.getOrNull(r)
+        val current = routine?.exercises?.getOrNull(index)
+        if (routine == null || current == null) {
+            swapTarget = null
+        } else {
+            ExercisePickerSheet(
+                title = "Übung wechseln",
+                catalog = s.exercises,
+                exclude = routine.exercises.map { it.exerciseId }.toSet() - current.exerciseId,
+                onPick = { exercise ->
+                    onSwap(r, index, exercise.id)
+                    swapTarget = null
+                },
+                onDismiss = { swapTarget = null },
+            )
+        }
+    }
+    // Stays open to add several in a row; what is chosen leaves the list.
+    addTarget?.let { r ->
+        val routine = plan.routines.getOrNull(r) ?: return@let
+        val muscles = units.getOrNull(r)?.muscles.orEmpty()
         ExercisePickerSheet(
-            title = "Übung wechseln",
+            title = "Übungen für ${routine.title}",
             catalog = s.exercises,
-            exclude = routine.exercises.map { it.exerciseId }.toSet() - routine.exercises[index].exerciseId,
-            onPick = { exercise ->
-                onEdit(routineTitle, index, exercise.id, null)
-                swapTarget = null
-            },
-            onDismiss = { swapTarget = null },
+            exclude = routine.exercises.map { it.exerciseId }.toSet(),
+            suggestions = s.exercises.matching(muscles),
+            suggestionsTitle = "Passend zur Einheit",
+            onPick = { exercise -> onAdd(r, exercise.id) },
+            onDismiss = { addTarget = null },
         )
     }
     TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {

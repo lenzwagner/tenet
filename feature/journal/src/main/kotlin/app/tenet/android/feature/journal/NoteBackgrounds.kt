@@ -1,7 +1,8 @@
 package app.tenet.android.feature.journal
 
 /**
- * Built-in note backgrounds: 20 beach, sea and island photos (Unsplash licence,
+ * Built-in note backgrounds: 23 landscape photos – a few beaches, then fjords,
+ * mountains, deserts, forests, Socotra's dragon tree, northern lights (Unsplash licence,
  * free to use without attribution; sources in feature/journal/docs/note-backgrounds.md).
  * A chosen one is stored as an attachment with [MIME] and the uri "tenet-bg:NN".
  */
@@ -15,6 +16,7 @@ internal object NoteBackgrounds {
         R.drawable.note_bg_09, R.drawable.note_bg_10, R.drawable.note_bg_11, R.drawable.note_bg_12,
         R.drawable.note_bg_13, R.drawable.note_bg_14, R.drawable.note_bg_15, R.drawable.note_bg_16,
         R.drawable.note_bg_17, R.drawable.note_bg_18, R.drawable.note_bg_19, R.drawable.note_bg_20,
+        R.drawable.note_bg_21, R.drawable.note_bg_22, R.drawable.note_bg_23,
     )
 
     fun uri(index: Int) = PREFIX + (index + 1).toString().padStart(2, '0')

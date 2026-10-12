@@ -1014,7 +1014,7 @@ private fun DreamSection(
 
 // ---- Note color & attachments -----------------------------------------
 
-/** Background of a note: a colour, one of its own photos or a beach photo (one at a time). */
+/** Background of a note: a colour, one of its own photos or a landscape photo (one at a time). */
 @Composable
 private fun BackgroundPicker(
     color: Int?,

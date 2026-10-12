@@ -55,6 +55,7 @@ internal fun ExercisePickerSheet(
     onDismiss: () -> Unit,
     suggestions: List<Exercise> = emptyList(),
     exclude: Set<String> = emptySet(),
+    suggestionsTitle: String = "Passende Alternativen",
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var muscle by rememberSaveable { mutableStateOf<String?>(null) }
@@ -107,7 +108,7 @@ internal fun ExercisePickerSheet(
             ) {
                 val tips = suggestions.filter { it.id !in exclude }
                 if (!filtering && tips.isNotEmpty()) {
-                    item(key = "tips-h") { GroupHeader("Passende Alternativen") }
+                    item(key = "tips-h") { GroupHeader(suggestionsTitle) }
                     exerciseGroup("tips", tips, onPick)
                 }
                 groups.forEach { (pattern, list) ->

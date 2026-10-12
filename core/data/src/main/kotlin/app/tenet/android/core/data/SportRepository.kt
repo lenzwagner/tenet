@@ -652,6 +652,8 @@ class SportRepository @Inject constructor(
         minutes: Int?,
         endedAt: Long = System.currentTimeMillis(),
         notes: String = "",
+        /** Gets the id of the stored session. */
+        onStored: (String) -> Unit = {},
     ): Pair<List<String>, List<String>> {
         val catalog = dao.observeExercises(discipline).first()
         fun key(t: String) = t.lowercase(java.util.Locale.GERMAN).replace(Regex("[^a-zäöüß0-9]"), "")
@@ -697,6 +699,7 @@ class SportRepository @Inject constructor(
             )
         }
         runCatching { healthWriter.writeWorkout(id) }
+        onStored(id)
         return found.map { it.first.name } to unknown
     }
 

@@ -395,6 +395,8 @@ fun SettingsScreen(
                                 names = settings.companionNames,
                                 onRename = viewModel::setCompanionName,
                             )
+                            val ai by viewModel.aiConfig.collectAsStateWithLifecycle()
+                            CompanionModelPicker(ai.companionModel, viewModel::setCompanionModel)
                         }
                     }
                 }
@@ -1179,9 +1181,37 @@ private fun <T> ChoiceDialog(
 private fun formatMinute(minuteOfDay: Int): String = "%02d:%02d".format(minuteOfDay / 60, minuteOfDay % 60)
 
 
+/** Which model the companion answers with: the fastest available, or a fixed one. */
+@Composable
+internal fun CompanionModelPicker(selected: String, onSelect: (String) -> Unit) {
+    val models = app.tenet.android.core.data.ai.AiAssistant.COMPANION_MODELS
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("KI-Modell des Begleiters", style = MaterialTheme.typography.titleSmall)
+        Column(verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap)) {
+            models.forEachIndexed { i, m ->
+                androidx.compose.material3.SegmentedListItem(
+                    selected = m.id == selected,
+                    onClick = { onSelect(m.id) },
+                    shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(i, models.size),
+                    colors = androidx.compose.material3.ListItemDefaults.segmentedColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    ),
+                    supportingContent = { Text(m.label.substringAfter(" · ", "")) },
+                ) { Text(m.label.substringBefore(" · ")) }
+            }
+        }
+        Text(
+            "Fotos liest immer ein Modell, das Bilder versteht.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
 /** Companion choice: each one shown alive (walks in its card) with name and character. */
 @Composable
-private fun CompanionPicker(
+internal fun CompanionPicker(
     selected: app.tenet.android.core.designsystem.component.CompanionKind,
     onSelect: (app.tenet.android.core.designsystem.component.CompanionKind) -> Unit,
     names: Map<String, String>,

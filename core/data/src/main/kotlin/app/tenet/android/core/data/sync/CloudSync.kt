@@ -4,7 +4,13 @@ import android.content.Context
 import android.database.Cursor
 import androidx.core.content.edit
 import androidx.sqlite.db.SupportSQLiteDatabase
+import app.tenet.android.core.common.ActivityLevel
+import app.tenet.android.core.common.BodyProfile
+import app.tenet.android.core.common.Sex
+import app.tenet.android.core.common.WeightGoal
 import app.tenet.android.core.common.newUuid
+import app.tenet.android.core.datastore.UserSettingsRepository
+import kotlinx.coroutines.flow.first
 import app.tenet.android.core.database.SyncTriggers
 import app.tenet.android.core.database.TenetDatabase
 import com.google.firebase.Timestamp
@@ -44,6 +50,10 @@ import kotlinx.coroutines.withContext
  *   local rows the cloud does not know yet (a fresh phone's seed plan never
  *   overwrites the real one).
  *
+ * The body profile (sex, age, height, weight, activity, goal) lives in the
+ * settings, not the database: it travels as one extra document, so a new
+ * install does not ask for it again.
+ *
  * Attachments (photos, voice memos) stay on the device for now.
  */
 @Singleton
@@ -52,6 +62,7 @@ class CloudSync @Inject constructor(
     private val database: TenetDatabase,
     private val accounts: AccountRepository,
     private val saffron: SaffronRecipes,
+    private val settings: UserSettingsRepository,
 ) {
     data class Status(
         val syncing: Boolean = false,
@@ -81,9 +92,12 @@ class CloudSync @Inject constructor(
             withContext(Dispatchers.IO) {
                 val user = firestore.collection("users").document(uid)
                 var pulled = 0
+                // First and small: the setup right after sign-in wants it.
+                runCatching { syncProfile(user) }
                 if (prefs.getString(KEY_INITIAL_FOR, null) != uid) {
                     pulled += initial(user)
                     prefs.edit { putString(KEY_INITIAL_FOR, uid) }
+                    runCatching { adoptPlans() }
                 }
                 val pushed = push(user)
                 pulled += pull(user)
@@ -105,6 +119,7 @@ class CloudSync @Inject constructor(
     /** Forget the per-account state (after sign-out); local data stays. */
     fun reset() {
         prefs.edit {
+            remove(KEY_PROFILE_SIG)
             remove(KEY_INITIAL_FOR)
             remove(KEY_LAST_PULL)
             remove(KEY_LAST_SYNC)
@@ -127,10 +142,63 @@ class CloudSync @Inject constructor(
                 }
             }
             prefs.edit {
+                remove(KEY_PROFILE_SIG)
                 remove(KEY_INITIAL_FOR)
                 remove(KEY_LAST_PULL)
             }
         }
+    }
+
+    /**
+     * Plans that came with the account count as set up: the first-run setup of
+     * that sport does not start again and replace them (new install, second phone).
+     */
+    private suspend fun adoptPlans() {
+        val disciplines = mutableListOf<String>()
+        sql.query("SELECT DISTINCT discipline FROM TrainingPlan WHERE id != ?", arrayOf(SEED_PLAN_ID)).use { c ->
+            while (c.moveToNext()) c.getString(0)?.let { disciplines += it }
+        }
+        disciplines.forEach {
+            settings.markSportSetupDone(it)
+            settings.sportSetupHandled(it)
+        }
+    }
+
+    // ---- Body profile ---------------------------------------------------------------
+
+    private fun signature(p: BodyProfile) = "${p.sex}|${p.age}|${p.heightCm}|${p.weightKg}|${p.activity}|${p.goal}"
+
+    /**
+     * A profile changed on this device goes up; otherwise the cloud's one comes
+     * down (a fresh install has none and takes it over).
+     */
+    private suspend fun syncProfile(user: com.google.firebase.firestore.DocumentReference) {
+        val ref = user.collection(ROWS).document(PROFILE_DOC)
+        val local = settings.settings.first().profile
+        if (local != null && signature(local) != prefs.getString(KEY_PROFILE_SIG, null)) {
+            ref.set(
+                mapOf(
+                    "_t" to PROFILE_DOC, "_u" to FieldValue.serverTimestamp(), "_dev" to deviceId,
+                    "sex" to local.sex.name, "age" to local.age, "heightCm" to local.heightCm.toDouble(),
+                    "weightKg" to local.weightKg.toDouble(), "activity" to local.activity.name, "goal" to local.goal.name,
+                ),
+            ).await()
+            prefs.edit { putString(KEY_PROFILE_SIG, signature(local)) }
+            return
+        }
+        val doc = ref.get().await()
+        val weight = doc.getDouble("weightKg")?.toFloat() ?: return
+        val base = BodyProfile()
+        val remote = BodyProfile(
+            sex = runCatching { Sex.valueOf(doc.getString("sex").orEmpty()) }.getOrDefault(base.sex),
+            age = doc.getLong("age")?.toInt() ?: base.age,
+            heightCm = doc.getDouble("heightCm")?.toFloat() ?: base.heightCm,
+            weightKg = weight,
+            activity = runCatching { ActivityLevel.valueOf(doc.getString("activity").orEmpty()) }.getOrDefault(base.activity),
+            goal = runCatching { WeightGoal.valueOf(doc.getString("goal").orEmpty()) }.getOrDefault(base.goal),
+        )
+        if (local == null || signature(remote) != signature(local)) settings.setProfile(remote)
+        prefs.edit { putString(KEY_PROFILE_SIG, signature(remote)) }
     }
 
     // ---- First sync on this device --------------------------------------------------
@@ -429,6 +497,11 @@ class CloudSync @Inject constructor(
         const val PAGE = 500
         const val BATCH = 400
         const val KEY_DEVICE = "device_id"
+        const val KEY_PROFILE_SIG = "profile_signature"
+        /** The default plan every fresh install starts with (SportRepository). */
+        const val SEED_PLAN_ID = "default-ganzkoerper-a"
+        /** Not a table: the row pull skips it. */
+        const val PROFILE_DOC = "_profile"
         const val KEY_INITIAL_FOR = "initial_for_uid"
         const val KEY_LAST_PULL = "last_pull"
         const val KEY_LAST_SYNC = "last_sync"

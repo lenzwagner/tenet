@@ -2,4 +2,6 @@
 <!-- Files the camera app may write into: form videos (SkillRepository.FORM_VIDEO_DIR). -->
 <paths>
     <files-path name="form_videos" path="form_videos/" />
+    <!-- A photo taken for the companion ("trag diesen Riegel ein"). -->
+    <cache-path name="companion" path="companion/" />
 </paths>

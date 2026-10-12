@@ -33,6 +33,7 @@ android {
 dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:database"))
+    implementation(project(":core:datastore"))
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.work.runtime)
 

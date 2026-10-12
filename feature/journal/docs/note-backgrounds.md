@@ -1,13 +1,16 @@
 # Note backgrounds
 
-note_bg_01 … note_bg_20 (res/drawable-nodpi) are photos from Unsplash under the
-Unsplash License (free to use, no attribution required), resized to 1080 px and
-saved as WebP. Source ids (https://unsplash.com/photos/<id>):
+note_bg_01 … note_bg_23 (res/drawable-nodpi) are photos from Unsplash under the
+Unsplash License (free to use, no attribution required), cropped to 1080 × 1620 px
+and saved as WebP. Four beaches (02, 04, 13, 16), the rest a wide mix of
+landscapes. Notes store the number ("tenet-bg:NN"), so a slot keeps its number
+when its photo is replaced. Source ids (https://images.unsplash.com/photo-<id>):
 
-01 1672841828271-54340a6fbcd3 · 02 1586500036706-41963de24d8b · 03 1786069254603-fb97a3d226f6
-04 1561571994-3c61c554181a · 05 1586500036065-bdaeac7a4feb · 06 1778122913063-c1501a443245
-07 1546536582-cdabb1daf509 · 08 1551523713-c1473aa01d9f · 09 1780821932487-5ef83a249dab
-10 1509233725247-49e657c54213 · 11 1770838916964-0ae934bf7632 · 12 1779370139337-445890da8ead
-13 1619118986411-29b465253365 · 14 1764310723010-8ca1254dbd36 · 15 1514125669375-59ee3985d08b
-16 1483683804023-6ccdb62f86ef · 17 1556103727-777acb371272 · 18 1712960258445-35ea82a94393
-19 1541526855570-9154d61f6a8b · 20 1544550581-1bcabf842b77
+01 1705512604302-3dc9d171832c (fjord, boat) · 02 1586500036706-41963de24d8b (beach) · 03 1613125700782-8394bec3e89d (Alps)
+04 1561571994-3c61c554181a (beach, sunset) · 05 1638732984528-f255c9714619 (dunes) · 06 1762813309747-a6f1acd70ffe (Socotra dragon tree)
+07 1564574662330-73fb2940ff5d (Dolomites) · 08 1593378026483-2a1fd46a35bd (northern lights, Lofoten) · 09 1593715857983-5531aa640471 (lavender)
+10 1551171129-7ebac0152f60 (Wadi Rum) · 11 1600211906168-fbc6df476b1c (Fitz Roy) · 12 1531168556467-80aace0d0144 (Iceland canyon)
+13 1619118986411-29b465253365 (beach, aerial) · 14 1619371208402-615001f13a45 (Dolomites, rock towers) · 15 1550025899-5f8a06b1b3a8 (Antelope Canyon)
+16 1483683804023-6ccdb62f86ef (islands, aerial) · 17 1570459027562-4a916cc6113f (Mount Fuji) · 18 1503435980610-a51f3ddfee50 (misty forest)
+19 1760715752598-eac7633b472d (savanna, acacia) · 20 1721463891748-fc2d7002ee30 (fjord, waterfall) · 21 1439853949127-fa647821eba0 (Lake Louise)
+22 1493589976221-c2357c31ad77 (cherry blossom) · 23 1513836279014-a89f7a76ae86 (redwoods)

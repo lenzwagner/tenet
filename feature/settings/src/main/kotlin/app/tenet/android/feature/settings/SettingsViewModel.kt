@@ -272,6 +272,13 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { repository.setCompanion(enabled) }
     }
 
+    fun setCompanionHome(home: Boolean) {
+        viewModelScope.launch { repository.setCompanionHome(home) }
+    }
+
+    /** Model the companion answers with; empty = the fastest available. */
+    fun setCompanionModel(model: String) = ai.setCompanionModel(model)
+
     fun setCompanionName(kind: String, name: String) {
         viewModelScope.launch { repository.setCompanionName(kind, name) }
     }

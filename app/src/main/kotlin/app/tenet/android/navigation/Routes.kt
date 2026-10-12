@@ -213,4 +213,8 @@ data class PlanEditorRoute(val planId: String = "")
 
 /** Chat with the AI coach that drafts a plan for a discipline. */
 @Serializable
-data class PlanChatRoute(val discipline: String = "GYM")
+data class PlanChatRoute(
+    val discipline: String = "GYM",
+    /** Gym: split chosen beforehand (encoded GymSplits.Choice), empty = none. */
+    val split: String = "",
+)

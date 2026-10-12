@@ -54,6 +54,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import app.tenet.android.core.common.ActivityLevel
 import app.tenet.android.core.common.BodyProfile
+import androidx.compose.material.icons.outlined.Pets
 import app.tenet.android.core.common.EnergyMath
 import app.tenet.android.core.common.Sex
 import app.tenet.android.core.common.WeightGoal
@@ -201,15 +202,17 @@ private fun <T> Segments(options: List<T>, selected: T, label: (T) -> String, on
 @Composable
 internal fun ProfileStep(step: Int, steps: Int, initial: BodyProfile?, onSave: (BodyProfile) -> Unit, onSkip: () -> Unit) {
     val base = initial ?: BodyProfile()
-    var sex by rememberSaveable { mutableStateOf(base.sex) }
-    var age by rememberSaveable { mutableIntStateOf(base.age) }
-    var height by rememberSaveable { mutableFloatStateOf(base.heightCm) }
-    var weight by rememberSaveable { mutableFloatStateOf(base.weightKg) }
-    var activity by rememberSaveable { mutableStateOf(base.activity) }
+    // Keyed: the profile of the Google account may arrive a moment after sign-in.
+    var sex by rememberSaveable(initial) { mutableStateOf(base.sex) }
+    var age by rememberSaveable(initial) { mutableIntStateOf(base.age) }
+    var height by rememberSaveable(initial) { mutableFloatStateOf(base.heightCm) }
+    var weight by rememberSaveable(initial) { mutableFloatStateOf(base.weightKg) }
+    var activity by rememberSaveable(initial) { mutableStateOf(base.activity) }
     SetupStep(
         step, steps, Icons.Outlined.Person,
         "Ein bisschen über dich",
-        "Für deinen Kalorienbedarf und die relative Kraft bei Körpergewichtsübungen.",
+        if (initial != null) "Deine Angaben sind schon da – prüf kurz, ob noch alles stimmt."
+        else "Für deinen Kalorienbedarf und die relative Kraft bei Körpergewichtsübungen.",
         onPrimary = { onSave(base.copy(sex = sex, age = age, heightCm = height, weightKg = weight, activity = activity)) },
         onSkip = onSkip,
     ) {
@@ -233,6 +236,43 @@ internal fun ProfileStep(step: Int, steps: Int, initial: BodyProfile?, onSave: (
                         ),
                     ) { Text(a.label) }
                 }
+            }
+        }
+    }
+}
+
+/** Companion: on or off, which one, and the model it answers with. Everything stays changeable in the settings. */
+@Composable
+internal fun CompanionStep(
+    step: Int,
+    steps: Int,
+    enabled: Boolean,
+    kind: app.tenet.android.core.designsystem.component.CompanionKind,
+    names: Map<String, String>,
+    model: String,
+    onEnabled: (Boolean) -> Unit,
+    onKind: (app.tenet.android.core.designsystem.component.CompanionKind) -> Unit,
+    onRename: (String, String) -> Unit,
+    onModel: (String) -> Unit,
+    onNext: () -> Unit,
+) {
+    SetupStep(
+        step, steps, Icons.Outlined.Pets,
+        "Dein Begleiter",
+        "Läuft durch die App, hört dir zu und trägt für dich ein: Tagebuch, Träume, Trainings, Essen – auch vom Foto.",
+        onPrimary = onNext,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            SegmentedListItem(
+                onClick = { onEnabled(!enabled) },
+                shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(0, 1),
+                colors = app.tenet.android.core.designsystem.theme.tenetListColors(),
+                supportingContent = { Text("Jederzeit in den Einstellungen änderbar") },
+                trailingContent = { app.tenet.android.core.designsystem.component.TenetSwitch(checked = enabled, onCheckedChange = onEnabled) },
+            ) { Text("Begleiter aktivieren") }
+            if (enabled) {
+                CompanionPicker(selected = kind, onSelect = onKind, names = names, onRename = onRename)
+                CompanionModelPicker(model, onModel)
             }
         }
     }

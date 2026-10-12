@@ -25,7 +25,7 @@ object GymPlanBuilder {
         UPPER_LOWER("2er-Split · Oberkörper / Unterkörper", "Zwei Einheiten im Wechsel · ideal für 4 Tage"),
         PPL("3er-Split · Push / Pull / Beine", "Drücken, Ziehen, Beine · ideal für 3, 5 oder 6 Tage"),
         FOUR_DAY("4er-Split · Brust / Rücken / Beine / Schultern", "Jede Muskelgruppe einmal pro Woche mit viel Volumen · ideal für 4 Tage"),
-        CUSTOM("Eigener Split", "Trainingstage selbst benennen und anschließend frei bearbeiten"),
+        CUSTOM("Eigener Split", "Muskelgruppen je Einheit selbst kombinieren"),
     }
 
     /** How a lift is loaded; decides what the weight field means. */
@@ -75,8 +75,10 @@ object GymPlanBuilder {
         val female: Boolean = false,
         val lifts: Map<Lift, LiftInput> = emptyMap(),
         val formula: OneRepMaxFormula = OneRepMaxFormula.EPLEY,
-        /** Names of rotating workouts when [split] is [Split.CUSTOM]. */
-        val customRoutineTitles: List<String> = emptyList(),
+        /** The rotating workouts with their muscle groups when [split] is [Split.CUSTOM]. */
+        val customUnits: List<GymSplits.SplitUnit> = emptyList(),
+        /** Plan name instead of the split's label (e.g. "4er-Split"). */
+        val customName: String? = null,
     )
 
     data class PlannedExercise(
@@ -215,25 +217,76 @@ object GymPlanBuilder {
     private data class Main(val lift: Lift) : Slot
     private data class Acc(val accessory: Accessory) : Slot
 
-    private fun customSlots(title: String, index: Int): List<Slot> {
-        val name = title.lowercase()
-        return when {
-            "brust" in name || "chest" in name ->
-                listOf(Main(Lift.BENCH), Acc(SCHRAEGBANK), Main(Lift.DIPS), Acc(TRIZEPS), Main(Lift.LATERAL))
-            "rück" in name || "back" in name || "pull" in name ->
-                listOf(Main(Lift.DEADLIFT), Main(Lift.PULLUP), Main(Lift.ROW), Acc(FACEPULL), Acc(BIZEPS))
-            "arm" in name || "bizeps" in name || "trizeps" in name ->
-                listOf(Acc(BIZEPS), Acc(TRIZEPS), Main(Lift.DIPS), Main(Lift.PULLUP), Main(Lift.LATERAL))
-            "bein" in name || "leg" in name ->
-                listOf(Main(Lift.SQUAT), Acc(RDL), Acc(BEINPRESSE), Acc(BEINBEUGER), Acc(WADEN))
-            "schulter" in name || "shoulder" in name || "push" in name ->
-                listOf(Main(Lift.OHP), Main(Lift.BENCH), Acc(SCHRAEGBANK), Main(Lift.LATERAL), Acc(TRIZEPS))
-            else -> if (index % 2 == 0) {
+    private val BUTTERFLY = Accessory("ex-butterfly", null, 0f)
+    private val KABELRUDERN = Accessory("ex-kabelrudern", null, 0f)
+    private val REVERSE_FLY = Accessory("ex-reverse-fly", null, 0f)
+    private val HAMMER = Accessory("ex-hammercurl", Lift.ROW, 0.2f)
+    private val SZ_CURL = Accessory("ex-sz-curl", null, 0f)
+    private val FRENCH = Accessory("ex-french-press", null, 0f)
+    private val UEBERKOPF = Accessory("ex-ueberkopf-trizeps", null, 0f)
+    private val BEINSTRECKER = Accessory("ex-beinstrecker", null, 0f)
+    private val CRUNCH = Accessory("ex-kabel-crunch", null, 0f)
+    private val BEINHEBEN = Accessory("ex-beinheben", null, 0f)
+
+    private val ACCESSORIES = listOf(
+        SCHRAEGBANK, TRIZEPS, BANKDIPS, BIZEPS, LATZUG, FACEPULL, RDL, BEINPRESSE, BEINBEUGER, WADEN, AUSFALL, PLANK,
+        BUTTERFLY, KABELRUDERN, REVERSE_FLY, HAMMER, SZ_CURL, FRENCH, UEBERKOPF, BEINSTRECKER, CRUNCH, BEINHEBEN,
+    )
+
+    /** Exercises of a muscle group, the heavy basics first. */
+    private fun pool(muscle: GymSplits.Muscle): List<Slot> = when (muscle) {
+        GymSplits.Muscle.CHEST -> listOf(Main(Lift.BENCH), Acc(SCHRAEGBANK), Main(Lift.DIPS), Acc(BUTTERFLY))
+        GymSplits.Muscle.BACK -> listOf(Main(Lift.PULLUP), Main(Lift.ROW), Main(Lift.DEADLIFT), Acc(LATZUG), Acc(KABELRUDERN))
+        GymSplits.Muscle.SHOULDERS -> listOf(Main(Lift.OHP), Main(Lift.LATERAL), Acc(FACEPULL), Acc(REVERSE_FLY))
+        GymSplits.Muscle.BICEPS -> listOf(Acc(BIZEPS), Acc(HAMMER), Acc(SZ_CURL))
+        GymSplits.Muscle.TRICEPS -> listOf(Acc(TRIZEPS), Acc(FRENCH), Acc(UEBERKOPF))
+        GymSplits.Muscle.LEGS -> listOf(Main(Lift.SQUAT), Acc(RDL), Acc(BEINPRESSE), Acc(BEINBEUGER), Acc(WADEN), Acc(BEINSTRECKER))
+        GymSplits.Muscle.CORE -> listOf(Acc(PLANK), Acc(CRUNCH), Acc(BEINHEBEN))
+    }
+
+    /**
+     * A unit from its muscle groups: one exercise per group in turn until the unit
+     * is full, then ordered group by group. Without groups the title decides
+     * ("Push", "Arme"); a title that names none alternates two full-body units.
+     */
+    private fun customSlots(unit: GymSplits.SplitUnit, index: Int): List<Slot> {
+        val muscles = unit.muscles.ifEmpty { GymSplits.musclesOf(unit.title) }.distinct().sortedBy { it.ordinal }
+        if (muscles.isEmpty()) {
+            return if (index % 2 == 0) {
                 listOf(Main(Lift.SQUAT), Main(Lift.BENCH), Main(Lift.ROW), Main(Lift.LATERAL), Acc(PLANK))
             } else {
                 listOf(Main(Lift.DEADLIFT), Main(Lift.OHP), Main(Lift.PULLUP), Main(Lift.DIPS), Acc(AUSFALL))
             }
         }
+        val target = when (muscles.size) {
+            1, 2 -> 5
+            in 3..5 -> 6
+            else -> 7
+        }
+        val pools = muscles.map(::pool)
+        val picked = mutableListOf<Triple<Int, Int, Slot>>()
+        var rank = 0
+        while (picked.size < target && pools.any { rank < it.size }) {
+            pools.forEachIndexed { m, p -> if (picked.size < target && rank < p.size) picked += Triple(m, rank, p[rank]) }
+            rank++
+        }
+        return picked.sortedWith(compareBy({ it.first }, { it.second })).map { it.third }
+    }
+
+    /**
+     * Start weight for any exercise the builder knows (setup lift or accessory) at
+     * [reps]; null = bodyweight or choose yourself.
+     */
+    fun startWeight(input: Input, exerciseId: String, reps: Int): Float? {
+        val orm = oneRepMaxes(input).first
+        Lift.entries.firstOrNull { it.exerciseId == exerciseId }?.let { lift ->
+            val max = orm.getValue(lift)
+            if (lift.load != Load.BODYWEIGHT_PLUS) return workingWeight(max, reps, formula = input.formula)
+            val extra = OneRepMax.weightForReps(max, reps + 2, input.formula) - bodyweight(input)
+            return OverloadMath.round(extra, 2.5f).takeIf { extra >= 2.5f }
+        }
+        val accessory = ACCESSORIES.firstOrNull { it.exerciseId == exerciseId } ?: return null
+        return accessory.base?.let { workingWeight(orm.getValue(it) * accessory.ratio, reps, formula = input.formula) }
     }
 
     fun build(input: Input): Plan {
@@ -261,11 +314,10 @@ object GymPlanBuilder {
                 "Beine" to listOf(Main(Lift.SQUAT), Acc(RDL), Acc(BEINPRESSE), Acc(BEINBEUGER), Acc(WADEN)),
                 "Schultern + Bauch" to listOf(Main(Lift.OHP), lateral, Acc(FACEPULL), Acc(PLANK)),
             )
-            Split.CUSTOM -> input.customRoutineTitles
-                .map(String::trim)
-                .filter(String::isNotEmpty)
-                .ifEmpty { listOf("Training A", "Training B") }
-                .mapIndexed { index, title -> title to customSlots(title, index) }
+            Split.CUSTOM -> input.customUnits
+                .filter { it.title.isNotBlank() }
+                .ifEmpty { listOf(GymSplits.SplitUnit("Training A", emptyList()), GymSplits.SplitUnit("Training B", emptyList())) }
+                .mapIndexed { index, unit -> unit.title.trim() to customSlots(unit, index) }
         }
         val bw = bodyweight(input)
         val goal = input.goal
@@ -299,12 +351,13 @@ object GymPlanBuilder {
                             )
                         }
                     }
-                },
+                    // A weak pull-up becomes the lat pulldown, which a unit may already hold.
+                }.distinctBy { it.exerciseId },
             )
         }
         return Plan(
             // Every exercise once per routine (e.g. dips fallback = bench dips next to triceps).
-            name = "${input.split.label} · ${goal.label}",
+            name = "${input.customName?.takeIf { it.isNotBlank() } ?: input.split.label} · ${goal.label}",
             routines = routines,
             oneRepMax = orm,
             estimated = estimated,

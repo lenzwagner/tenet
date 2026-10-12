@@ -28,7 +28,8 @@ import org.json.JSONObject
 class AiAssistant @Inject constructor(
     @ApplicationContext context: Context,
 ) {
-    data class Config(val enabled: Boolean, val apiKey: String, val model: String) {
+    /** [companionModel]: the model the companion answers with; empty = the fastest available. */
+    data class Config(val enabled: Boolean, val apiKey: String, val model: String, val companionModel: String = "") {
         val usable: Boolean get() = enabled && apiKey.isNotBlank()
     }
 
@@ -42,6 +43,8 @@ class AiAssistant @Inject constructor(
     fun setApiKey(key: String) = save { putString(KEY_API, key.trim()) }
     fun setModel(model: String) = save { putString(KEY_MODEL, model.trim().ifEmpty { DEFAULT_MODEL }) }
 
+    fun setCompanionModel(model: String) = save { putString(KEY_COMPANION_MODEL, model.trim()) }
+
     private fun save(block: android.content.SharedPreferences.Editor.() -> Unit) {
         prefs.edit(action = block)
         _config.value = read()
@@ -51,6 +54,7 @@ class AiAssistant @Inject constructor(
         enabled = prefs.getBoolean(KEY_ENABLED, true),
         apiKey = prefs.getString(KEY_API, null)?.takeIf { it.isNotBlank() } ?: BuildConfig.NIM_API_KEY,
         model = prefs.getString(KEY_MODEL, null) ?: DEFAULT_MODEL,
+        companionModel = prefs.getString(KEY_COMPANION_MODEL, null).orEmpty(),
     )
 
     /** Returns the models currently exposed to this NVIDIA API key. */
@@ -308,6 +312,16 @@ class AiAssistant @Inject constructor(
         private const val KEY_ENABLED = "enabled"
         private const val KEY_API = "api_key"
         private const val KEY_MODEL = "model"
+        private const val KEY_COMPANION_MODEL = "companion_model"
+
+        /** Models offered for the companion (short answers, quick). */
+        val COMPANION_MODELS = listOf(
+            ModelChoice("", "Automatisch · das schnellste verfügbare"),
+            ModelChoice("nvidia/nemotron-3.5-lightning-30b-a3b", "Nemotron 3.5 Lightning · schnell, natürlich"),
+            ModelChoice("nvidia/nemotron-3-super-120b-a12b", "Nemotron 3 Super · gründlicher, langsamer"),
+            ModelChoice(DEFAULT_MODEL, "Llama 3.2 Vision · solide, versteht Bilder"),
+            ModelChoice("openai/gpt-oss-20b", "gpt-oss-20b · überlegt länger"),
+        )
 
         /** First {...} block of a model answer (tolerates ```json fences and chatter). */
         fun extractJson(text: String): JSONObject? {

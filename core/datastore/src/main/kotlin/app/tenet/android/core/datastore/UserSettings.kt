@@ -32,6 +32,8 @@ data class UserSettings(
     val washStrength: Float = 1f,
     /** Companion "Tenny" walking around the app (talk to it, let it log things). */
     val companion: Boolean = true,
+    /** The companion was sent to its house: it stays there, also across app starts. */
+    val companionHome: Boolean = false,
     /** Phone calendar: show appointments in the week calendar. */
     val calendarRead: Boolean = false,
     /** Phone calendar to write planned workouts into (null = off). */
