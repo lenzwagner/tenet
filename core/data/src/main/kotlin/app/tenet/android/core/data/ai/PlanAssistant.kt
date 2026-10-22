@@ -1,6 +1,8 @@
 package app.tenet.android.core.data.ai
 
+import app.tenet.android.core.common.MovementPattern
 import app.tenet.android.core.common.PaceMethod
+import app.tenet.android.core.common.RestAdvisor
 import app.tenet.android.core.common.RunPlanMath
 import app.tenet.android.core.common.RunZone
 import app.tenet.android.core.data.PlanRepository
@@ -90,7 +92,7 @@ class PlanAssistant @Inject constructor(
             rest.joinToString(", ") { java.time.DayOfWeek.of(it).getDisplayName(java.time.format.TextStyle.FULL, Locale.GERMAN) }
         val prompt = (if (discipline == Discipline.RUNNING) runPrompt(talk, message, current?.run) else strengthPrompt(discipline, talk, message, current)) + restLine
         val json = ai.chat(
-            prompt, MODELS, maxTokens = 3000, timeoutMs = 60_000, configuredFirst = false,
+            prompt, MODELS, maxTokens = 4000, timeoutMs = 90_000, configuredFirst = false,
             accept = { AiAssistant.extractJson(it) != null },
         )?.let { AiAssistant.extractJson(it) }
             ?: return Answer("Ich erreiche die KI gerade nicht (${ai.lastError ?: "keine Antwort"}). Versuch es gleich nochmal.", failed = true)
@@ -114,8 +116,8 @@ class PlanAssistant @Inject constructor(
         }
     }
 
-    /** Creates the running plan of [draft] with the app's generator (it becomes the active plan). */
-    suspend fun createRunPlan(draft: RunDraft): String {
+    /** Creates the running plan of [draft] with the app's generator; [activate] = it becomes the plan in use. */
+    suspend fun createRunPlan(draft: RunDraft, activate: Boolean = true): String {
         val template = draft.sessions.sortedBy { it.first }.takeIf { it.size in 2..6 }
         return running.createPlan(
             goal = draft.goal,
@@ -129,6 +131,7 @@ class PlanAssistant @Inject constructor(
             days = if (template != null) null else draft.days.takeIf { it.size == draft.runsPerWeek },
             volume = volumeOf(draft),
             template = template,
+            activate = activate,
         )
     }
 
@@ -200,12 +203,15 @@ class PlanAssistant @Inject constructor(
             {"reply": 1–3 Sätze: was du gebaut oder geändert hast und warum,
              "plan": {"name": kurzer Planname, "days": [ISO-Wochentage 1=Mo … 7=So], "workouts": [{"title": Name der Einheit, "exercises": [{"name": Übung, "sets": Zahl, "reps": Zahl, "rest": Pause in Sekunden}]}]}}
             Regeln:
+            - Calisthenics: auch mehrere Einheiten im Wechsel (z. B. Push / Pull / Beine + Core). Gewünschte Skills (Handstand, Front Lever, Planche …) am Anfang jeder passenden Einheit, solange man frisch ist; Halteübungen in Sekunden.
+            - JEDEN einzelnen Wunsch des Nutzers umsetzen (auch lange Listen von Wünschen). Geht einer nicht (z. B. Übung fehlt im Katalog), das in reply kurz sagen.
             - Planname und Namen der Einheiten auf Deutsch (z. B. "Ganzkörper · Klimmzug-Fokus", "Push", "Beine").
             - Übungen NUR aus dem KATALOG, Name exakt wie dort. Was es dort nicht gibt, durch die ähnlichste Katalog-Übung ersetzen und das in reply sagen.
             - Nennt der Nutzer eine Split-Kombination (z. B. "Brust + Schultern / Rücken / Beine / Arme"), dann GENAU diese Einheiten, in dieser Reihenfolge, mit diesen Namen – und in jeder Einheit nur Übungen für die genannten Muskelgruppen.
             - Ziel Kraft, Hypertrophie (Muskelaufbau) oder Kraftausdauer bestimmt Wiederholungen und Pausen (siehe Volumen-Regel).
             - Split so, wie der Nutzer ihn nennt (2er = Oberkörper/Unterkörper, 3er = Push/Pull/Beine, 4er z. B. Brust+Trizeps / Rücken+Bizeps / Beine / Schultern+Bauch). Ohne Angabe: passend zu den Tagen.
             - Volumen: wenig ≈ 3–4 Übungen je Einheit, normal ≈ 5–6, viel ≈ 7–8; Sätze 2–5. Kraft: 3–6 Wdh. und 150–240 s Pause, Muskelaufbau: 8–12 Wdh. und 90–150 s, Ausdauer: 12–20 Wdh. und 45–75 s.
+            - Pausen nach Übung staffeln: schwere Grundübungen (Kniebeuge, Kreuzheben, Bankdrücken, Schulterdrücken, Rudern, Klimmzüge) am oberen Ende oder darüber (bis 240 s), Isolations- und Bauchübungen am unteren Ende (45–90 s).
             - Schwere Grundübungen zuerst, Isolationsübungen danach. Keine Übung doppelt in einer Einheit.
             - Bei "(Halten, Sekunden)" ist "reps" die Haltezeit in Sekunden.
             - "days": so viele Tage wie gewünscht, sinnvoll verteilt (z. B. 3 Tage = [1,3,5]).
@@ -229,18 +235,21 @@ class PlanAssistant @Inject constructor(
                     if (name.isNotBlank()) unknown += name
                     return@mapNotNull null
                 }
+                val reps = e.optInt("reps", 10).coerceIn(1, 300)
+                // Heavy basics never get less rest than they need, whatever the model wrote.
+                val least = if (match.measureType.timed()) 20
+                else RestAdvisor.advise(MovementPattern.fromName(match.pattern), match.primaryMuscles, reps).minSec
                 match.name to PlanRepository.DraftExercise(
                     exerciseId = match.id,
                     sets = e.optInt("sets", 3).coerceIn(1, 8),
-                    reps = e.optInt("reps", 10).coerceIn(1, 300),
-                    restSec = e.optInt("rest", 120).coerceIn(20, 360),
+                    reps = reps,
+                    restSec = e.optInt("rest", 120).coerceIn(least, 360),
                 )
             }.distinctBy { it.second.exerciseId }
             if (exercises.isEmpty()) null
             else NamedWorkout(w.optString("title").ifBlank { "Einheit ${index + 1}" }, exercises)
         }
-            // Calisthenics trains one routine per plan.
-            .let { if (discipline == Discipline.CALISTHENICS) it.take(1) else it.take(7) }
+            .take(7)
         if (workouts.isEmpty()) return Answer(reply, unknown = unknown)
         val days = plan.optJSONArray("days")?.let { a -> (0 until a.length()).map { a.optInt(it) }.filter { it in 1..7 }.distinct().sorted() }.orEmpty()
         val draft = PlanRepository.Draft(

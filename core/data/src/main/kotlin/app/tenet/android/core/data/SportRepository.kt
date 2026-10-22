@@ -301,8 +301,8 @@ class SportRepository @Inject constructor(
                         sortOrder = order,
                         targetSets = ex.sets,
                         targetReps = ex.reps,
-                        // 0 = automatic: rest advised per exercise and reps (RestAdvisor).
-                        restSec = 0,
+                        // 0 = automatic: rest advised per exercise and reps (RestAdvisor); a rest set by hand holds.
+                        restSec = if (ex.restFixed) ex.restSec else 0,
                         startWeightKg = ex.startWeightKg,
                     )
                 },

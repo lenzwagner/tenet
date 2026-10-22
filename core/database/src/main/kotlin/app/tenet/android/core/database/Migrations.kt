@@ -7,6 +7,17 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 /** v11: goal time and taper flag of running plans. */
 /** v14: planned units can be skipped (running plan, Runna-style). */
 /** v20: local form videos per calisthenics attempt (not synced, see SyncTriggers). */
+/** v21: meal templates ("Frühstück wie immer"). */
+val MIGRATION_20_21 = object : Migration(20, 21) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `MealTemplate` (" +
+                "`id` TEXT NOT NULL, `name` TEXT NOT NULL, `itemsJson` TEXT NOT NULL, " +
+                "`createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        )
+    }
+}
+
 val MIGRATION_19_20 = object : Migration(19, 20) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL(

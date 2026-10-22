@@ -20,12 +20,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
 import androidx.compose.material.icons.automirrored.outlined.TrendingDown
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.FitnessCenter
@@ -44,6 +47,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -94,12 +98,31 @@ fun RunPlanDetailScreen(
     onOpenRun: (String) -> Unit,
     /** A planned unit: structure, paces, splits and fueling. */
     onOpenWorkout: (String) -> Unit = {},
+    startEditing: Boolean = false,
     viewModel: RunPlanDetailViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(planId) { viewModel.load(planId) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = androidx.compose.runtime.remember { androidx.compose.material3.SnackbarHostState() }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
+    // Edit mode: every remaining unit, each one can be changed, deleted, new ones added.
+    var editing by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(startEditing) }
+    var sheet by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<UnitSheet?>(null) }
+    sheet?.let { target ->
+        RunUnitSheet(
+            unit = (target as? UnitSheet.Edit)?.unit,
+            defaultDate = (target as? UnitSheet.Add)?.date ?: LocalDate.now(),
+            onDismiss = { sheet = null },
+            onSave = { date, type, dist, dur, pace ->
+                when (target) {
+                    is UnitSheet.Edit -> viewModel.updateUnit(target.unit.id, date, type, dist, dur, pace)
+                    is UnitSheet.Add -> viewModel.addUnit(date, type, dist, dur, pace)
+                }
+                sheet = null
+            },
+            onDelete = (target as? UnitSheet.Edit)?.let { t -> { viewModel.deleteUnit(t.unit.id); sheet = null } },
+        )
+    }
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         snackbarHost = { app.tenet.android.core.designsystem.component.TenetSnackbarHost(snackbar) },
@@ -110,6 +133,10 @@ fun RunPlanDetailScreen(
                 navigationIcon = { TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zurück", onBack) },
                 title = { Text(state?.title ?: "Laufplan") },
                 subtitle = { state?.goalDate?.let { Text("Ziel am ${it.format(DATE)}") } },
+                actions = {
+                    if (editing) TooltipIconButton(Icons.Outlined.CheckCircle, "Bearbeiten beenden", { editing = false })
+                    else TooltipIconButton(Icons.Outlined.Edit, "Einheiten bearbeiten", { editing = true })
+                },
             )
         },
     ) { padding ->
@@ -119,6 +146,28 @@ fun RunPlanDetailScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            if (editing) {
+                item(key = "edit-h") { SectionTitle(Icons.Outlined.Edit, "Kommende Einheiten · ${s.remaining.size}") }
+                item(key = "edit-hint") {
+                    Text(
+                        "Antippen zum Ändern: Tag, Art, Strecke oder Dauer, Tempo – oder löschen.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                item(key = "edit-list") { UnitList(s.remaining) { id -> s.remaining.firstOrNull { it.id == id }?.let { sheet = UnitSheet.Edit(it) } } }
+                item(key = "edit-add") {
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = { sheet = UnitSheet.Add((s.remaining.lastOrNull()?.date ?: LocalDate.now()).plusDays(1)) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        androidx.compose.foundation.layout.Spacer(Modifier.width(8.dp))
+                        Text("Einheit hinzufügen")
+                    }
+                }
+                return@LazyColumn
+            }
             item(key = "hero") { PrognosisCard(s) }
             s.fit?.takeIf { it.suggestAdjust }?.let { fit ->
                 item(key = "fit") {
@@ -379,6 +428,83 @@ private fun PrognosisTrendCard(points: List<Pair<LocalDate, Int>>) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("${points.first().first.format(DATE)} · ${hms(points.first().second)}", style = MaterialTheme.typography.labelSmall)
                 Text("${points.last().first.format(DATE)} · ${hms(points.last().second)}", style = MaterialTheme.typography.labelSmall)
+            }
+        }
+    }
+}
+
+private sealed interface UnitSheet {
+    data class Edit(val unit: PlanUnitUi) : UnitSheet
+    data class Add(val date: LocalDate) : UnitSheet
+}
+
+private fun runTypeLabel(t: app.tenet.android.core.database.entity.RunType) = when (t) {
+    app.tenet.android.core.database.entity.RunType.EASY -> "Locker"
+    app.tenet.android.core.database.entity.RunType.LONG -> "Langlauf"
+    app.tenet.android.core.database.entity.RunType.TEMPO -> "Tempo"
+    app.tenet.android.core.database.entity.RunType.INTERVAL -> "Intervalle"
+    app.tenet.android.core.database.entity.RunType.RECOVERY -> "Regeneration"
+}
+
+/**
+ * One planned run by hand: day (± a day at a time), kind, distance or duration,
+ * target pace (optional). Deleting is offered for an existing unit.
+ */
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun RunUnitSheet(
+    unit: PlanUnitUi?,
+    defaultDate: LocalDate,
+    onDismiss: () -> Unit,
+    onSave: (LocalDate, app.tenet.android.core.database.entity.RunType, Int?, Int?, Int?) -> Unit,
+    onDelete: (() -> Unit)?,
+) {
+    val types = app.tenet.android.core.database.entity.RunType.entries
+    var date by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(unit?.date ?: defaultDate) }
+    var type by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(unit?.runType ?: app.tenet.android.core.database.entity.RunType.EASY) }
+    // Distance in 0.5 km steps, or (with distance 0) duration in minutes.
+    var km by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(unit?.targetDistanceM?.let { it / 500 * 0.5f } ?: if (unit?.targetDurationSec != null) 0f else 5f) }
+    var minutes by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(unit?.targetDurationSec?.let { it / 60 } ?: 30) }
+    var pace by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(unit?.targetPaceSecPerKm) }
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss, sheetState = app.tenet.android.core.designsystem.component.rememberSheetState(skipPartiallyExpanded = true)) {
+        Column(Modifier.padding(start = 20.dp, end = 20.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text(if (unit == null) "Neue Einheit" else "Einheit ändern", style = MaterialTheme.typography.titleLarge)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Einen Tag früher", { date = date.minusDays(1) })
+                Text(date.format(DAY), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                TooltipIconButton(Icons.AutoMirrored.Outlined.ArrowForward, "Einen Tag später", { date = date.plusDays(1) })
+            }
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                types.forEach { t ->
+                    app.tenet.android.core.designsystem.component.TenetFilterChip(selected = t == type, onClick = { type = t }, label = { Text(runTypeLabel(t)) })
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Stepper(
+                    "Strecke", if (km > 0f) "${String.format(Locale.GERMAN, "%.1f", km)} km" else "nach Zeit",
+                    { km = (km - 0.5f).coerceAtLeast(0f) }, { km = (km + 0.5f).coerceAtMost(60f) }, Modifier.weight(1f),
+                )
+                if (km == 0f) {
+                    Stepper("Dauer", "$minutes min", { minutes = (minutes - 5).coerceAtLeast(5) }, { minutes = (minutes + 5).coerceAtMost(300) }, Modifier.weight(1f))
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Stepper(
+                    "Tempo", pace?.let { pace(it) } ?: "nach Gefühl",
+                    { pace = pace?.let { (it - 5).takeIf { p -> p >= 180 } } ?: 330 },
+                    { pace = (pace ?: 325) + 5 },
+                    Modifier.weight(1f),
+                )
+                if (pace != null) androidx.compose.material3.TextButton(onClick = { pace = null }) { Text("ohne Tempo") }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (onDelete != null) {
+                    androidx.compose.material3.TextButton(onClick = onDelete) { Text("Löschen", color = MaterialTheme.colorScheme.error) }
+                }
+                androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+                androidx.compose.material3.Button(onClick = {
+                    onSave(date, type, (km * 1000).toInt().takeIf { km > 0f }, (minutes * 60).takeIf { km == 0f }, pace)
+                }) { Text("Speichern") }
             }
         }
     }

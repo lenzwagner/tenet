@@ -9,6 +9,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -49,16 +51,42 @@ fun CompanionCreature(
     facingLeft: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val t = rememberInfiniteTransition(label = "companion")
-    val bob by t.animateFloat(0f, 1f, infiniteRepeatable(tween(if (walking) 380 else 2200, easing = LinearEasing)), label = "bob")
-    val blink by t.animateFloat(0f, 1f, infiniteRepeatable(tween(4200, easing = LinearEasing), RepeatMode.Restart), label = "blink")
+    // Moving (walking, thinking): animated every frame. Standing still it only moves now and
+    // then – a blink every few seconds, now and then a slow bob – so the app can rest in between
+    // (a creature bobbing nonstop kept the whole screen redrawing 60 times a second).
+    val bob = remember { androidx.compose.animation.core.Animatable(0f) }
+    var blinking by remember { androidx.compose.runtime.mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(walking, thinking) {
+        if (walking || thinking) {
+            while (true) {
+                bob.snapTo(0f)
+                bob.animateTo(1f, tween(if (walking) 380 else 900, easing = LinearEasing))
+            }
+        } else {
+            bob.animateTo(if (bob.value > 0.5f) 1f else 0f, tween(200))
+            bob.snapTo(0f)
+            var round = 0
+            while (true) {
+                kotlinx.coroutines.delay(kotlin.random.Random.nextLong(3_500, 6_500))
+                blinking = true
+                kotlinx.coroutines.delay(150)
+                blinking = false
+                if (++round % 3 == 0) {
+                    bob.snapTo(0f)
+                    bob.animateTo(1f, tween(1_600, easing = LinearEasing))
+                    bob.snapTo(0f)
+                }
+            }
+        }
+    }
     Canvas(modifier) {
+        val phase = bob.value
         val f = Frame(
-            wave = sin(bob * 2 * Math.PI).toFloat(),
+            wave = sin(phase * 2 * Math.PI).toFloat(),
             walking = walking,
             thinking = thinking,
-            blink = blink > 0.94f,
-            dots = (bob * 3).toInt() % 3,
+            blink = blinking,
+            dots = (phase * 3).toInt() % 3,
         )
         // Soft floating shadow: a blurred ellipse under the feet that shrinks and fades
         // a little as the body rises (bob / hop), so the creature seems to hover.

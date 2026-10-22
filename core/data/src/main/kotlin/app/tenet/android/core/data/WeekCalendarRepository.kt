@@ -91,7 +91,11 @@ class WeekCalendarRepository @Inject constructor(
                     if (plan == null) {
                         flowOf(null)
                     } else {
-                        dao.observeWorkouts(plan.id).map { workouts -> workouts.firstOrNull()?.let { PlanHead(plan, it) } }
+                        // The unit due next in the rotation (A → B → C …), not always the first.
+                        combine(dao.observeWorkouts(plan.id), dao.observeLastWorkoutId(plan.id)) { workouts, lastId ->
+                            val last = workouts.indexOfFirst { it.id == lastId }
+                            (if (last < 0) workouts.firstOrNull() else workouts[(last + 1) % workouts.size])?.let { PlanHead(plan, it) }
+                        }
                     }
                 }
             },

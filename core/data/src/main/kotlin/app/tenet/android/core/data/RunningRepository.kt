@@ -121,8 +121,11 @@ class RunningRepository @Inject constructor(
         volume: Float = 1f,
         /** Own mix of run types (day 0 = Mo … 6 = So to zone); null = the standard template. */
         template: List<Pair<Int, app.tenet.android.core.common.RunZone>>? = null,
+        /** false: stored next to the plan in use (it becomes active only when there is none). */
+        activate: Boolean = true,
     ): String {
-        sportDao.deactivatePlans(Discipline.RUNNING)
+        val makeActive = activate || sportDao.activePlanOnce(Discipline.RUNNING) == null
+        if (makeActive) sportDao.deactivatePlans(Discipline.RUNNING)
 
         val planStart = WeekMath.weekStart(LocalDate.now())
         val planId = newUuid()
@@ -134,7 +137,7 @@ class RunningRepository @Inject constructor(
                 goal = goal.name,
                 startDate = planStart.toString(),
                 endDate = goalDate.toString(),
-                active = true,
+                active = makeActive,
             ),
         )
         runDao.upsertPlanDetail(
@@ -615,6 +618,84 @@ class RunningRepository @Inject constructor(
     suspend fun planDetailOnce(planId: String): RunPlanDetail? = runDao.planDetailOnce(planId)
 
     private fun RunZone.toRunType(): RunType = RunType.valueOf(name)
+
+    // ---- Shaping a plan by hand ---------------------------------------------------------
+
+    /** An empty running plan from this week on, to fill unit by unit. Not active unless it is the only one. */
+    suspend fun createEmptyPlan(name: String): String {
+        val first = sportDao.activePlanOnce(Discipline.RUNNING) == null
+        val id = newUuid()
+        sportDao.upsertPlan(
+            TrainingPlan(
+                id = id, discipline = Discipline.RUNNING, name = name.trim().ifBlank { "Eigener Laufplan" },
+                goal = RunPlanMath.RunGoal.GENERAL.name, startDate = WeekMath.weekStart(LocalDate.now()).toString(), active = first,
+            ),
+        )
+        return id
+    }
+
+    /** Week and weekday of [date] in the plan (units are stored relative to the plan's first Monday). */
+    private suspend fun slot(planId: String, date: LocalDate): Pair<Int, Int> {
+        val start = sportDao.planOnce(planId)?.startDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.now()
+        val week = java.time.temporal.ChronoUnit.WEEKS.between(WeekMath.weekStart(start), WeekMath.weekStart(date)).toInt().coerceAtLeast(0)
+        return week to (date.dayOfWeek.value - 1)
+    }
+
+    /**
+     * Changes a planned run by hand: day, kind, distance or duration, pace. A new kind gets its
+     * usual title; intervals keep their structure only while the unit stays an interval session.
+     */
+    suspend fun updateUnit(unitId: String, date: LocalDate, type: RunType, distanceM: Int?, durationSec: Int?, paceSecPerKm: Int?) {
+        val planned = sportDao.plannedOnce(unitId) ?: return
+        val old = runDao.runPlanWorkoutOnce(unitId)
+        val (week, day) = slot(planned.planId, date)
+        val typeChanged = old?.runType != type
+        sportDao.upsertWorkout(
+            planned.copy(weekIndex = week, dayIndex = day, date = null, title = if (typeChanged) unitTitle(type) else planned.title),
+        )
+        runDao.upsertRunPlanWorkouts(
+            listOf(
+                RunPlanWorkout(
+                    plannedWorkoutId = unitId,
+                    runType = type,
+                    targetDistanceM = distanceM,
+                    targetDurationSec = durationSec,
+                    targetPaceSecPerKm = paceSecPerKm,
+                    intervalsJson = old?.intervalsJson?.takeIf { type == RunType.INTERVAL && !typeChanged },
+                ),
+            ),
+        )
+    }
+
+    /** A run added to [planId] on [date]. */
+    suspend fun addUnit(planId: String, date: LocalDate, type: RunType, distanceM: Int?, durationSec: Int?, paceSecPerKm: Int?): String {
+        val (week, day) = slot(planId, date)
+        val id = newUuid()
+        val order = sportDao.workoutsOnce(planId).maxOfOrNull { it.sortOrder }?.plus(1) ?: 0
+        sportDao.upsertWorkout(
+            PlannedWorkout(id = id, planId = planId, discipline = Discipline.RUNNING, date = null, weekIndex = week, dayIndex = day, title = unitTitle(type), sortOrder = order),
+        )
+        runDao.upsertRunPlanWorkouts(listOf(RunPlanWorkout(id, type, distanceM, durationSec, paceSecPerKm)))
+        // A goal date before the new unit would hide it: the plan grows with it.
+        sportDao.planOnce(planId)?.let { plan ->
+            val end = plan.endDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+            if (end != null && end.isBefore(date)) sportDao.upsertPlan(plan.copy(endDate = date.toString()))
+        }
+        return id
+    }
+
+    suspend fun deleteUnit(unitId: String) {
+        runDao.deleteRunPlanWorkout(unitId)
+        sportDao.deleteWorkout(unitId)
+    }
+
+    private fun unitTitle(type: RunType) = when (type) {
+        RunType.EASY -> "Lockerlauf"
+        RunType.LONG -> "Langlauf"
+        RunType.TEMPO -> "Tempolauf"
+        RunType.INTERVAL -> "Intervalle"
+        RunType.RECOVERY -> "Regeneration"
+    }
 
     private data class PlanShell(
         val plan: TrainingPlan?,

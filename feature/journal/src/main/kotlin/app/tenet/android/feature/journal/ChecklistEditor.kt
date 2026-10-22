@@ -155,6 +155,14 @@ internal fun ChecklistEditor(body: String, onBody: (String) -> Unit) {
                         inView.bringIntoView()
                     }
                 }
+                // A hairline between the points: with long, wrapping ones it shows where one ends and the next begins.
+                if (index > 0) {
+                    androidx.compose.material3.HorizontalDivider(
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(start = 52.dp, end = 16.dp),
+                    )
+                }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(start = 4.dp, end = 4.dp).bringIntoViewRequester(inView),
@@ -217,6 +225,7 @@ internal fun ChecklistEditor(body: String, onBody: (String) -> Unit) {
                         },
                         modifier = Modifier
                             .weight(1f)
+                            .padding(vertical = 6.dp)
                             .focusRequester(requester)
                             .onFocusChanged { focused = it.isFocused }
                             .onPreviewKeyEvent { event ->

@@ -10,6 +10,7 @@ import app.tenet.android.core.data.RecipeRepository
 import app.tenet.android.core.database.dao.DayTotals
 import app.tenet.android.core.database.entity.DailyGoal
 import app.tenet.android.core.database.entity.FoodLog
+import app.tenet.android.core.database.entity.MealType
 import app.tenet.android.core.datastore.UserSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDate
@@ -143,6 +144,35 @@ class NutritionViewModel @Inject constructor(
     fun nextDay() { if (date.value < LocalDate.now()) date.value = date.value.plusDays(1) }
     fun goToday() { date.value = LocalDate.now() }
     fun goTo(day: LocalDate) { date.value = minOf(day, LocalDate.now()) }
+
+    /** Saved meals ("Frühstück wie immer"), last used first. */
+    val templates: StateFlow<List<app.tenet.android.core.database.entity.MealTemplate>> = foodRepository.observeTemplates()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun templateItems(t: app.tenet.android.core.database.entity.MealTemplate) = foodRepository.templateItems(t)
+
+    fun saveTemplate(name: String, logs: List<FoodLog>) {
+        viewModelScope.launch {
+            foodRepository.saveTemplate(name, logs)
+            _messages.send("Vorlage „${name.trim()}“ gespeichert")
+        }
+    }
+
+    fun logTemplate(t: app.tenet.android.core.database.entity.MealTemplate, meal: MealType, date: LocalDate) {
+        viewModelScope.launch {
+            foodRepository.logTemplate(t, meal, date.toString())
+            _messages.send("„${t.name}“ eingetragen")
+        }
+    }
+
+    fun deleteTemplate(id: String) {
+        viewModelScope.launch { foodRepository.deleteTemplate(id) }
+    }
+
+    /** Other amount and/or meal for an entry already logged. */
+    fun editLog(log: FoodLog, grams: Float, meal: MealType) {
+        viewModelScope.launch { foodRepository.editLog(log, grams, meal) }
+    }
 
     fun deleteLog(id: String) {
         viewModelScope.launch { foodRepository.deleteLog(id) }

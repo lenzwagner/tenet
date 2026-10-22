@@ -121,6 +121,7 @@ import androidx.compose.material.icons.outlined.FormatQuote
 import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Restaurant
@@ -482,6 +483,15 @@ private fun EditorScaffold(
                     }
                 },
                 title = {
+                    // Collapsed, the title shares the row with six buttons: one line, cut off, not editable
+                    // (two lines there broke words letter by letter, "Einka / ufen").
+                    val collapsed = scrollBehavior.state.collapsedFraction > 0.5f
+                    if (state.type == EntryType.NOTE && collapsed) Text(
+                        state.title.ifBlank { "Notiz" },
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis,
+                    ) else
                     // Notes: only their own title up here, editable in place (no "Neue Notiz").
                     if (state.type == EntryType.NOTE) BasicTextField(
                         value = state.title,
@@ -515,16 +525,6 @@ private fun EditorScaffold(
                 },
                 subtitle = { Text(formatDate(state.entryDate), maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis) },
                 actions = {
-                    IconToggleButton(
-                        checked = state.pinned,
-                        onCheckedChange = viewModel::onPinned,
-                        shapes = IconButtonDefaults.toggleableShapes(),
-                    ) {
-                        Icon(
-                            if (state.pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
-                            contentDescription = if (state.pinned) "Lösen" else "Anheften",
-                        )
-                    }
                     TooltipIconButton(Icons.Outlined.Mic, "Diktieren", ::dictate)
                     if (viewModel.aiAvailable) {
                         if (aiBusy) {
@@ -536,21 +536,41 @@ private fun EditorScaffold(
                             })
                         }
                     }
-                    if (!state.isNew) {
-                        TooltipIconButton(Icons.Outlined.Delete, "Löschen", {
-                            val title = state.title.ifBlank { "Eintrag" }
-                            viewModel.delete()?.let { id ->
-                                snackbar?.showUndo(
-                                    "„$title“ gelöscht",
-                                    onUndo = { viewModel.restore(id) },
-                                    onCommit = { viewModel.commitDelete(id) },
-                                )
-                            }
-                        })
-                    }
                     // Changes save themselves; undo steps back, ✓ closes.
                     val canUndo by viewModel.canUndo.collectAsStateWithLifecycle()
                     TooltipIconButton(Icons.AutoMirrored.Outlined.Undo, "Rückgängig", viewModel::undo, enabled = canUndo)
+                    // Pin and delete in a menu: the title keeps room next to the buttons.
+                    var more by remember { mutableStateOf(false) }
+                    Box {
+                        TooltipIconButton(Icons.Outlined.MoreVert, "Mehr", { more = true })
+                        androidx.compose.material3.DropdownMenu(expanded = more, onDismissRequest = { more = false }) {
+                            androidx.compose.material3.DropdownMenuItem(
+                                text = { Text(if (state.pinned) "Lösen" else "Anheften") },
+                                leadingIcon = { Icon(if (state.pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin, contentDescription = null) },
+                                onClick = {
+                                    more = false
+                                    viewModel.onPinned(!state.pinned)
+                                },
+                            )
+                            if (!state.isNew) {
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text("Löschen") },
+                                    leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
+                                    onClick = {
+                                        more = false
+                                        val title = state.title.ifBlank { "Eintrag" }
+                                        viewModel.delete()?.let { id ->
+                                            snackbar?.showUndo(
+                                                "„$title“ gelöscht",
+                                                onUndo = { viewModel.restore(id) },
+                                                onCommit = { viewModel.commitDelete(id) },
+                                            )
+                                        }
+                                    },
+                                )
+                            }
+                        }
+                    }
                     FilledIconButton(
                         onClick = { viewModel.save() },
                         shapes = IconButtonDefaults.shapes(),

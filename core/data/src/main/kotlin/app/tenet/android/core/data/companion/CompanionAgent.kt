@@ -97,25 +97,34 @@ class CompanionAgent @Inject constructor(
             val ago = if (min < 60) "vor $min min" else "vor ${min / 60} h"
             "- $ago · Nutzer: ${t.user.replace('\n', ' ').take(200)} → ${t.reply.replace('\n', ' ').take(200)}"
         }
-        val lastNote = memory.lastNote?.takeIf { now - it.at < NOTE_MEMORY_MS }
+        // No expiry: a list written weeks ago is still "the list" until another one is worked on.
+        val lastNote = memory.lastNote
         val prompt = SYSTEM.replace("\"Tenny\"", "\"$name\"") + "\n\nKONTEXT\n" + context() +
             (if (earlier.isNotBlank()) "\n\nVERLAUF DER LETZTEN 24 STUNDEN (nur um Bezüge wie „das“, „die Liste“, „dort“ zu verstehen; nichts daraus erneut eintragen)\n$earlier" else "") +
-            (lastNote?.let { "\n\nZULETZT BEARBEITETE NOTIZ: „${it.title.ifBlank { "Ohne Titel" }}“ – „ergänze das“, „füg noch … hinzu“ ohne Namen meint diese Notiz (append_note mit genau diesem Titel)." } ?: "") +
+            (lastNote?.let { "\n\nZULETZT BEARBEITETE NOTIZ (${java.time.Instant.ofEpochMilli(it.at).atZone(java.time.ZoneId.systemDefault()).toLocalDate()}): „${it.title.ifBlank { "Ohne Titel" }}“ – „ergänze das“, „füg noch … hinzu“ ohne Namen meint diese Notiz (append_note mit genau diesem Titel)." } ?: "") +
             (photo?.let { "\n\nFOTO (vom Nutzer angehängt, bereits ausgelesen – „das“, „dieser“, „dieses“ in der Nachricht meint es): $it\n" + PHOTO } ?: "") +
             (if (talk.isNotBlank()) "\n\nBISHERIGES GESPRÄCH (deine Rückfragen und seine Antworten gehören zusammen)\n$talk" else "") +
             "\n\nNACHRICHT DES NUTZERS (nur darauf reagieren): " + text
         val chosen = ai.config.value.companionModel
-        val answer = ai.chat(
-            prompt,
-            // A photo needs a model that sees; else the chosen one, then the fast ones.
-            listOfNotNull(chosen.takeIf { it.isNotBlank() }) + fastModels(),
-            maxTokens = 900, timeoutMs = 30_000, configuredFirst = false,
-            accept = { AiAssistant.extractJson(it) != null },
-        )
-
+        // The chosen model first, then the fast ones.
+        val models = listOfNotNull(chosen.takeIf { it.isNotBlank() }) + fastModels()
+        suspend fun ask(p: String) = ai.chat(p, models, maxTokens = 900, timeoutMs = 30_000, configuredFirst = false, accept = { AiAssistant.extractJson(it) != null })
             ?.let { AiAssistant.extractJson(it) }
-            // No guessing from the sentence here: that once logged "Federweißer" for a question.
-            ?: return Reply("Ich erreiche die KI gerade nicht (${ai.lastError ?: "keine Antwort"}). Versuch es gleich nochmal.")
+        // No guessing from the sentence here: that once logged "Federweißer" for a question.
+        val unreachable = { Reply("Ich erreiche die KI gerade nicht (${ai.lastError ?: "keine Antwort"}). Versuch es gleich nochmal.") }
+        var answer = ask(prompt) ?: return unreachable()
+        // It wants to read entries first: fetch them in full and let it answer with them.
+        val wanted = (answer.optJSONArray("actions") ?: JSONArray()).let { arr ->
+            (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }.firstOrNull { it.optString("type") == "lookup" }?.optString("query")
+        }?.takeIf { it.isNotBlank() && it != "null" }
+        if (wanted != null) {
+            onStep("liest in deinen Einträgen nach „$wanted“")
+            val found = lookup(wanted)
+            answer = ask(
+                prompt + "\n\nGEFUNDENE EINTRÄGE zu „$wanted“ (vollständig gelesen):\n" + found.ifBlank { "nichts gefunden" } +
+                    "\nJetzt die Nachricht des Nutzers damit beantworten bzw. ausführen – kein weiteres lookup.",
+            ) ?: return unreachable()
+        }
         val done = mutableListOf<String>()
         val opens = mutableListOf<Open>()
         var navigate: Destination? = null
@@ -161,26 +170,40 @@ class CompanionAgent @Inject constructor(
                     "log_food" -> done += logFood(a, opens)
                     "add_water" -> done += addWater(a.optInt("ml"))
                     "create_note" -> {
-                        // "Ergänze das" right after a list was written: the model sometimes starts a new note.
-                        val target = lastNote?.takeIf { FOLLOW_UP.containsMatchIn(text) && !NEW_NOTE.containsMatchIn(text) && !namesNote(a.optString("title"), text) }
-                            ?.let { entries.get(it.id)?.entry }
+                        val title = a.optString("title")
+                        val named = namesNote(title, text)
+                        // "Ergänze das" after a list was written – also yesterday's: the model sometimes starts a new note.
+                        val followUp = FOLLOW_UP.containsMatchIn(text) && !NEW_NOTE.containsMatchIn(text)
+                        val target = when {
+                            NEW_NOTE.containsMatchIn(text) -> null
+                            followUp && !named -> findNote(title) ?: lastNote?.let { entries.get(it.id)?.entry } ?: recentList()
+                            // A note of that name exists already: extend it instead of a second one.
+                            followUp || isList(a) -> findNote(title)
+                            else -> null
+                        }
                         done += when {
-                            target != null && !said(noteItems(a, "body"), text) -> "Was soll ich in „${target.title.ifBlank { "Notiz" }}“ ergänzen?"
+                            target != null && followUp && !said(noteItems(a, "body"), text) -> "Was soll ich in „${target.title.ifBlank { "Notiz" }}“ ergänzen?"
                             target != null -> appendTo(target, noteItems(a, "body"), opens)
-                            isList(a) -> createNote(a.optString("title"), noteItems(a, "body"), opens)
-                            else -> createTextNote(a.optString("title"), a.optString("body"), opens)
+                            isList(a) -> createNote(title, noteItems(a, "body"), opens)
+                            else -> createTextNote(title, a.optString("body"), opens)
                         }
                     }
                     "append_note" -> {
-                        // No note named in this message: the one just worked on is meant.
-                        val target = lastNote?.takeIf { !namesNote(a.optString("title"), text) || a.optString("title").trim().equals(it.title, ignoreCase = true) }
-                            ?.let { entries.get(it.id)?.entry }
+                        val title = a.optString("title")
+                        val named = namesNote(title, text)
+                        val all = (history.map { it.user } + text).joinToString(" ")
+                        // The note the user named; else the one the model picked from the list of all notes
+                        // (however old – "meine Traumziele"); without a name the one last worked on, else the newest checklist.
+                        val target = (if (named) findNote(noteTitle(title, all)) else null)
+                            ?: findNote(title)
+                            ?: if (named) null else lastNote?.let { entries.get(it.id)?.entry } ?: recentList()
                         done += if (!said(noteItems(a, "text"), (history.map { it.user } + text).joinToString(" "))) {
                             // Nothing of it was said: the model made the points up (e.g. from an example).
                             "Was soll ich ${target?.let { "in „${it.title.ifBlank { "Notiz" }}“ " }.orEmpty()}ergänzen?"
                         } else if (target != null) appendTo(target, noteItems(a, "text"), opens)
-                        else appendNote(noteTitle(a.optString("title"), (history.map { it.user } + text).joinToString(" ")), noteItems(a, "text"), opens)
+                        else appendNote(noteTitle(title, (history.map { it.user } + text).joinToString(" ")), noteItems(a, "text"), opens)
                     }
+                    "edit_note" -> done += editNote(a, text, lastNote, opens)
                     "log_weight" -> done += logWeight(a.optDouble("kg", Double.NaN)).also { if (it.isNotBlank()) opens += Open("Gewichtsverlauf", OpenKind.BODY) }
                     "diary" -> done += diary(a, opens)
                     "dream" -> done += dream(a, opens)
@@ -204,6 +227,80 @@ class CompanionAgent @Inject constructor(
             acted = stored.any { it.startsWith("✓") },
             opens = opens.distinct(),
         )
+    }
+
+    /**
+     * The note of that name, however it is written: same title, or one containing
+     * the other ("Einkauf" finds "Einkaufsliste"); the one changed last wins.
+     */
+    private suspend fun findNote(title: String): Entry? {
+        val wanted = norm(title).trim()
+        if (wanted.length < 3 || wanted in GENERIC_NOTE_WORDS) return null
+        val notes = entries.observeByType(EntryType.NOTE).first().sortedByDescending { it.updatedAt }
+        return notes.firstOrNull { norm(it.title).trim() == wanted }
+            ?: notes.firstOrNull { n -> norm(n.title).trim().let { t -> t.length >= 4 && (t.contains(wanted) || wanted.contains(t)) } }
+            // A slip of the tongue or the keyboard: "Einkaufliste" is the "Einkaufsliste".
+            ?: notes.firstOrNull { n -> norm(n.title).trim().let { t -> t.length >= 6 && wanted.length >= 6 && distance(t, wanted) <= 2 } }
+    }
+
+    /** Edit distance between two short strings (letters added, dropped or swapped). */
+    private fun distance(a: String, b: String): Int {
+        var prev = IntArray(b.length + 1) { it }
+        for (i in 1..a.length) {
+            val cur = IntArray(b.length + 1)
+            cur[0] = i
+            for (j in 1..b.length) cur[j] = minOf(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + if (a[i - 1] == b[j - 1]) 0 else 1)
+            prev = cur
+        }
+        return prev[b.length]
+    }
+
+    /** The checklist changed last: what "ergänze das" means when nothing else is known. */
+    private suspend fun recentList(): Entry? =
+        entries.observeByType(EntryType.NOTE).first()
+            .filter { it.body.lines().any { l -> l.trimStart().startsWith("- [") } }
+            .maxByOrNull { it.updatedAt }
+
+    /** Ticks, unticks or removes points of a note ("streich Japan von den Traumzielen", "hak Milch ab"). */
+    private suspend fun editNote(a: JSONObject, text: String, lastNote: CompanionMemory.Note?, opens: MutableList<Open>): String {
+        val title = a.optString("title")
+        val note = findNote(noteTitle(title, text)) ?: findNote(title)
+            ?: (if (namesNote(title, text)) null else lastNote?.let { entries.get(it.id)?.entry } ?: recentList())
+            ?: return "Die Notiz „${title.ifBlank { "?" }}“ finde ich nicht."
+        fun list(key: String) = a.optJSONArray(key)?.let { arr -> (0 until arr.length()).map { norm(arr.optString(it)).trim() }.filter { it.length >= 2 } }.orEmpty()
+        val remove = list("remove")
+        val check = list("check")
+        val uncheck = list("uncheck")
+        val changed = mutableListOf<String>()
+        fun hits(line: String, wanted: List<String>) = norm(line.replace(Regex("""^\s*([-*•]\s*)?(\[[ xX]?]\s*)?"""), "")).trim().let { l -> l.isNotEmpty() && wanted.any { l == it || l.contains(it) || it.contains(l) } }
+        val lines = note.body.lines().mapNotNull { line ->
+            val name = line.replace(Regex("""^\s*([-*•]\s*)?(\[[ xX]?]\s*)?"""), "").trim()
+            when {
+                hits(line, remove) -> null.also { changed += "$name entfernt" }
+                hits(line, check) && line.trimStart().startsWith("- [ ]") -> line.replaceFirst("- [ ]", "- [x]").also { changed += "$name abgehakt" }
+                hits(line, uncheck) && line.trimStart().lowercase(Locale.GERMAN).startsWith("- [x]") -> line.replaceFirst(Regex("- \\[[xX]]"), "- [ ]").also { changed += "$name wieder offen" }
+                else -> line
+            }
+        }
+        if (changed.isEmpty()) return "In „${note.title.ifBlank { "Notiz" }}“ habe ich das nicht gefunden."
+        entries.updateBody(note.id, lines.joinToString("\n"))
+        noted(note.id, note.title, opens)
+        return "✓ „${note.title.ifBlank { "Notiz" }}“: ${changed.joinToString(", ")}"
+    }
+
+    /** Entries of every kind matching [query], with their whole text (for "was steht in …?"). */
+    private suspend fun lookup(query: String): String {
+        val words = listOf(query) + query.split(' ').filter { it.length >= 4 }
+        val found = words.flatMap { entries.search(it) }.distinctBy { it.id }.sortedByDescending { it.updatedAt }.take(5)
+        return found.joinToString("\n---\n") { e ->
+            val kind = when (e.type) {
+                EntryType.NOTE -> "Notiz"
+                EntryType.DIARY -> "Tagebuch"
+                EntryType.DREAM -> "Traum"
+                else -> "Eintrag"
+            }
+            "$kind „${e.title.ifBlank { "Ohne Titel" }}“ (${e.entryDate}):\n${e.body.take(1500)}"
+        }
     }
 
     /** At least one of the [items] occurs in what the user [said] (word start is enough: "Badehosen"). */
@@ -288,6 +385,7 @@ class CompanionAgent @Inject constructor(
         "add_water" -> "trägt ${a.optInt("ml")} ml Wasser ein"
         "create_note" -> "legt die Notiz „${cap(a.optString("title")).ifBlank { "Ohne Titel" }}“ an"
         "append_note" -> "ergänzt „${a.optString("title").ifBlank { "die Notiz" }}“"
+        "edit_note" -> "ändert „${a.optString("title").ifBlank { "die Notiz" }}“"
         "log_weight" -> "trägt dein Gewicht ein"
         "diary" -> "schreibt deinen Tagebucheintrag"
         "dream" -> if (a.optBoolean("had", true)) "schreibt deinen Traum auf" else "notiert „kein Traum“"
@@ -446,7 +544,7 @@ class CompanionAgent @Inject constructor(
         if (items.isEmpty()) return ""
         val note = entries.findByTitle(title)
             // Only a note whose title really is (or contains) the name, never one that merely mentions it.
-            ?: entries.search(title).firstOrNull { it.type == EntryType.NOTE && title.isNotBlank() && it.title.contains(title.trim(), ignoreCase = true) }
+            ?: findNote(title)
             ?: return createNote(title, items, opens)
         return appendTo(note, items, opens)
     }
@@ -618,8 +716,18 @@ class CompanionAgent @Inject constructor(
         val planned = weekCalendar.observePlannedBetween(today, today.plusDays(6)).first()
             .filter { !it.skipped }
             .joinToString("\n") { "- ${it.date ?: "?"} ${it.discipline.label()} ${it.title}" }.ifBlank { "nichts" }
-        val notes = entries.observeByType(EntryType.NOTE).first().take(8)
-            .joinToString("\n") { "- „${it.title.ifBlank { "Ohne Titel" }}“: ${it.body.replace('\n', ' ').take(100)}" }.ifBlank { "keine" }
+        // Every note by name (newest first), so "die Einkaufsliste von gestern" can be found; the newest with more text.
+        val notes = entries.observeByType(EntryType.NOTE).first().sortedByDescending { it.updatedAt }.take(150)
+            .mapIndexed { i, it ->
+                val changed = java.time.Instant.ofEpochMilli(it.updatedAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+                val list = it.body.lines().count { l -> l.trimStart().startsWith("- [") }
+                "- „${it.title.ifBlank { "Ohne Titel" }}“ (geändert $changed" + (if (list > 0) ", Checkliste mit $list Punkten" else "") + "): " +
+                    it.body.replace("- [ ] ", "").replace("- [x] ", "✓").replace('\n', ',').take(if (i < 8) 220 else if (i < 40) 60 else 0)
+            }.joinToString("\n").ifBlank { "keine" }
+        val journal = (entries.observeByType(EntryType.DIARY).first() + entries.observeByType(EntryType.DREAM).first())
+            .sortedByDescending { it.entryDate }.take(8)
+            .joinToString("\n") { "- ${it.entryDate} ${if (it.type == EntryType.DREAM) "Traum" else "Tagebuch"} „${it.title.ifBlank { "Ohne Titel" }}“: ${it.body.replace('\n', ' ').take(120)}" }
+            .ifBlank { "keine" }
         return """
             Heute: ${today.format(day)}, ${LocalTime.now().withSecond(0).withNano(0)} Uhr
             Ernährung heute: ${totals.kcal.roundToInt()} von ${goal.kcal.roundToInt()} kcal, Eiweiß ${totals.protein.roundToInt()}/${goal.protein.roundToInt()} g, Wasser $water ml
@@ -629,8 +737,10 @@ class CompanionAgent @Inject constructor(
             $sessions
             Geplant (7 Tage):
             $planned
-            Letzte Notizen:
+            Notizen (alle, neueste zuerst):
             $notes
+            Letzte Tagebuch- und Traumeinträge:
+            $journal
         """.trimIndent()
     }
 
@@ -670,10 +780,8 @@ class CompanionAgent @Inject constructor(
         /** Models that understand images. */
         private val VISION_MODELS = listOf("meta/llama-3.2-11b-vision-instruct", "nvidia/llama-3.2-11b-vision-instruct")
 
-        /** How long "the note just worked on" stays the target of "ergänze das". */
-        private const val NOTE_MEMORY_MS = 6 * 60 * 60 * 1000L
         private val FOLLOW_UP = Regex("ergänz|ergaenz|füg|fueg|hinzu|dazu|außerdem|ausserdem|\\bnoch\\b|\\bauch\\b", RegexOption.IGNORE_CASE)
-        private val NEW_NOTE = Regex("neue[nrs]?\\s+(\\p{L}+\\s+)?(liste|notiz|checkliste)|\\banlegen\\b|\\berstell", RegexOption.IGNORE_CASE)
+        private val NEW_NOTE = Regex("neue[nrs]?\\s+(\\p{L}+\\s+)?(liste|notiz|checkliste)|\\banlegen\\b|\\bleg\\b.*\\ban\\b|\\berstell", RegexOption.IGNORE_CASE)
         private val NOTE_TARGET = Regex("(?:auf|in|zu)\\s+(?:die|der|den|das|meine|meiner|meinen|mein)\\s+([\\p{L}-]{3,})", RegexOption.IGNORE_CASE)
         private val COMMAND_STEMS = listOf("ergae", "fueg", "schre", "hinzu", "dazu", "notiz", "liste", "punkt", "eintr")
         private val GENERIC_NOTE_WORDS = setOf("liste", "notiz", "checkliste", "notizen", "aufzählung")
@@ -701,7 +809,10 @@ class CompanionAgent @Inject constructor(
             {"type":"add_water","ml": Zahl}
             {"type":"create_note","title": Titel, "items": ["Punkt", …]}  für Listen (Einkaufsliste …), sonst "body": Text
             {"type":"append_note","title": Titel genau wie vom Nutzer genannt, "items": ["Punkt", …]}  z. B. "schreib Milch auf die Einkaufsliste" → title "Einkaufsliste" (gibt es sie nicht, legt die App sie an)
-              "Ergänze das", "füg noch X hinzu", "auch noch Y" ohne Namen → append_note auf die ZULETZT BEARBEITETE NOTIZ, NIE eine neue Notiz.
+              "Ergänze das", "füg noch X hinzu", "auch noch Y" ohne Namen → append_note auf die ZULETZT BEARBEITETE NOTIZ; gibt es keine, auf die passende Notiz aus der Liste im KONTEXT (Titel exakt von dort, z. B. die Einkaufsliste von gestern). NIE eine neue Notiz, wenn eine passende existiert.
+              Passt die Nachricht inhaltlich zu einer vorhandenen Notiz (z. B. "füg Japan zu meinen Reisezielen hinzu" und es gibt „Traumziele“), deren Titel exakt aus der Liste nehmen – egal wie alt sie ist.
+            {"type":"edit_note","title": Titel aus der Liste, "remove": ["Punkt", …], "check": ["Punkt", …], "uncheck": ["Punkt", …]}  Punkte streichen, abhaken oder wieder öffnen ("streich Milch von der Einkaufsliste", "hak Brot ab").
+            {"type":"lookup","query": Suchwort}  wenn du für die Antwort den ganzen Text einer Notiz, eines Tagebuch- oder Traumeintrags brauchst, der im KONTEXT nur angerissen ist. Dann KEINE andere Aktion; die App liefert die Einträge und fragt dich erneut.
               Punkte NUR aus der Nachricht des Nutzers, Wort für Wort, jeden einzeln – auch ähnliche (Toilettenpapier UND Klopapier).
               NIE Punkte aus dem KONTEXT oder aus Beispielen übernehmen, nichts zusammenfassen, nichts abhaken.
             {"type":"log_weight","kg": Zahl}

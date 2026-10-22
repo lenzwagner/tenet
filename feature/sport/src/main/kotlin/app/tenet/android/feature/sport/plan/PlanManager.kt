@@ -126,7 +126,10 @@ private fun dayNames(days: String?): String? =
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
-class PlansViewModel @Inject constructor(private val plans: PlanRepository) : ViewModel() {
+class PlansViewModel @Inject constructor(
+    private val plans: PlanRepository,
+    private val running: app.tenet.android.core.data.RunningRepository,
+) : ViewModel() {
     private val discipline = MutableStateFlow<Discipline?>(null)
     val state: StateFlow<List<PlanRepository.PlanSummary>?> = discipline.filterNotNull()
         .flatMapLatest { plans.observeSummaries(it) }
@@ -137,6 +140,9 @@ class PlansViewModel @Inject constructor(private val plans: PlanRepository) : Vi
     fun rename(planId: String, name: String) = viewModelScope.launch { plans.rename(planId, name) }
     fun delete(planId: String) = viewModelScope.launch { plans.delete(planId) }
     fun duplicate(planId: String) = viewModelScope.launch { plans.duplicate(planId) }
+
+    /** An empty running plan to fill unit by unit; opens in its editor. */
+    fun createEmptyRun(name: String, onCreated: (String) -> Unit) = viewModelScope.launch { onCreated(running.createEmptyPlan(name)) }
 
     /** An empty plan to fill by hand, with one workout per title in [units]; opens in the editor. */
     fun createEmpty(name: String, units: List<String> = emptyList(), onCreated: (String) -> Unit) = viewModelScope.launch {
@@ -157,6 +163,8 @@ fun PlansScreen(
     discipline: Discipline,
     onBack: () -> Unit,
     onEdit: (planId: String) -> Unit,
+    /** A running plan straight into its unit editor. */
+    onEditRun: (planId: String) -> Unit = onEdit,
     onOpenSetup: () -> Unit,
     /** [split]: a split chosen beforehand (encoded [GymSplits.Choice]), empty = none. */
     onOpenChat: (split: String) -> Unit,
@@ -188,7 +196,8 @@ fun PlansScreen(
     } else if (naming) {
         NameDialog("Neuer Plan", "", confirm = "Anlegen", onDismiss = { naming = false }) { name ->
             naming = false
-            viewModel.createEmpty(name, onCreated = onEdit)
+            if (discipline == Discipline.RUNNING) viewModel.createEmptyRun(name, onEditRun)
+            else viewModel.createEmpty(name, onCreated = onEdit)
         }
     }
     deleting?.let { p ->
@@ -239,7 +248,7 @@ fun PlansScreen(
                         onActivate = { viewModel.activate(p.plan.id) },
                         onEdit = { onEdit(p.plan.id) },
                         onRename = { renaming = p },
-                        onDuplicate = if (discipline == Discipline.RUNNING) null else ({ viewModel.duplicate(p.plan.id); Unit }),
+                        onDuplicate = { viewModel.duplicate(p.plan.id); Unit },
                         onDelete = { deleting = p },
                         modifier = Modifier.animateItem(),
                     )
@@ -261,8 +270,10 @@ fun PlansScreen(
                                 "Eigener Plan",
                                 "2er- bis 5er-Split wählen, Muskelgruppen kombinieren, dann Übungen aussuchen – selbst oder mit dem KI-Coach.",
                             ) { naming = true }
+                        } else if (discipline == Discipline.RUNNING) {
+                            NewPlanOption(Icons.Outlined.Edit, "Selbst zusammenstellen", "Leerer Laufplan: Läufe Tag für Tag anlegen – Art, Strecke oder Dauer, Tempo.") { naming = true }
                         } else if (discipline == Discipline.CALISTHENICS) {
-                            NewPlanOption(Icons.Outlined.Edit, "Selbst zusammenstellen", "Leerer Plan: Übungen frei wählen.") { naming = true }
+                            NewPlanOption(Icons.Outlined.Edit, "Selbst zusammenstellen", "Leerer Plan: Einheiten anlegen (z. B. Push / Pull / Beine) und Übungen frei wählen.") { naming = true }
                         }
                         if (discipline == Discipline.CALISTHENICS) {
                             // The calisthenics setup rebuilds the routine of the plan in use from your level.
@@ -454,7 +465,11 @@ class PlanEditorViewModel @Inject constructor(private val plans: PlanRepository)
     fun deleteWorkout(workoutId: String) = viewModelScope.launch { id()?.let { plans.deleteWorkout(it, workoutId) } }
     fun addExercise(workoutId: String, exercise: Exercise) = viewModelScope.launch {
         val timed = exercise.measureType == MeasureType.DURATION || exercise.measureType == MeasureType.HOLD
-        plans.addExercise(workoutId, exercise, sets = 3, reps = if (timed) 30 else 10, restSec = if (timed) 60 else 120)
+        // Rest by how heavy the exercise is: long for squat or deadlift, short for curls and core.
+        val rest = if (timed) 60 else app.tenet.android.core.common.RestAdvisor.advise(
+            app.tenet.android.core.common.MovementPattern.fromName(exercise.pattern), exercise.primaryMuscles, 10,
+        ).seconds
+        plans.addExercise(workoutId, exercise, sets = 3, reps = if (timed) 30 else 10, restSec = rest)
     }
     fun update(entry: RoutineExercise) = viewModelScope.launch { plans.updateExercise(entry) }
     fun remove(workoutId: String, exerciseId: String) = viewModelScope.launch { plans.removeExercise(workoutId, exerciseId) }
@@ -518,7 +533,6 @@ fun PlanEditorScreen(planId: String, onBack: () -> Unit, viewModel: PlanEditorVi
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { TenetSpinner() }
             return@Scaffold
         }
-        val gym = p.plan.discipline == Discipline.GYM
         val byId = remember(catalog) { catalog.associateBy { it.id } }
         LazyColumn(
             Modifier.fillMaxSize(),
@@ -555,8 +569,8 @@ fun PlanEditorScreen(planId: String, onBack: () -> Unit, viewModel: PlanEditorVi
                     modifier = Modifier.animateItem(),
                 )
             }
-            // Calisthenics trains one routine per plan; gym rotates through its workouts.
-            if (gym && p.workouts.size < 7) {
+            // Units rotate: after A comes B (gym and calisthenics alike).
+            if (p.workouts.size < 7) {
                 item(key = "add-workout") {
                     OutlinedButton(onClick = { addWorkout = true }, modifier = Modifier.fillMaxWidth()) {
                         Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -634,7 +648,7 @@ private fun WorkoutCard(
 
 /** Compact − value + with a small label on top. */
 @Composable
-private fun Stepper(label: String, value: String, onMinus: () -> Unit, onPlus: () -> Unit, modifier: Modifier = Modifier) {
+internal fun Stepper(label: String, value: String, onMinus: () -> Unit, onPlus: () -> Unit, modifier: Modifier = Modifier) {
     Surface(shape = RoundedCornerShape(12.dp), color = app.tenet.android.core.designsystem.component.tenetFill, modifier = modifier) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
@@ -701,7 +715,7 @@ class PlanChatViewModel @Inject constructor(
         viewModelScope.launch {
             val id = runCatching {
                 when {
-                    answer.run != null -> assistant.createRunPlan(answer.run!!)
+                    answer.run != null -> assistant.createRunPlan(answer.run!!, activate)
                     answer.draft != null -> plans.create(discipline, answer.draft!!, activate)
                     else -> null
                 }
@@ -777,7 +791,7 @@ fun PlanChatScreen(
                     value = text,
                     onValueChange = { text = it },
                     placeholder = { Text(if (state.answer == null) "Beschreib deinen Plan …" else "Was soll ich ändern?") },
-                    maxLines = 4,
+                    maxLines = 10,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Send),
                     keyboardActions = KeyboardActions(onSend = { send(text) }),
                     shape = RoundedCornerShape(22.dp),
@@ -810,13 +824,13 @@ fun PlanChatScreen(
                 // Set the key figures here, the coach builds the plan from them.
                 when (discipline) {
                     Discipline.RUNNING -> item(key = "form") { RunForm(enabled = viewModel.enabled) { msg, wish -> viewModel.send(discipline, msg, wish) } }
+                    Discipline.CALISTHENICS -> item(key = "form") { CaliForm(enabled = viewModel.enabled) { msg -> viewModel.send(discipline, msg) } }
                     Discipline.GYM -> item(key = "form") {
                         GymForm(
                             enabled = viewModel.enabled,
                             initial = initialSplit.takeIf { it.isNotBlank() }?.let(GymSplits.Choice::decode) ?: GymSplits.Choice(3),
                         ) { msg -> viewModel.send(discipline, msg) }
                     }
-                    else -> Unit
                 }
                 item(key = "examples-h") {
                     Text("Oder frei beschreiben:", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -913,8 +927,11 @@ private fun Proposal(answer: PlanAssistant.Answer, runKm: Int? = null, saving: B
                         }
                     }
                 }
-                Text("Die App berechnet daraus alle Einheiten mit Tempo. Der Plan wird dein aktiver Laufplan.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Button(onClick = { onAccept(true) }, enabled = !saving, modifier = Modifier.fillMaxWidth()) { Text("Plan erstellen") }
+                Text("Die App berechnet daraus alle Einheiten mit Tempo. Danach kannst du jede Einheit von Hand ändern.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { onAccept(true) }, enabled = !saving, modifier = Modifier.weight(1f)) { Text("Erstellen & aktivieren") }
+                    FilledTonalButton(onClick = { onAccept(false) }, enabled = !saving) { Text("Nur speichern") }
+                }
             } else if (draft != null) {
                 dayNames(draft.days.joinToString(","))?.let { Text("Trainingstage: $it", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 answer.preview.forEach { w ->
@@ -1030,6 +1047,78 @@ private fun RunForm(enabled: Boolean, onSubmit: (String, PlanAssistant.RunWish) 
     }
 }
 
+private val CaliSplits = listOf(
+    "Ganzkörper" to "1 Einheit: Ganzkörper",
+    "Push / Pull" to "2 Einheiten im Wechsel: Push / Pull (Beine und Core auf beide verteilt)",
+    "Oberkörper / Unterkörper" to "2 Einheiten im Wechsel: Oberkörper / Unterkörper + Core",
+    "Push / Pull / Beine" to "3 Einheiten im Wechsel: Push / Pull / Beine + Core",
+    "Push / Pull / Beine / Skills" to "4 Einheiten im Wechsel: Push / Pull / Beine + Core / Skill-Tag",
+)
+
+private val CaliSkills = listOf("Handstand", "Front Lever", "Back Lever", "Planche", "Muscle-up", "L-Sit", "Pistol Squat", "Human Flag", "Klimmzug-Kraft", "Dips-Kraft")
+
+/**
+ * Calisthenics: goal, days, how the units split and which skills to work on –
+ * the coach builds one or several rotating units from the catalogue.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun CaliForm(enabled: Boolean, onSubmit: (String) -> Unit) {
+    val goals = listOf("Skills" to "Skills lernen", "Kraft" to "Kraft und Muskeln mit Körpergewicht", "Beides" to "Skills und Kraft")
+    var goal by rememberSaveable { mutableStateOf(2) }
+    var days by rememberSaveable { mutableStateOf(3) }
+    var split by rememberSaveable { mutableStateOf(0) }
+    var skills by rememberSaveable { mutableStateOf(setOf<String>()) }
+    var volume by rememberSaveable { mutableStateOf(1) }
+    var extra by rememberSaveable { mutableStateOf("") }
+    val volumes = listOf("wenig", "normal", "viel")
+    TenetCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Deine Vorgaben", style = MaterialTheme.typography.titleMedium)
+            FormLabel("Ziel")
+            Chips(goals.indices.toList(), goal, { goals[it].first }) { goal = it }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Stepper("Trainingstage", "$days", { days = (days - 1).coerceAtLeast(2) }, { days = (days + 1).coerceAtMost(6) }, Modifier.weight(1f))
+                Spacer(Modifier.weight(1f))
+            }
+            FormLabel("Einheiten")
+            Chips(CaliSplits.indices.toList(), split, { CaliSplits[it].first }) { split = it }
+            FormLabel("Skills (mehrere möglich)")
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                CaliSkills.forEach { sk ->
+                    TenetFilterChip(selected = sk in skills, onClick = { skills = if (sk in skills) skills - sk else skills + sk }, label = { Text(sk) })
+                }
+            }
+            FormLabel("Volumen")
+            Chips(volumes.indices.toList(), volume, { volumes[it] }) { volume = it }
+            TenetTextField(
+                value = extra,
+                onValueChange = { extra = it.take(4000) },
+                label = { Text("Weitere Wünsche (optional)") },
+                placeholder = { Text("z. B. nur Ringe und Klimmzugstange, Fokus Handstand, keine Sprünge") },
+                minLines = 3,
+                maxLines = 12,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Button(
+                onClick = {
+                    onSubmit(
+                        "Calisthenics-Plan: Ziel ${goals[goal].second}. $days Trainingstage pro Woche. ${CaliSplits[split].second}. " +
+                            (if (skills.isNotEmpty()) "Skills: ${skills.joinToString(", ")}. " else "") +
+                            "Volumen: ${volumes[volume]}." + if (extra.isNotBlank()) " Weitere Wünsche: ${extra.trim()}." else "",
+                    )
+                },
+                enabled = enabled,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Outlined.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Plan von der KI erstellen")
+            }
+        }
+    }
+}
+
 /**
  * Gym: goal (strength or hypertrophy), days, split and which muscle groups go
  * together – the coach builds the plan from the catalogue.
@@ -1061,8 +1150,11 @@ private fun GymForm(enabled: Boolean, initial: GymSplits.Choice, onSubmit: (Stri
             Chips(volumes.indices.toList(), volume, { volumes[it] }) { volume = it }
             TenetTextField(
                 value = extra,
-                onValueChange = { extra = it.take(240) },
+                // Room for every wish – the coach is told to follow each one.
+                onValueChange = { extra = it.take(4000) },
                 label = { Text("Weitere Wünsche (optional)") },
+                minLines = 3,
+                maxLines = 12,
                 placeholder = { Text("z. B. kein Kreuzheben, Fokus Brust, nur Kurzhanteln") },
                 modifier = Modifier.fillMaxWidth(),
             )

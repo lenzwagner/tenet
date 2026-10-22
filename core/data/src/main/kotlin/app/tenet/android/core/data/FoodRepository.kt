@@ -132,6 +132,72 @@ class FoodRepository @Inject constructor(
         )
     }
 
+    /**
+     * Changes a logged entry afterwards: other amount (energy and macros scale with
+     * it, they were stored at log time) and/or other meal.
+     */
+    suspend fun editLog(log: FoodLog, grams: Float, meal: MealType) {
+        val factor = if (log.amountG > 0f && grams > 0f) grams / log.amountG else 1f
+        foodDao.updateLog(
+            id = log.id,
+            meal = meal,
+            amountG = if (grams > 0f) grams else log.amountG,
+            kcal = log.kcal * factor,
+            protein = log.protein * factor,
+            carbs = log.carbs * factor,
+            fat = log.fat * factor,
+            quantity = log.quantity?.let { it * factor },
+        )
+    }
+
+    // ---- Meal templates ("Frühstück wie immer") ------------------------------------
+
+    fun observeTemplates(): Flow<List<app.tenet.android.core.database.entity.MealTemplate>> = foodDao.observeTemplates()
+
+    /** Saves [logs] (a meal as eaten today) under [name]. */
+    suspend fun saveTemplate(name: String, logs: List<FoodLog>) {
+        if (logs.isEmpty()) return
+        val items = org.json.JSONArray()
+        logs.forEach { l ->
+            items.put(
+                org.json.JSONObject()
+                    .put("label", l.label).put("grams", l.amountG.toDouble()).put("kcal", l.kcal.toDouble())
+                    .put("protein", l.protein.toDouble()).put("carbs", l.carbs.toDouble()).put("fat", l.fat.toDouble())
+                    .put("foodId", l.foodId).put("recipeId", l.recipeId)
+                    .put("quantity", l.quantity?.toDouble()).put("unit", l.unit),
+            )
+        }
+        val now = System.currentTimeMillis()
+        foodDao.upsertTemplate(app.tenet.android.core.database.entity.MealTemplate(newUuid(), name.trim().ifBlank { "Vorlage" }, items.toString(), now, now))
+    }
+
+    /** Logs every item of [template] into [meal] on [date]; the template moves to the top. */
+    suspend fun logTemplate(template: app.tenet.android.core.database.entity.MealTemplate, meal: MealType, date: String) {
+        val now = System.currentTimeMillis()
+        templateItems(template).forEach { it ->
+            foodDao.insertLog(it.copy(id = newUuid(), date = date, mealType = meal, createdAt = now))
+            it.foodId?.let { id -> if (foodDao.foodById(id) != null) foodDao.touchFood(id, now) }
+        }
+        foodDao.upsertTemplate(template.copy(updatedAt = now))
+    }
+
+    suspend fun deleteTemplate(id: String) = foodDao.deleteTemplate(id)
+
+    /** The template's entries as logs (id, date and meal still to set). */
+    fun templateItems(template: app.tenet.android.core.database.entity.MealTemplate): List<FoodLog> = runCatching {
+        val arr = org.json.JSONArray(template.itemsJson)
+        (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }.map { o ->
+            fun num(k: String) = o.optDouble(k, 0.0).toFloat()
+            fun str(k: String) = o.optString(k).takeIf { o.has(k) && !o.isNull(k) && it.isNotBlank() }
+            FoodLog(
+                id = "", date = "", mealType = MealType.SNACK, label = o.optString("label"),
+                amountG = num("grams"), kcal = num("kcal"), protein = num("protein"), carbs = num("carbs"), fat = num("fat"),
+                createdAt = 0L, foodId = str("foodId"), recipeId = str("recipeId"),
+                quantity = if (o.isNull("quantity")) null else num("quantity"), unit = str("unit"),
+            )
+        }
+    }.getOrDefault(emptyList())
+
     /** Logs a one-off entry (Schnelleintrag) without storing a food. */
     suspend fun logQuick(food: Food, grams: Float, meal: MealType, date: String) {
         foodDao.insertLog(

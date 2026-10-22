@@ -54,6 +54,8 @@ data class RunPlanUi(
     val taper: Boolean,
     val done: List<DoneUnit>,
     val upcoming: List<PlanUnitUi>,
+    /** Every unit from today on that is not run yet (for editing the plan by hand). */
+    val remaining: List<PlanUnitUi> = emptyList(),
     val dueCount: Int,
     val weekly: List<PlanWeekVolume>,
     val totalDoneKm: Float,
@@ -94,6 +96,16 @@ class RunPlanDetailViewModel @Inject constructor(
     fun load(id: String) {
         planId.value = id
     }
+
+    fun updateUnit(id: String, date: LocalDate, type: app.tenet.android.core.database.entity.RunType, distanceM: Int?, durationSec: Int?, pace: Int?) =
+        viewModelScope.launch { repository.updateUnit(id, date, type, distanceM, durationSec, pace) }
+
+    fun addUnit(date: LocalDate, type: app.tenet.android.core.database.entity.RunType, distanceM: Int?, durationSec: Int?, pace: Int?) {
+        val id = planId.value ?: return
+        viewModelScope.launch { repository.addUnit(id, date, type, distanceM, durationSec, pace) }
+    }
+
+    fun deleteUnit(id: String) = viewModelScope.launch { repository.deleteUnit(id) }
 
     /** Recomputes the remaining paces from the current form (and the goal time from the prognosis). */
     fun adjustToForm(onDone: (String) -> Unit) {
@@ -216,6 +228,7 @@ class RunPlanDetailViewModel @Inject constructor(
             taper = d.detail?.taper == true,
             done = done.sortedByDescending { it.run.session.startedAt },
             upcoming = d.units.filter { !it.date.isBefore(today) && it.id !in doneIds }.take(8),
+            remaining = d.units.filter { !it.date.isBefore(today) && it.id !in doneIds },
             dueCount = d.units.count { !it.date.isAfter(today) },
             weekly = weekly,
             totalDoneKm = weekly.sumOf { it.doneKm.toDouble() }.toFloat(),

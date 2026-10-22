@@ -221,8 +221,10 @@ class SkillRepository @Inject constructor(
                 if (plan == null) {
                     flowOf(buildOverview(tree, shell, mainWorkout = null, routine = emptyList()))
                 } else {
-                    sportDao.observeWorkouts(plan.id).flatMapLatest { workouts ->
-                        val main = workouts.firstOrNull()
+                    // Several units rotate like a gym split: the one after the last trained.
+                    combine(sportDao.observeWorkouts(plan.id), sportDao.observeLastWorkoutId(plan.id)) { w, last -> w to last }
+                        .flatMapLatest { (workouts, lastId) ->
+                        val main = nextInRotation(workouts, lastId)
                         if (main == null) {
                             flowOf(buildOverview(tree, shell, mainWorkout = null, routine = emptyList()))
                         } else {
@@ -233,6 +235,13 @@ class SkillRepository @Inject constructor(
                 }
             }
         }
+
+    /** The unit after the one trained last; the first to start with. */
+    private fun nextInRotation(workouts: List<PlannedWorkout>, lastId: String?): PlannedWorkout? {
+        if (workouts.isEmpty()) return null
+        val last = workouts.indexOfFirst { it.id == lastId }
+        return if (last < 0) workouts.first() else workouts[(last + 1) % workouts.size]
+    }
 
     private fun buildOverview(
         tree: TreeState,
@@ -366,7 +375,7 @@ class SkillRepository @Inject constructor(
         sportDao.activeSessionOnce(Discipline.CALISTHENICS)?.let { return it.id }
 
         val plan = sportDao.activePlanOnce(Discipline.CALISTHENICS) ?: return null
-        val workout = sportDao.firstWorkoutOnce(plan.id) ?: return null
+        val workout = nextInRotation(sportDao.workoutsOnce(plan.id), sportDao.lastWorkoutIdOnce(plan.id)) ?: return null
         val routine = sportDao.routineOnce(workout.id).orEmpty()
         if (routine.isEmpty()) return null
 

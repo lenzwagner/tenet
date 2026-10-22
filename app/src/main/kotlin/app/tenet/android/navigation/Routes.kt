@@ -100,7 +100,11 @@ data class ActiveRunRoute(
 )
 
 @Serializable
-data class RunPlanDetailRoute(val planId: String = "")
+data class RunPlanDetailRoute(
+    val planId: String = "",
+    /** Open with the unit editor on (a plan built by hand). */
+    val edit: Boolean = false,
+)
 
 @Serializable
 data class GymPlanDetailRoute(val planId: String = "")

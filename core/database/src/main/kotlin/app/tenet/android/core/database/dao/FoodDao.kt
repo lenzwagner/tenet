@@ -11,6 +11,7 @@ import androidx.room.Query
 import androidx.room.Upsert
 import app.tenet.android.core.database.entity.DailyGoal
 import app.tenet.android.core.database.entity.FoodLog
+import app.tenet.android.core.database.entity.MealType
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -25,6 +26,25 @@ interface FoodDao {
 
     @Insert
     suspend fun insertLog(log: FoodLog)
+
+    @Query("SELECT * FROM MealTemplate ORDER BY updatedAt DESC")
+    fun observeTemplates(): Flow<List<app.tenet.android.core.database.entity.MealTemplate>>
+
+    @Upsert
+    suspend fun upsertTemplate(template: app.tenet.android.core.database.entity.MealTemplate)
+
+    @Query("DELETE FROM MealTemplate WHERE id = :id")
+    suspend fun deleteTemplate(id: String)
+
+    /**
+     * A plain UPDATE on purpose: Room's @Update runs "UPDATE OR ABORT", which overrides the
+     * "OR REPLACE" of the sync trigger and fails once the row has an unsent change.
+     */
+    @Query(
+        "UPDATE FoodLog SET mealType = :meal, amountG = :amountG, kcal = :kcal, protein = :protein, carbs = :carbs, fat = :fat, " +
+            "quantity = :quantity WHERE id = :id",
+    )
+    suspend fun updateLog(id: String, meal: MealType, amountG: Float, kcal: Float, protein: Float, carbs: Float, fat: Float, quantity: Float?)
 
     @Query("SELECT * FROM FoodLog WHERE label LIKE :pattern ORDER BY createdAt DESC LIMIT 20")
     suspend fun searchLogs(pattern: String): List<FoodLog>

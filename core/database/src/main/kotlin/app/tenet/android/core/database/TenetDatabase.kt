@@ -74,8 +74,10 @@ import app.tenet.android.core.database.entity.RunTrackPoint
         app.tenet.android.core.database.entity.EntryFts::class,
         // Form videos (v20, local only)
         app.tenet.android.core.database.entity.FormVideo::class,
+        // Meal templates (v21)
+        app.tenet.android.core.database.entity.MealTemplate::class,
     ],
-    version = 20,
+    version = 21,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

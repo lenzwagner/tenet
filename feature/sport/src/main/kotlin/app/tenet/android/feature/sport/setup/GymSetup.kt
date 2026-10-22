@@ -47,6 +47,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.SwapHoriz
+import app.tenet.android.core.common.MovementPattern
+import app.tenet.android.core.common.RestAdvisor
+import app.tenet.android.feature.sport.plan.Stepper
 import androidx.compose.material3.IconButton
 import app.tenet.android.feature.sport.plan.matching
 import androidx.compose.material3.Button
@@ -120,26 +124,43 @@ data class GymSetupState(
         }.toMap(),
     )
 
+    private fun timed(exerciseId: String): Boolean {
+        val measure = exercises.firstOrNull { it.id == exerciseId }?.measureType
+        return measure == MeasureType.DURATION || measure == MeasureType.HOLD
+    }
+
+    /** Rest by how heavy the exercise is: long for squat or deadlift, short for curls and core. */
+    private fun advisedRest(exerciseId: String, reps: Int): Int {
+        val ex = exercises.firstOrNull { it.id == exerciseId } ?: return goal.accRestSec
+        if (timed(exerciseId)) return 60
+        return RestAdvisor.advise(MovementPattern.fromName(ex.pattern), ex.primaryMuscles, reps).seconds
+    }
+
+    fun isTimed(exerciseId: String) = timed(exerciseId)
+
     fun plan(): GymPlanBuilder.Plan {
         val input = input()
         val generated = GymPlanBuilder.build(input)
         return generated.copy(
             routines = generated.routines.mapIndexed { index, routine ->
-                val edits = previewEdits[index] ?: return@mapIndexed routine
+                val edits = previewEdits[index]
+                val chosen = edits?.map { edit ->
+                    val base = routine.exercises.firstOrNull { it.exerciseId == edit.exerciseId }
+                    if (base != null && (edit.reps == null || edit.reps == base.reps)) return@map base.copy(sets = edit.sets)
+                    val timed = timed(edit.exerciseId)
+                    val reps = edit.reps ?: if (timed) 45 else goal.accReps
+                    GymPlanBuilder.PlannedExercise(
+                        exerciseId = edit.exerciseId,
+                        sets = edit.sets,
+                        reps = reps,
+                        restSec = goal.accRestSec,
+                        startWeightKg = if (timed) null else GymPlanBuilder.startWeight(input, edit.exerciseId, reps),
+                    )
+                } ?: routine.exercises
                 routine.copy(
-                    exercises = edits.map { edit ->
-                        val base = routine.exercises.firstOrNull { it.exerciseId == edit.exerciseId }
-                        if (base != null && (edit.reps == null || edit.reps == base.reps)) return@map base.copy(sets = edit.sets)
-                        val measure = exercises.firstOrNull { it.id == edit.exerciseId }?.measureType
-                        val timed = measure == MeasureType.DURATION || measure == MeasureType.HOLD
-                        val reps = edit.reps ?: if (timed) 45 else goal.accReps
-                        GymPlanBuilder.PlannedExercise(
-                            exerciseId = edit.exerciseId,
-                            sets = edit.sets,
-                            reps = reps,
-                            restSec = goal.accRestSec,
-                            startWeightKg = if (timed) null else GymPlanBuilder.startWeight(input, edit.exerciseId, reps),
-                        )
+                    exercises = chosen.map { e ->
+                        val rest = edits?.firstOrNull { it.exerciseId == e.exerciseId }?.rest
+                        e.copy(restSec = rest ?: advisedRest(e.exerciseId, e.reps), restFixed = rest != null)
                     },
                 )
             },
@@ -147,8 +168,8 @@ data class GymSetupState(
     }
 }
 
-/** [reps]: set by the AI coach; null = from the goal. */
-data class PreviewExerciseEdit(val exerciseId: String, val sets: Int, val reps: Int? = null)
+/** [reps]: set by hand or by the AI coach, null = from the goal; [rest]: set by hand, null = advised for the exercise. */
+data class PreviewExerciseEdit(val exerciseId: String, val sets: Int, val reps: Int? = null, val rest: Int? = null)
 
 @HiltViewModel
 class GymSetupViewModel @Inject constructor(
@@ -218,6 +239,12 @@ class GymSetupViewModel @Inject constructor(
     fun setSets(routine: Int, index: Int, sets: Int) =
         editRoutine(routine) { list -> list.mapIndexed { i, e -> if (i == index) e.copy(sets = sets.coerceIn(1, 10)) else e } }
 
+    fun setReps(routine: Int, index: Int, reps: Int) =
+        editRoutine(routine) { list -> list.mapIndexed { i, e -> if (i == index) e.copy(reps = reps.coerceIn(1, 300)) else e } }
+
+    fun setRest(routine: Int, index: Int, rest: Int) =
+        editRoutine(routine) { list -> list.mapIndexed { i, e -> if (i == index) e.copy(rest = rest.coerceIn(15, 600)) else e } }
+
     fun addExercise(routine: Int, exerciseId: String) = editRoutine(routine) { it + PreviewExerciseEdit(exerciseId, 3) }
 
     fun removeExercise(routine: Int, index: Int) = editRoutine(routine) { list -> list.filterIndexed { i, _ -> i != index } }
@@ -243,7 +270,7 @@ class GymSetupViewModel @Inject constructor(
                 val titles = choice.units.map { it.title }
                 val edits = titles.indices.mapNotNull { i ->
                     (workouts.firstOrNull { it.title.equals(titles[i], ignoreCase = true) } ?: workouts.getOrNull(i))
-                        ?.let { w -> i to w.exercises.map { PreviewExerciseEdit(it.exerciseId, it.sets, it.reps) } }
+                        ?.let { w -> i to w.exercises.map { PreviewExerciseEdit(it.exerciseId, it.sets, it.reps, it.restSec) } }
                 }
                 now.copy(aiBusy = false, aiNote = answer.reply, previewEdits = now.previewEdits + edits)
             }
@@ -404,6 +431,8 @@ fun GymSetupScreen(
                 onAi = viewModel::fillWithAi,
                 onSwap = viewModel::swapExercise,
                 onSets = viewModel::setSets,
+                onReps = viewModel::setReps,
+                onRest = viewModel::setRest,
                 onAdd = viewModel::addExercise,
                 onRemove = viewModel::removeExercise,
             )
@@ -418,6 +447,8 @@ private fun PlanPreview(
     onAi: (wish: String) -> Unit,
     onSwap: (routine: Int, index: Int, exerciseId: String) -> Unit,
     onSets: (routine: Int, index: Int, sets: Int) -> Unit,
+    onReps: (routine: Int, index: Int, reps: Int) -> Unit,
+    onRest: (routine: Int, index: Int, rest: Int) -> Unit,
     onAdd: (routine: Int, exerciseId: String) -> Unit,
     onRemove: (routine: Int, index: Int) -> Unit,
 ) {
@@ -428,6 +459,7 @@ private fun PlanPreview(
     var wish by rememberSaveable { mutableStateOf("") }
     Text(plan.name, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
     SetupHint("${s.days.size} Tage pro Woche · ${plan.routines.joinToString(" → ") { it.title }} im Wechsel")
+    SetupHint("Sätze, Wiederholungen und Pausen kannst du je Übung anpassen. Schwere Grundübungen bekommen längere Pausen als Isolationsübungen.")
     TenetCard(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -443,7 +475,9 @@ private fun PlanPreview(
             if (aiEnabled) {
                 app.tenet.android.core.designsystem.component.TenetTextField(
                     value = wish,
-                    onValueChange = { wish = it.take(240) },
+                    onValueChange = { wish = it.take(4000) },
+                    minLines = 2,
+                    maxLines = 12,
                     label = { Text("Wünsche (optional)") },
                     placeholder = { Text("z. B. kein Kreuzheben, viel Volumen, nur Kurzhanteln") },
                     modifier = Modifier.fillMaxWidth(),
@@ -474,16 +508,19 @@ private fun PlanPreview(
                             ExerciseThumb(ex.exerciseId, size = 36.dp)
                             Spacer(Modifier.width(10.dp))
                             Text(s.names[ex.exerciseId] ?: ex.exerciseId, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                            IconButton(onClick = { swapTarget = r to index }, modifier = Modifier.size(36.dp)) {
+                                Icon(Icons.Outlined.SwapHoriz, contentDescription = "Übung wechseln", modifier = Modifier.size(20.dp))
+                            }
                             IconButton(onClick = { onRemove(r, index) }, modifier = Modifier.size(36.dp)) {
                                 Icon(Icons.Outlined.Close, contentDescription = "Entfernen", modifier = Modifier.size(18.dp))
                             }
                         }
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            TextButton(onClick = { swapTarget = r to index }) { Text("Übung wechseln") }
-                            Spacer(Modifier.weight(1f))
-                            TextButton(onClick = { onSets(r, index, ex.sets - 1) }, enabled = ex.sets > 1) { Text("−") }
-                            Text("${ex.sets} × ${ex.reps}", style = MaterialTheme.typography.labelLarge)
-                            TextButton(onClick = { onSets(r, index, ex.sets + 1) }, enabled = ex.sets < 10) { Text("+") }
+                        val timed = s.isTimed(ex.exerciseId)
+                        val step = if (timed) 5 else 1
+                        Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Stepper("Sätze", "${ex.sets}", { onSets(r, index, ex.sets - 1) }, { onSets(r, index, ex.sets + 1) }, Modifier.weight(1f))
+                            Stepper(if (timed) "Sek." else "Wdh.", "${ex.reps}", { onReps(r, index, ex.reps - step) }, { onReps(r, index, ex.reps + step) }, Modifier.weight(1f))
+                            Stepper("Pause", "${ex.restSec} s", { onRest(r, index, ex.restSec - 15) }, { onRest(r, index, ex.restSec + 15) }, Modifier.weight(1.2f))
                         }
                     }
                 }

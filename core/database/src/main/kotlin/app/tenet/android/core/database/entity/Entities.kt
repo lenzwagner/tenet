@@ -143,6 +143,20 @@ data class FoodLog(
     val unit: String? = null,
 )
 
+/**
+ * A meal saved to log again in one tap ("Frühstück wie immer", v21). [itemsJson]
+ * holds the entries with their values as logged: a JSON array of
+ * {label, grams, kcal, protein, carbs, fat, foodId, recipeId, quantity, unit}.
+ */
+@Entity(tableName = "MealTemplate")
+data class MealTemplate(
+    @PrimaryKey val id: String,
+    val name: String,
+    val itemsJson: String,
+    val createdAt: Long,
+    val updatedAt: Long,
+)
+
 @Entity(tableName = "DailyGoal")
 data class DailyGoal(
     /** ISO-8601 local date from which this goal applies. */

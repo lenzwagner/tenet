@@ -121,16 +121,22 @@ class PlanRepository @Inject constructor(
         }
     }
 
-    /** Copy of a gym or calisthenics plan (inactive), to vary it without losing the original. */
+    /** Copy of a plan (inactive), to vary it without losing the original; running plans with every unit. */
     suspend fun duplicate(planId: String): String? {
         val plan = sportDao.planOnce(planId) ?: return null
-        if (plan.discipline == Discipline.RUNNING) return null
         val copyId = newUuid()
         sportDao.upsertPlan(plan.copy(id = copyId, name = plan.name + " (Kopie)", active = false))
+        if (plan.discipline == Discipline.RUNNING) {
+            runDao.planDetailOnce(planId)?.let { runDao.upsertPlanDetail(it.copy(planId = copyId)) }
+        }
         sportDao.workoutsOnce(planId).forEach { w ->
             val workoutId = newUuid()
-            sportDao.upsertWorkout(w.copy(id = workoutId, planId = copyId))
-            sportDao.upsertRoutineExercises(sportDao.routineOnce(w.id).map { it.copy(plannedWorkoutId = workoutId) })
+            sportDao.upsertWorkout(w.copy(id = workoutId, planId = copyId, skipped = false))
+            if (plan.discipline == Discipline.RUNNING) {
+                runDao.runPlanWorkoutOnce(w.id)?.let { runDao.upsertRunPlanWorkouts(listOf(it.copy(plannedWorkoutId = workoutId))) }
+            } else {
+                sportDao.upsertRoutineExercises(sportDao.routineOnce(w.id).map { it.copy(plannedWorkoutId = workoutId) })
+            }
         }
         return copyId
     }

@@ -33,6 +33,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -59,6 +61,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.BookmarkAdd
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.LocalDrink
@@ -276,6 +279,32 @@ private fun TrackerPage(
     val listState = rememberReselectListState()
     val snackbar = LocalAppSnackbar.current
     var renaming by remember { mutableStateOf<MealType?>(null) }
+    var editing by remember { mutableStateOf<FoodLog?>(null) }
+    val templates by viewModel.templates.collectAsStateWithLifecycle()
+    // Saving a meal as template: which meal, and its entries.
+    var saving by remember { mutableStateOf<Pair<MealType, List<FoodLog>>?>(null) }
+    var picking by remember { mutableStateOf<MealType?>(null) }
+    saving?.let { (meal, logs) ->
+        TemplateNameDialog(meal.label(state.mealNames), onDismiss = { saving = null }) { name ->
+            viewModel.saveTemplate(name, logs)
+            saving = null
+        }
+    }
+    picking?.let { meal ->
+        TemplateSheet(
+            templates = templates,
+            items = viewModel::templateItems,
+            onPick = { viewModel.logTemplate(it, meal, state.date); picking = null },
+            onDelete = { viewModel.deleteTemplate(it.id) },
+            onDismiss = { picking = null },
+        )
+    }
+    editing?.let { log ->
+        EditLogDialog(log, state.mealNames, onDismiss = { editing = null }) { grams, meal ->
+            viewModel.editLog(log, grams, meal)
+            editing = null
+        }
+    }
     var waterGoalDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
@@ -353,6 +382,11 @@ private fun TrackerPage(
                     logs = logs,
                     onAdd = { onAddFood(meal, state.date.toString()) },
                     onRename = { renaming = meal },
+                    onEdit = { editing = it },
+                    templates = templates,
+                    onSaveTemplate = { saving = meal to logs },
+                    onPickTemplate = { picking = meal },
+                    onLogTemplate = { viewModel.logTemplate(it, meal, state.date) },
                     onDelete = { log ->
                         viewModel.deleteLog(log.id)
                         snackbar?.showUndo("„${log.label}“ gelöscht", onUndo = { viewModel.restoreLog(log) })
@@ -488,8 +522,13 @@ private fun MealCard(
     logs: List<FoodLog>,
     onAdd: () -> Unit,
     onRename: () -> Unit,
+    onEdit: (FoodLog) -> Unit,
     onDelete: (FoodLog) -> Unit,
     modifier: Modifier = Modifier,
+    templates: List<app.tenet.android.core.database.entity.MealTemplate> = emptyList(),
+    onSaveTemplate: () -> Unit = {},
+    onPickTemplate: () -> Unit = {},
+    onLogTemplate: (app.tenet.android.core.database.entity.MealTemplate) -> Unit = {},
 ) {
     var menu by remember { mutableStateOf(false) }
     val kcal = logs.sumOf { it.kcal.toDouble() }.roundToInt()
@@ -511,6 +550,20 @@ private fun MealCard(
                         Icon(Icons.Outlined.MoreVert, contentDescription = "Mehr zu $title")
                     }
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        if (templates.isNotEmpty()) {
+                            DropdownMenuItem(
+                                text = { Text("Vorlage eintragen") },
+                                leadingIcon = { Icon(Icons.Outlined.Add, contentDescription = null) },
+                                onClick = { menu = false; onPickTemplate() },
+                            )
+                        }
+                        if (logs.isNotEmpty()) {
+                            DropdownMenuItem(
+                                text = { Text("Als Vorlage speichern") },
+                                leadingIcon = { Icon(Icons.Outlined.BookmarkAdd, contentDescription = null) },
+                                onClick = { menu = false; onSaveTemplate() },
+                            )
+                        }
                         DropdownMenuItem(
                             text = { Text("Umbenennen") },
                             leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
@@ -525,6 +578,21 @@ private fun MealCard(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                // Saved meals right where the meal is empty: one tap logs all of it.
+                if (templates.isNotEmpty()) {
+                    androidx.compose.foundation.layout.FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(top = 8.dp, end = 12.dp),
+                    ) {
+                        templates.take(3).forEach { t ->
+                            app.tenet.android.core.designsystem.component.TenetAssistChip(
+                                onClick = { onLogTemplate(t) },
+                                label = { Text(t.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                leadingIcon = { Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                            )
+                        }
+                    }
+                }
             } else {
                 Text(
                     "${logs.size} ${if (logs.size == 1) "Eintrag" else "Einträge"}",
@@ -543,6 +611,7 @@ private fun MealCard(
                             FoodLogRow(
                                 log = log,
                                 shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, logs.size),
+                                onEdit = { onEdit(log) },
                                 onDelete = { onDelete(log) },
                             )
                         }
@@ -554,7 +623,7 @@ private fun MealCard(
 }
 
 @Composable
-private fun FoodLogRow(log: FoodLog, shapes: ListItemShapes, onDelete: () -> Unit, modifier: Modifier = Modifier) {
+private fun FoodLogRow(log: FoodLog, shapes: ListItemShapes, onEdit: () -> Unit, onDelete: () -> Unit, modifier: Modifier = Modifier) {
     val quantity = log.quantity
     val unit = log.unit
     val amount = if (quantity != null && unit != null && unit != "g") {
@@ -587,6 +656,8 @@ private fun FoodLogRow(log: FoodLog, shapes: ListItemShapes, onDelete: () -> Uni
         },
     ) {
         SegmentedListItem(
+            // Tap: change amount or meal.
+            onClick = onEdit,
             shapes = shapes,
             colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
             leadingContent = {
@@ -618,6 +689,105 @@ private fun FoodLogRow(log: FoodLog, shapes: ListItemShapes, onDelete: () -> Uni
             },
         ) { Text(log.label, maxLines = 1, overflow = TextOverflow.Ellipsis) }
     }
+}
+
+/** Name for a meal saved as template. */
+@Composable
+private fun TemplateNameDialog(meal: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+    var name by rememberSaveable { mutableStateOf("$meal wie immer") }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Als Vorlage speichern") },
+        text = {
+            app.tenet.android.core.designsystem.component.TenetTextField(
+                value = name,
+                onValueChange = { name = it.take(60) },
+                label = { Text("Name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = { androidx.compose.material3.TextButton(onClick = { onSave(name) }, enabled = name.isNotBlank()) { Text("Speichern") } },
+        dismissButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Abbrechen") } },
+    )
+}
+
+/** Saved meals: tap logs one into the meal, the bin removes it. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun TemplateSheet(
+    templates: List<app.tenet.android.core.database.entity.MealTemplate>,
+    items: (app.tenet.android.core.database.entity.MealTemplate) -> List<FoodLog>,
+    onPick: (app.tenet.android.core.database.entity.MealTemplate) -> Unit,
+    onDelete: (app.tenet.android.core.database.entity.MealTemplate) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss, sheetState = app.tenet.android.core.designsystem.component.rememberSheetState(skipPartiallyExpanded = true)) {
+        Column(
+            Modifier.padding(start = 16.dp, end = 16.dp, bottom = 24.dp).then(Modifier.windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.navigationBars)),
+            verticalArrangement = Arrangement.spacedBy(app.tenet.android.core.designsystem.theme.tenetSegmentedGap),
+        ) {
+            Text("Vorlage eintragen", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 8.dp))
+            templates.forEachIndexed { i, t ->
+                val list = remember(t.itemsJson) { items(t) }
+                SegmentedListItem(
+                    onClick = { onPick(t) },
+                    shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(i, templates.size),
+                    colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                    supportingContent = {
+                        Text(
+                            "${list.sumOf { it.kcal.toDouble() }.roundToInt()} kcal · " + list.joinToString(", ") { it.label },
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                    trailingContent = {
+                        IconButton(onClick = { onDelete(t) }) { Icon(Icons.Outlined.Delete, contentDescription = "Vorlage löschen") }
+                    },
+                ) { Text(t.name) }
+            }
+        }
+    }
+}
+
+/** An entry already logged: other amount (the values scale with it) or another meal. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun EditLogDialog(log: FoodLog, mealNames: Map<String, String>, onDismiss: () -> Unit, onSave: (Float, MealType) -> Unit) {
+    var grams by rememberSaveable(log.id) { mutableStateOf(log.amountG.roundToInt().toString()) }
+    var meal by rememberSaveable(log.id) { mutableStateOf(log.mealType) }
+    val value = grams.replace(',', '.').toFloatOrNull()?.takeIf { it > 0f && it <= 5000f }
+    val factor = if (value != null && log.amountG > 0f) value / log.amountG else 1f
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(log.label, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                app.tenet.android.core.designsystem.component.TenetTextField(
+                    value = grams,
+                    onValueChange = { v -> grams = v.filter { it.isDigit() || it == ',' || it == '.' }.take(6) },
+                    label = { Text("Menge") },
+                    suffix = { Text("g") },
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    "${(log.kcal * factor).roundToInt()} kcal · E ${(log.protein * factor).roundToInt()} · K ${(log.carbs * factor).roundToInt()} · F ${(log.fat * factor).roundToInt()}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text("Mahlzeit", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MealType.entries.forEach { m ->
+                        app.tenet.android.core.designsystem.component.TenetFilterChip(selected = m == meal, onClick = { meal = m }, label = { Text(m.label(mealNames)) })
+                    }
+                }
+            }
+        },
+        confirmButton = { androidx.compose.material3.TextButton(onClick = { value?.let { onSave(it, meal) } }, enabled = value != null) { Text("Speichern") } },
+        dismissButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Abbrechen") } },
+    )
 }
 
 /**

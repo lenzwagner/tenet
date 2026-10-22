@@ -89,6 +89,8 @@ object GymPlanBuilder {
         val restSec: Int,
         /** Suggested weight for the first session; null = bodyweight / choose yourself. */
         val startWeightKg: Float?,
+        /** The rest was set by hand: it is kept instead of the advice per set. */
+        val restFixed: Boolean = false,
     )
 
     data class Routine(val title: String, val exercises: List<PlannedExercise>)

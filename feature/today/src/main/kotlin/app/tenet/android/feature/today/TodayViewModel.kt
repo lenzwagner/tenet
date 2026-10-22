@@ -52,6 +52,8 @@ data class SessionSummary(
     val title: String?,
     val minutes: Int?,
     val running: Boolean,
+    /** What it was: km and pace of the run, the exercises trained. */
+    val detail: String? = null,
 )
 
 data class Streaks(val diaryDays: Int = 0, val trackingDays: Int = 0, val trainingWeeks: Int = 0)
@@ -74,6 +76,8 @@ data class TodayUiState(
     val planned: List<PlannedWorkout> = emptyList(),
     /** Next dated unit after [date] (only when nothing is planned for today). */
     val nextPlanned: PlannedWorkout? = null,
+    /** Planned unit id → what it holds (run kind, km and pace; skills; exercises). */
+    val plannedDetails: Map<String, String> = emptyMap(),
     val streaks: Streaks = Streaks(),
     /** ISO date → marks, for the week strip. */
     val marks: Map<String, DayMarks> = emptyMap(),
@@ -98,6 +102,7 @@ class TodayViewModel @Inject constructor(
     private val weatherRepository: app.tenet.android.core.data.WeatherRepository,
     private val readinessRepository: app.tenet.android.core.data.health.ReadinessRepository,
     private val healthConnect: app.tenet.android.core.data.health.HealthConnectRepository,
+    private val sportDay: app.tenet.android.core.data.SportDayDetails,
 ) : ViewModel() {
 
     /** Feed on top of "Heute": steps right now, active minutes this week. */
@@ -179,6 +184,7 @@ class TodayViewModel @Inject constructor(
         val sessions: List<SessionSummary>,
         val planned: List<PlannedWorkout>,
         val next: PlannedWorkout?,
+        val plannedDetails: Map<String, String> = emptyMap(),
     )
 
     private fun dayFlow(d: LocalDate): Flow<DayPart> {
@@ -219,6 +225,12 @@ class TodayViewModel @Inject constructor(
                         }
                     )
             }
+            val next = if (d < LocalDate.now() || todayPlanned.isNotEmpty()) {
+                null
+            } else {
+                dated.filter { p -> (p.date ?: "") > iso }
+                    .minWithOrNull(compareBy({ it.date ?: "" }, { it.sortOrder }))
+            }
             DayPart(
                 totals = totals,
                 goal = goal,
@@ -230,15 +242,12 @@ class TodayViewModel @Inject constructor(
                         title = row.workoutTitle,
                         minutes = s.endedAt?.let { ((it - s.startedAt) / 60_000).toInt() },
                         running = s.endedAt == null,
+                        detail = sportDay.done(s.id, s.discipline),
                     )
                 },
                 planned = todayPlanned,
-                next = if (d < LocalDate.now() || todayPlanned.isNotEmpty()) {
-                    null
-                } else {
-                    dated.filter { p -> (p.date ?: "") > iso }
-                        .minWithOrNull(compareBy({ it.date ?: "" }, { it.sortOrder }))
-                },
+                next = next,
+                plannedDetails = (todayPlanned + listOfNotNull(next)).mapNotNull { p -> sportDay.planned(p)?.let { p.id to it } }.toMap(),
             )
         }
     }
@@ -288,6 +297,7 @@ class TodayViewModel @Inject constructor(
             dream = day.entries.firstOrNull { it.type == EntryType.DREAM },
             sessions = day.sessions,
             planned = day.planned,
+            plannedDetails = day.plannedDetails,
             nextPlanned = day.next,
             streaks = history.streaks,
             marks = history.marks,

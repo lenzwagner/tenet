@@ -235,6 +235,9 @@ interface SportDao {
     @Query("DELETE FROM RoutineExercise WHERE plannedWorkoutId IN (SELECT id FROM PlannedWorkout WHERE planId = :planId)")
     suspend fun deleteRoutinesOfPlan(planId: String)
 
+    @Query("SELECT * FROM PlannedWorkout WHERE id = :id")
+    suspend fun plannedOnce(id: String): PlannedWorkout?
+
     @Query("DELETE FROM PlannedWorkout WHERE id = :id")
     suspend fun deleteWorkout(id: String)
 

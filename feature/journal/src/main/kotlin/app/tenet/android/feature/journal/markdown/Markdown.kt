@@ -270,7 +270,8 @@ fun MarkdownView(
                 is MdBlock.Numbered -> ListLine("${block.number}.", compact) {
                     Text(inline(block.text, onLink), style = body1, maxLines = maxLines, overflow = TextOverflow.Ellipsis, onTextLayout = onLayout)
                 }
-                is MdBlock.Check -> Row(verticalAlignment = Alignment.CenterVertically) {
+                // Space above each point, so wrapped lines stay with their own tick.
+                is MdBlock.Check -> Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = if (compact) 3.dp else 2.dp)) {
                     if (compact) {
                         CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
                             app.tenet.android.core.designsystem.component.TenetCheckbox(

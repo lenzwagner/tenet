@@ -575,18 +575,26 @@ private fun SportCard(state: TodayUiState, onOpenSport: () -> Unit, onStartRun: 
     TenetCard(onClick = onOpenSport, modifier = Modifier.fillMaxWidth(), colors = areaCardColors(AppArea.SPORT)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             CardTitle(Icons.Outlined.FitnessCenter, "Sport", HealthTint.ACTIVITY, chevron = true)
+            // Status line first, then what the unit holds (run kind, km, pace; skills; exercises).
             val rows = state.sessions.map { s ->
                 Triple(
                     s.discipline,
                     listOfNotNull(s.discipline.label, s.title).joinToString(" · "),
-                    when {
-                        s.running -> "läuft gerade"
-                        s.minutes != null -> "erledigt · ${s.minutes} Min"
-                        else -> "erledigt"
-                    },
+                    listOfNotNull(
+                        when {
+                            s.running -> "läuft gerade"
+                            s.minutes != null -> "erledigt · ${s.minutes} Min"
+                            else -> "erledigt"
+                        },
+                        s.detail,
+                    ).joinToString("\n"),
                 )
             } + state.planned.map { p ->
-                Triple(p.discipline, "${p.discipline.label} · ${p.title}", if (state.isToday) "heute geplant" else "geplant")
+                Triple(
+                    p.discipline,
+                    "${p.discipline.label} · ${p.title}",
+                    listOfNotNull(if (state.isToday) "heute geplant" else "geplant", state.plannedDetails[p.id]).joinToString("\n"),
+                )
             }
             // A run planned for today can be started right here.
             val runToday = state.planned.firstOrNull { it.discipline == Discipline.RUNNING }?.takeIf { state.isToday }
@@ -596,7 +604,7 @@ private fun SportCard(state: TodayUiState, onOpenSport: () -> Unit, onStartRun: 
                         SegmentedListItem(
                             shapes = app.tenet.android.core.designsystem.theme.tenetSegmentedShapes(index, rows.size),
                             leadingContent = { Icon(discipline.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                            supportingContent = { Text(status) },
+                            supportingContent = { Text(status, maxLines = 4, overflow = TextOverflow.Ellipsis) },
                         ) { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                     }
                 }
@@ -634,6 +642,9 @@ private fun SportCard(state: TodayUiState, onOpenSport: () -> Unit, onStartRun: 
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text("${next.discipline.label} · ${next.title}", style = MaterialTheme.typography.titleMedium)
+                            state.plannedDetails[next.id]?.let {
+                                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     } else {
                         Text(

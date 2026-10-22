@@ -49,6 +49,9 @@ interface RunDao {
     @Query("SELECT * FROM RunPlanWorkout WHERE plannedWorkoutId = :plannedWorkoutId")
     suspend fun runPlanWorkoutOnce(plannedWorkoutId: String): RunPlanWorkout?
 
+    @Query("DELETE FROM RunPlanWorkout WHERE plannedWorkoutId = :plannedWorkoutId")
+    suspend fun deleteRunPlanWorkout(plannedWorkoutId: String)
+
     @Query("SELECT * FROM RunPlanDetail WHERE planId = :planId")
     suspend fun planDetailOnce(planId: String): RunPlanDetail?
 

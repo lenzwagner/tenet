@@ -528,6 +528,7 @@ fun TenetApp(
  AreaTheme(AppArea.SPORT) {
                     RunPlanDetailScreen(
                         planId = entry.toRoute<RunPlanDetailRoute>().planId,
+                        startEditing = entry.toRoute<RunPlanDetailRoute>().edit,
                         onBack = { navController.popBackStack() },
                         onOpenRun = { id -> navController.navigate(RunDetailRoute(id)) },
                         onOpenWorkout = { id -> navController.navigate(RunWorkoutRoute(id)) },
@@ -560,6 +561,7 @@ fun TenetApp(
                             if (discipline == app.tenet.android.core.database.entity.Discipline.RUNNING) navController.navigate(RunPlanDetailRoute(id))
                             else navController.navigate(app.tenet.android.navigation.PlanEditorRoute(id))
                         },
+                        onEditRun = { id -> navController.navigate(RunPlanDetailRoute(id, edit = true)) },
                         // Gym: start weights from the trainings done so far, when there are any.
                         onOpenSetup = { navController.navigate(SportSetupRoute(name, useTrainingHistory = true)) },
                         onOpenChat = { split -> navController.navigate(app.tenet.android.navigation.PlanChatRoute(name, split)) },
