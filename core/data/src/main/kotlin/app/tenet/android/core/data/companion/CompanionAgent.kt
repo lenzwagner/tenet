@@ -106,9 +106,9 @@ class CompanionAgent @Inject constructor(
             (if (talk.isNotBlank()) "\n\nBISHERIGES GESPRÄCH (deine Rückfragen und seine Antworten gehören zusammen)\n$talk" else "") +
             "\n\nNACHRICHT DES NUTZERS (nur darauf reagieren): " + text
         val chosen = ai.config.value.companionModel
-        // The chosen model first, then the fast ones.
-        val models = listOfNotNull(chosen.takeIf { it.isNotBlank() }) + fastModels()
-        suspend fun ask(p: String) = ai.chat(p, models, maxTokens = 900, timeoutMs = 30_000, configuredFirst = false, accept = { AiAssistant.extractJson(it) != null })
+        // The companion's own model if one is chosen, else the text model from the settings; the fast ones as fallback.
+        val models = fastModels()
+        suspend fun ask(p: String) = ai.chat(p, models, maxTokens = 900, timeoutMs = 45_000, primary = chosen.takeIf { it.isNotBlank() }, accept = { AiAssistant.extractJson(it) != null })
             ?.let { AiAssistant.extractJson(it) }
         // No guessing from the sentence here: that once logged "Federweißer" for a question.
         val unreachable = { Reply("Ich erreiche die KI gerade nicht (${ai.lastError ?: "keine Antwort"}). Versuch es gleich nochmal.") }

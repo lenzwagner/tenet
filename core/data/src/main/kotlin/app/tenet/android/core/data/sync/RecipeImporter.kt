@@ -104,10 +104,22 @@ class RecipeImporter @Inject constructor(
         val shortcode = Regex("""instagram\.com/(?:p|reels?|tv)/([A-Za-z0-9_\-]+)""").find(url)?.groupValues?.get(1)
             ?: error("Instagram-Link nicht erkannt.")
         onStep("Instagram-Post wird geladen …")
+        // The function answers with the reason when it cannot: expired Instagram session (503,
+        // SESSION_EXPIRED), too many requests – that reason is shown instead of a guess.
+        var refused: JSONObject? = null
         val json = listOf(INSTA_FN, INSTA_FN_ALT).firstNotNullOfOrNull { endpoint ->
             runCatching { post(endpoint, JSONObject().put("shortcode", shortcode).toString(), 90_000) }.getOrNull()
                 ?.let { runCatching { JSONObject(it) }.getOrNull() }
+                ?.also { if (!it.optBoolean("success") && it.optString("error").isNotBlank()) refused = it }
                 ?.takeIf { it.optBoolean("success") && it.optString("description").isNotBlank() }
+        } ?: refused?.let { r ->
+            error(
+                when (r.optString("error_code")) {
+                    "SESSION_EXPIRED" -> "Instagram-Import gerade nicht möglich – die Server-Anmeldung bei Instagram ist abgelaufen. Grund: ${r.optString("error")}"
+                    "RATE_LIMIT" -> "Instagram bremst gerade (zu viele Anfragen). Versuch es in ein paar Minuten nochmal."
+                    else -> r.optString("error")
+                },
+            )
         } ?: error("Instagram liefert den Post gerade nicht (privat oder blockiert). Versuch es später nochmal.")
         return extractText(cleanSocialCaption(json.optString("description")), json.optString("thumbnail_url"), onStep)
     }
@@ -160,7 +172,7 @@ class RecipeImporter @Inject constructor(
             }.getOrNull()
         }
         require(dataUris.isNotEmpty()) { "Bilder konnten nicht geladen werden." }
-        val answer = ai.chat(VISION_PROMPT, listOf(VISION_MODEL, "meta/llama-3.2-11b-vision-instruct"), images = dataUris)
+        val answer = ai.chat(VISION_PROMPT, emptyList(), images = dataUris, maxTokens = 3000)
             ?: error(ai.lastError ?: "KI hat nicht geantwortet.")
         return germanize(parse(answer, caption, thumbnail), onStep)
     }
@@ -483,7 +495,6 @@ class RecipeImporter @Inject constructor(
             "cup", "cups", "tbsp", "tsp", "tablespoon", "teaspoon", "sugar", "flour", "cream", "sauce", "breast", "thighs",
             "rice", "water", "minced", "chopped", "fresh", "and", "with", "the", "add", "cook", "until", "minutes", "heat",
         )
-        const val VISION_MODEL = "nvidia/llama-3.2-11b-vision-instruct"
         const val INSTA_FN = "https://us-central1-saffron-498311.cloudfunctions.net/get_insta_recipe"
         const val INSTA_FN_ALT = "https://get-insta-recipe-498311-uc.a.run.app"
         const val BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"

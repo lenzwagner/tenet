@@ -31,6 +31,10 @@ import app.tenet.android.core.designsystem.header.pageWash
 import androidx.compose.material.icons.outlined.NetworkCheck
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.AutoAwesome
 
 import androidx.compose.ui.platform.LocalContext
@@ -848,21 +852,28 @@ private fun HealthConnectGroup(viewModel: SettingsViewModel) {
     }
 }
 
-/** AI fill-in: dictation → form fields via NVIDIA NIM. */
+/**
+ * AI via NVIDIA NIM: on/off, the key (hidden, checked before it is saved – the
+ * model list doubles as the check), the text model from every model the key may
+ * use (type to filter, there are over 100) and a connection test.
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun AiGroup(viewModel: SettingsViewModel) {
-    val context = LocalContext.current
     val aiConfig by viewModel.aiConfig.collectAsStateWithLifecycle()
     val availableModels by viewModel.availableModels.collectAsStateWithLifecycle()
-    var keyDialog by remember { mutableStateOf(false) }
-    var modelDialog by remember { mutableStateOf(false) }
+    var key by remember { mutableStateOf("") }
+    var showKey by remember { mutableStateOf(false) }
+    var checking by remember { mutableStateOf(false) }
+    var keyResult by remember { mutableStateOf<String?>(null) }
     var testing by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) { viewModel.refreshAiModels() }
 
-    Column(Modifier.padding(top = 8.dp)) {
+    Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SettingsGroup { shapes ->
             SwitchItem(
-                shapes = shapes(0, 4),
+                shapes = shapes(0, 2),
                 icon = Icons.Outlined.AutoAwesome,
                 title = "KI-Ausfüllhilfe",
                 supporting = "Diktat füllt Traum, Tagebuch, Notiz, Mahlzeit, Lauf und Gym-Sätze aus",
@@ -870,23 +881,7 @@ private fun AiGroup(viewModel: SettingsViewModel) {
                 onCheckedChange = viewModel::setAiEnabled,
             )
             NavItem(
-                shapes = shapes(1, 4),
-                icon = Icons.Outlined.Key,
-                title = "NVIDIA-API-Schlüssel",
-                supporting = if (aiConfig.apiKey.isBlank()) "Nicht gesetzt" else "nvapi-…" + aiConfig.apiKey.takeLast(4),
-                onClick = { keyDialog = true },
-            )
-            NavItem(
-                shapes = shapes(2, 4),
-                icon = Icons.Outlined.Memory,
-                title = "Modell",
-                supporting = aiConfig.model,
-                onClick = { modelDialog = true },
-            )
-            // One test: sends a short request to exactly the model shown above
-            // and says inline whether it answered (was two rows plus a toast).
-            NavItem(
-                shapes = shapes(3, 4),
+                shapes = shapes(1, 2),
                 icon = Icons.Outlined.NetworkCheck,
                 title = "Verbindung testen",
                 supporting = when {
@@ -906,48 +901,98 @@ private fun AiGroup(viewModel: SettingsViewModel) {
                 },
             )
         }
-        Text(
-            "${availableModels.size} NVIDIA-NIM-Modelle für diesen Schlüssel gefunden. Nur der diktierte bzw. getippte Text des jeweiligen Eintrags wird an NVIDIA gesendet, " +
-                "sonst nichts. Ohne Schlüssel oder ausgeschaltet funktioniert alles wie bisher.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        )
+        Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("NVIDIA-API-Schlüssel", style = MaterialTheme.typography.titleSmall)
+            app.tenet.android.core.designsystem.component.TenetTextField(
+                value = key,
+                onValueChange = { key = it.trim(); keyResult = null },
+                label = { Text(if (aiConfig.apiKey.isBlank()) "nvapi-…" else "Aktuell nvapi-…" + aiConfig.apiKey.takeLast(4)) },
+                singleLine = true,
+                visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    androidx.compose.material3.IconButton(onClick = { showKey = !showKey }) {
+                        Icon(
+                            if (showKey) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                            contentDescription = if (showKey) "Schlüssel verbergen" else "Schlüssel zeigen",
+                        )
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    keyResult ?: "Wird erst nach erfolgreicher Prüfung bei NVIDIA gespeichert. Leer = eingebauter Schlüssel.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (keyResult != null && keyResult != "Gespeichert ✓") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(
+                    onClick = {
+                        checking = true
+                        viewModel.checkAndSaveAiKey(key) { error ->
+                            checking = false
+                            keyResult = error ?: "Gespeichert ✓"
+                            if (error == null) key = ""
+                        }
+                    },
+                    enabled = (key.isEmpty() || key.length >= 10) && !checking,
+                    shapes = ButtonDefaults.shapes(),
+                ) { Text(if (checking) "Prüfe …" else if (key.isEmpty()) "Eingebauten nutzen" else "Prüfen & speichern") }
+            }
+            Text("Text-Modell", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
+            ModelPicker(availableModels, aiConfig.model) { viewModel.setAiModel(it); testResult = null }
+            Text(
+                "${availableModels.size} Modelle für diesen Schlüssel. Bilder liest immer ${app.tenet.android.core.data.ai.AiAssistant.VISION_MODEL}. " +
+                    "Nur der diktierte bzw. getippte Text des jeweiligen Eintrags wird an NVIDIA gesendet.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
+}
 
-    if (keyDialog) {
-        TextInputDialog(
-            title = "NVIDIA-API-Schlüssel",
-            label = "nvapi-…",
-            initial = "",
-            secret = true,
-            onDismiss = { keyDialog = false },
-            onSave = {
-                viewModel.setAiKey(it)
-                keyDialog = false
-                testResult = null
-            },
-        )
+/** Every model the key may use; typing filters the list (there are over 100). */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun ModelPicker(models: List<app.tenet.android.core.data.ai.AiAssistant.ModelChoice>, selected: String, onSelect: (String) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    var query by remember(selected) { mutableStateOf(selected) }
+    val filtered = remember(models, query, selected) {
+        val q = query.trim()
+        if (q.isEmpty() || q == selected) models else models.filter { it.id.contains(q, ignoreCase = true) || it.label.contains(q, ignoreCase = true) }
     }
-    if (modelDialog) {
-        LaunchedEffect(Unit) { viewModel.refreshAiModels() }
-        ChoiceDialog(
-            title = "Modell",
-            icon = Icons.Outlined.Memory,
-            options = availableModels,
-            selected = availableModels.find { it.id == aiConfig.model } ?: availableModels.first(),
-            label = { it.label },
-            description = { it.id },
-            onSelect = {
-                viewModel.setAiModel(it.id)
-                modelDialog = false
-                testResult = null
+    Box {
+        app.tenet.android.core.designsystem.component.TenetTextField(
+            value = query,
+            onValueChange = { query = it; expanded = true },
+            label = { Text("Modell suchen") },
+            singleLine = true,
+            trailingIcon = {
+                androidx.compose.material3.IconButton(onClick = { expanded = !expanded }) {
+                    Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, contentDescription = "Liste öffnen")
+                }
             },
-            onDismiss = {
-                viewModel.refreshAiModels()
-                modelDialog = false
-            },
+            modifier = Modifier.fillMaxWidth(),
         )
+        // Not focusable: the keyboard stays in the field while the list filters.
+        androidx.compose.material3.DropdownMenu(
+            expanded = expanded && filtered.isNotEmpty(),
+            onDismissRequest = { expanded = false; query = selected },
+            properties = androidx.compose.ui.window.PopupProperties(focusable = false),
+            modifier = Modifier.heightIn(max = 360.dp),
+        ) {
+            filtered.take(80).forEach { m ->
+                androidx.compose.material3.DropdownMenuItem(
+                    text = { Text(m.id, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
+                    trailingIcon = if (m.id == selected) ({ Icon(Icons.Outlined.Check, contentDescription = "Gewählt") }) else null,
+                    onClick = {
+                        onSelect(m.id)
+                        query = m.id
+                        expanded = false
+                    },
+                )
+            }
+        }
     }
 }
 

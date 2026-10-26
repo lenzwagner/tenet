@@ -86,6 +86,32 @@ class SettingsViewModel @Inject constructor(
         ai.setApiKey(key)
         refreshAiModels()
     }
+
+    /**
+     * Checks [key] at NVIDIA and stores it only when it is valid; the models it may
+     * use fill the list right away. [onResult]: null = saved, else why not.
+     */
+    fun checkAndSaveAiKey(key: String, onResult: (String?) -> Unit) {
+        // Empty: back to the key built into the app.
+        if (key.isBlank()) {
+            ai.setApiKey("")
+            refreshAiModels()
+            onResult(null)
+            return
+        }
+        viewModelScope.launch {
+            when (val r = ai.checkKey(key)) {
+                is AiAssistant.KeyCheck.Valid -> {
+                    ai.setApiKey(key)
+                    _availableModels.value = (r.models.ifEmpty { AiAssistant.DEFAULT_MODELS } + AiAssistant.ModelChoice(ai.config.value.model))
+                        .distinctBy { it.id }.sortedBy { it.id }
+                    onResult(null)
+                }
+                is AiAssistant.KeyCheck.Invalid -> onResult("Schlüssel ungültig (NVIDIA ${r.code}) – nicht gespeichert.")
+                is AiAssistant.KeyCheck.Failed -> onResult("Prüfung nicht möglich: ${r.message} – nicht gespeichert.")
+            }
+        }
+    }
     fun setAiModel(model: String) {
         ai.setModel(model)
         _availableModels.value = (_availableModels.value + AiAssistant.ModelChoice(model))

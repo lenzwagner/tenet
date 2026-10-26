@@ -57,6 +57,60 @@ class AiAssistant @Inject constructor(
         companionModel = prefs.getString(KEY_COMPANION_MODEL, null).orEmpty(),
     )
 
+    /** Result of checking a key against NVIDIA's model list. */
+    sealed interface KeyCheck {
+        data class Valid(val models: List<ModelChoice>) : KeyCheck
+        /** NVIDIA said no (401/403): the key is wrong or revoked. */
+        data class Invalid(val code: Int) : KeyCheck
+        /** No answer (offline, timeout, other error): nothing is known about the key. */
+        data class Failed(val message: String) : KeyCheck
+    }
+
+    /**
+     * Checks [key] without storing it. GET /v1/models gives the model list – but it
+     * answers 200 for any key (tested Oct 2026), so a one-token chat request decides:
+     * 401/403 = invalid key; any other answer means NVIDIA accepted the key.
+     */
+    suspend fun checkKey(key: String): KeyCheck = withContext(Dispatchers.IO) {
+        runCatching {
+            val conn = (URL(MODELS_ENDPOINT).openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 10_000
+                readTimeout = 20_000
+                setRequestProperty("Authorization", "Bearer ${key.trim()}")
+                setRequestProperty("Accept", "application/json")
+            }
+            val models = when (val code = conn.responseCode) {
+                401, 403 -> return@runCatching KeyCheck.Invalid(code)
+                in 200..299 -> {
+                    val data = JSONObject(conn.inputStream.bufferedReader().use { it.readText() }).optJSONArray("data") ?: JSONArray()
+                    (0 until data.length()).mapNotNull { data.optJSONObject(it)?.optString("id")?.trim()?.takeIf { id -> id.isNotEmpty() && id != "null" } }
+                        .distinct().sorted().map { ModelChoice(it) }
+                }
+                else -> return@runCatching KeyCheck.Failed("NVIDIA antwortet mit $code")
+            }
+            val probe = (URL(ENDPOINT).openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 10_000
+                readTimeout = 30_000
+                doOutput = true
+                setRequestProperty("Authorization", "Bearer ${key.trim()}")
+                setRequestProperty("Content-Type", "application/json")
+            }
+            probe.outputStream.use {
+                it.write(
+                    JSONObject().put("model", _config.value.model).put("max_tokens", 1)
+                        .put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", "ok")))
+                        .toString().toByteArray(),
+                )
+            }
+            when (val code = probe.responseCode) {
+                401, 403 -> KeyCheck.Invalid(code)
+                else -> KeyCheck.Valid(models)
+            }
+        }.getOrElse { KeyCheck.Failed(it.message ?: "keine Verbindung") }
+    }
+
     /** Returns the models currently exposed to this NVIDIA API key. */
     suspend fun fetchModels(): List<ModelChoice> {
         val cfg = _config.value
@@ -97,44 +151,51 @@ class AiAssistant @Inject constructor(
     suspend fun json(system: String, user: String, maxTokens: Int = 500): JSONObject? {
         val cfg = _config.value
         if (!cfg.usable || user.isBlank()) return null
-        val text = withContext(Dispatchers.IO) {
-            runCatching {
-                val body = JSONObject()
-                    .put("model", cfg.model)
-                    .put("temperature", 0.1)
-                    .put("max_tokens", maxTokens)
-                    .put(
-                        "messages",
-                        JSONArray()
-                            .put(JSONObject().put("role", "system").put("content", system))
-                            .put(JSONObject().put("role", "user").put("content", user)),
-                    )
-                val conn = (URL(ENDPOINT).openConnection() as HttpURLConnection).apply {
-                    requestMethod = "POST"
-                    connectTimeout = 10_000
-                    readTimeout = 30_000
-                    doOutput = true
-                    setRequestProperty("Authorization", "Bearer ${cfg.apiKey}")
-                    setRequestProperty("Content-Type", "application/json")
-                    setRequestProperty("Accept", "application/json")
-                }
-                conn.outputStream.use { it.write(body.toString().toByteArray()) }
-                if (conn.responseCode !in 200..299) {
-                    lastError = "NIM ${conn.responseCode}"
-                    return@runCatching null
-                }
-                val response = conn.inputStream.bufferedReader().use { it.readText() }
-                JSONObject(response).getJSONArray("choices").getJSONObject(0)
-                    .getJSONObject("message").optString("content")
-            }.onFailure { lastError = it.message }.getOrNull()
-        } ?: return null
-        return extractJson(text)
+        // The chosen text model, then the fallback when the key may not use it (404) or it is busy.
+        for (model in listOf(cfg.model, FALLBACK_TEXT_MODEL).distinct()) {
+            val text = withContext(Dispatchers.IO) {
+                runCatching {
+                    val body = JSONObject()
+                        .put("model", model)
+                        .put("temperature", 0.2)
+                        .put("max_tokens", maxTokens)
+                        // Without this, reasoning models think first and cut the JSON off at max_tokens.
+                        .put("chat_template_kwargs", JSONObject().put("enable_thinking", false))
+                        .put(
+                            "messages",
+                            JSONArray()
+                                .put(JSONObject().put("role", "system").put("content", system))
+                                .put(JSONObject().put("role", "user").put("content", user)),
+                        )
+                    val conn = (URL(ENDPOINT).openConnection() as HttpURLConnection).apply {
+                        requestMethod = "POST"
+                        connectTimeout = 10_000
+                        readTimeout = 30_000
+                        doOutput = true
+                        setRequestProperty("Authorization", "Bearer ${cfg.apiKey}")
+                        setRequestProperty("Content-Type", "application/json")
+                        setRequestProperty("Accept", "application/json")
+                    }
+                    conn.outputStream.use { it.write(body.toString().toByteArray()) }
+                    if (conn.responseCode !in 200..299) {
+                        lastError = "NIM ${conn.responseCode} ($model)"
+                        return@runCatching null
+                    }
+                    val response = conn.inputStream.bufferedReader().use { it.readText() }
+                    JSONObject(response).getJSONArray("choices").getJSONObject(0)
+                        .getJSONObject("message").optString("content")
+                }.onFailure { lastError = it.message }.getOrNull()
+            }
+            text?.let(::extractJson)?.let { return it }
+        }
+        return null
     }
 
     /**
      * Free chat completion with a single user message (optionally with images
-     * as data URIs), for long extractions like the recipe import. Tries the
-     * configured model first, then [models] as compatibility fallbacks.
+     * as data URIs), for long extractions like the recipe import. Text: the model
+     * chosen in the settings (or [primary]) first, then [models] as fallbacks.
+     * Images: always [VISION_MODEL] – not every model understands pictures.
      */
     suspend fun chat(
         prompt: String,
@@ -142,8 +203,10 @@ class AiAssistant @Inject constructor(
         images: List<String> = emptyList(),
         maxTokens: Int = 2048,
         timeoutMs: Int = 120_000,
-        /** false: try [models] in order before the one chosen in the settings (speed over choice). */
-        configuredFirst: Boolean = true,
+        /** Unused: every text call starts with the model from the settings. */
+        @Suppress("UNUSED_PARAMETER") configuredFirst: Boolean = true,
+        /** A model chosen for this caller instead of the settings' one (the companion's). */
+        primary: String? = null,
         /** An answer that fails this (empty, no JSON …) counts as failed: the next model is tried. */
         accept: (String) -> Boolean = { it.isNotBlank() },
     ): String? {
@@ -153,7 +216,11 @@ class AiAssistant @Inject constructor(
             return null
         }
         return withContext(Dispatchers.IO) {
-            val order = if (configuredFirst) listOf(cfg.model) + models else models + cfg.model
+            val order = if (images.isNotEmpty()) {
+                listOf(VISION_MODEL, VISION_FALLBACK)
+            } else {
+                listOf(primary?.takeIf { it.isNotBlank() } ?: cfg.model) + models + FALLBACK_TEXT_MODEL
+            }
             for (model in order.distinct()) {
                 val content: Any = if (images.isEmpty()) {
                     prompt
@@ -263,7 +330,8 @@ class AiAssistant @Inject constructor(
                     val code = conn.responseCode
                     if (code !in 200..299) {
                         lastError = when (code) {
-                            400, 404, 405, 422 -> "Modell unterstützt keinen Chat-Test (NIM $code): $modelId"
+                            404 -> "$modelId ist für diesen Schlüssel nicht freigeschaltet (NIM 404). Die App weicht auf $FALLBACK_TEXT_MODEL aus – oder wähle ein anderes Modell."
+                            400, 405, 422 -> "Modell unterstützt keinen Chat-Test (NIM $code): $modelId"
                             429 -> "NVIDIA ist ausgelastet (NIM 429). Bitte erneut testen."
                             else -> "NIM $code ($modelId)"
                         }
@@ -300,13 +368,22 @@ class AiAssistant @Inject constructor(
         private const val MODEL_TEST_CONNECT_TIMEOUT_MS = 15_000
         private const val MODEL_TEST_READ_TIMEOUT_MS = 45_000
 
-        /** Fast, reliable JSON in tests (2–4 s); reasoning models took 7–25 s. */
-        const val DEFAULT_MODEL = "meta/llama-3.2-11b-vision-instruct"
+        /** Text model when none is chosen; with thinking off it answers in a few seconds. */
+        const val DEFAULT_MODEL = "nvidia/nemotron-3-super-120b-a12b"
+
+        /** Every request with a picture: fixed, because not every model understands images. */
+        const val VISION_MODEL = "nvidia/llama-3.2-11b-vision-instruct"
+
+        /** NVIDIA lists the vision model only under "meta/…" (Oct 2026: the nvidia/ id answers 404). */
+        const val VISION_FALLBACK = "meta/llama-3.2-11b-vision-instruct"
+
+        /** When the chosen text model is not open to the key (404) or busy: fast and available. */
+        const val FALLBACK_TEXT_MODEL = "nvidia/nemotron-3.5-lightning-30b-a3b"
 
         val DEFAULT_MODELS = listOf(
-            ModelChoice(DEFAULT_MODEL, "Meta Llama 3.2 11B (Vision)"),
+            ModelChoice(DEFAULT_MODEL, "NVIDIA Nemotron 3 Super"),
+            ModelChoice("nvidia/nemotron-3.5-lightning-30b-a3b", "NVIDIA Nemotron 3.5 Lightning"),
             ModelChoice("openai/gpt-oss-20b", "OpenAI gpt-oss-20b"),
-            ModelChoice("nvidia/llama-3.2-11b-vision-instruct", "NVIDIA Llama 3.2 11B Vision"),
         )
 
         private const val KEY_ENABLED = "enabled"
@@ -316,10 +393,9 @@ class AiAssistant @Inject constructor(
 
         /** Models offered for the companion (short answers, quick). */
         val COMPANION_MODELS = listOf(
-            ModelChoice("", "Automatisch · das schnellste verfügbare"),
+            ModelChoice("", "Wie unter Einstellungen → KI · das Text-Modell"),
             ModelChoice("nvidia/nemotron-3.5-lightning-30b-a3b", "Nemotron 3.5 Lightning · schnell, natürlich"),
             ModelChoice("nvidia/nemotron-3-super-120b-a12b", "Nemotron 3 Super · gründlicher, langsamer"),
-            ModelChoice(DEFAULT_MODEL, "Llama 3.2 Vision · solide, versteht Bilder"),
             ModelChoice("openai/gpt-oss-20b", "gpt-oss-20b · überlegt länger"),
         )
 
